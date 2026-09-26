@@ -1,78 +1,82 @@
-# TechVoice · 《深入理解 AI Agent》中英双语精听小站
+# TechVoice · AI Agents in Depth: Bilingual Audio Reader
 
 <div align="center">
+
+**English** • [中文简体](README_zh.md)
+
+<br>
 
 [![Audio Duration](https://img.shields.io/badge/Audio_Duration-20h_56m-blue.svg?style=flat-square&logo=podcast)](https://github.com/bojieli/ai-agent-book)
 [![Chapters](https://img.shields.io/badge/Chapters-12_Complete-indigo.svg?style=flat-square)](https://github.com/bojieli/ai-agent-book)
 [![Aligned Sentences](https://img.shields.io/badge/Aligned_Cues-8%2C052_Sentences-success.svg?style=flat-square)](https://github.com/bojieli/ai-agent-book)
 [![Sub-Sections](https://img.shields.io/badge/Sub--Sections-293_Markers-orange.svg?style=flat-square)](https://github.com/bojieli/ai-agent-book)
 [![Languages](https://img.shields.io/badge/Languages-Bilingual_(EN%2FZH)-emerald.svg?style=flat-square)](#)
-[![License](https://img.shields.io/badge/License-MIT_%2F_CC--BY--SA_4.0-lightgrey.svg?style=flat-square)](#开源许可与致谢)
+[![License](https://img.shields.io/badge/License-MIT_%2F_CC--BY--SA_4.0-lightgrey.svg?style=flat-square)](#license--acknowledgments)
 
 <p align="center">
-  <b>让技术好书成为随时随地可精听的有声伴侣。</b><br>
-  涵盖全书 12 章节、20 小时 56 分钟英文高精度朗读，配有 8,052 句中英对照逐句字幕与 293 处多级小节导航。
+  <b>Turn heavyweight open-source engineering books into pleasant audio companions.</b><br>
+  Complete 12 chapters, 20 hours 56 minutes of high-fidelity English narration, paired with 8,052 sentence-aligned bilingual subtitles and 293 hierarchical sub-chapter navigation landmarks.
 </p>
 
-[🌐 在线精听体验](#快速开始) • [📖 章节目录与时长](#全书章节总览) • [✨ 核心功能](#核心功能) • [🛠️ 制作管线](#有声书制作管线) • [⌨️ 快捷键](#快捷键操作指南)
+[🌐 Web Reader](#quick-start--local-preview) • [📖 Chapter Directory](#chapter-breakdown--durations) • [✨ Key Features](#key-features) • [🛠️ Audio Pipeline](#audio-synthesis--alignment-pipeline) • [⌨️ Shortcuts](#keyboard-shortcuts)
 
 </div>
 
 ---
 
 > [!IMPORTANT]
-> ### 📌 版权归属与独立制作声明 (Attribution & Disclaimer)
+> ### 📌 Attribution & Independent Creation Disclaimer
 > 
-> * **原书版权**：中文原著《深入理解 AI Agent：设计原理与工程实践》（*AI Agents in Depth: Design Principles and Engineering Practice*）著作权归作者 **李博杰博士**（Dr. Bojie Li，Pine AI 联合创始人兼首席科学家，前微软亚洲研究院首席研究员）所有。
->   * 原书开源仓库：[github.com/bojieli/ai-agent-book](https://github.com/bojieli/ai-agent-book)
->   * 官方在线阅读：[bojieli.github.io/ai-agent-book/astro/](https://bojieli.github.io/ai-agent-book/astro/)
->   * 官方多语言电子书发布：[Releases (15 种语言 EPUB / PDF)](https://github.com/bojieli/ai-agent-book/releases)
-> * **英文有声版声明**：本站及本仓库中的 **英文朗读音频、中英文逐句时间戳对齐数据、独立网页播放器及交互界面，均为站长个人独立制作与整理，并非原书作者官方发布的产品**。制作初衷为方便散步、通勤等碎片时间精听开源优质技术书，同时磨练技术英文听力与系统设计思维。
+> * **Original Book Authorship & Copyright**: The original book *《深入理解 AI Agent：设计原理与工程实践》* (*AI Agents in Depth: Design Principles and Engineering Practice*) is authored by and copyrighted by **Dr. Bojie Li** (Co-Founder & Chief Scientist of Pine AI, adjunct lecturer at UCAS, former Principal Researcher at Microsoft Research Asia).
+>   * Official GitHub Repository: [github.com/bojieli/ai-agent-book](https://github.com/bojieli/ai-agent-book)
+>   * Official Online Astro Reader: [bojieli.github.io/ai-agent-book/astro/](https://bojieli.github.io/ai-agent-book/astro/)
+>   * Official E-Book Releases (15 Languages EPUB & PDF): [GitHub Releases](https://github.com/bojieli/ai-agent-book/releases)
+> * **Independent Audio Edition**: The **English audio narration, sentence-by-sentence temporal alignment data, and interactive web player in this repository were independently created and compiled by the site owner**. This is **not an official release by the original book author**. It was produced as a personal learning initiative to listen to open-source technical books during walks and commutes while sharpening technical English listening and systems design skills.
 
 ---
 
-## 🎧 项目概述
+## 🎧 Project Overview
 
-现代大型语言模型（LLM）与智能体系统正经历爆发式演进。李博杰老师的开源力作《深入理解 AI Agent》系统总结了构建现代智能体系统的核心公式：
-$$\text{Agent} = \text{LLM} (\text{大脑}) + \text{上下文} (\text{眼睛}) + \text{工具} (\text{手脚})$$
-以及系统工程闭环：
-$$\text{Agent} = \text{Model} + \text{Harness} (\text{约束} + \text{验证} + \text{纠错})$$
+Modern Large Language Models (LLMs) and autonomous agents are advancing at exponential velocity. Dr. Bojie Li's seminal book introduces the foundational architecture:
+$$\text{Agent} = \text{LLM} (\text{Brain}) + \text{Context} (\text{Eyes}) + \text{Tools} (\text{Hands \& Feet})$$
+alongside the engineering harness loop:
+$$\text{Agent} = \text{Model} + \text{Harness} (\text{Constraint} + \text{Verification} + \text{Error Correction})$$
 
-为了让开发者能够在通勤、散步、运动等场景随时随地研读这本厚重的工程专著，本项目完成了对全书 12 个章节的英文语音转制，并构建了轻量高效的**中英双语同步精听 Web 播放器**。
-
----
-
-## ✨ 核心功能
-
-### 1. 沉浸式听读体验与三种视图模式
-* **中英双语对照（Bilingual）**：主副标题双行对照，英文发音与中英字幕实时同步高亮。
-* **纯英文磨耳朵（English Only）**：隐藏中文翻译，打造纯净母语级技术听力环境。
-* **纯中文速览（Chinese Only）**：专注于中文译文，快速览阅全书技术要点。
-
-### 2. 精准时序跟随与单句循环复读
-* **智能平滑跟随（Auto-Scroll）**：当前播放的句子始终自动平滑滚动至屏幕黄金阅读区。手动滚动浏览时自动暂停跟随，点击按钮一键重新锁定。
-* **单句循环（A-B Loop，快捷键 `R`）**：针对生疏长难句、专业架构名词，一键开启单句无限循环复读，反复听清技术细节。
-* **毫秒级点击跳转**：点击任何一句字幕，音频瞬间精准 seek 到该句起点播放。
-
-### 3. 293 处十进制层级小节精细导航
-* **多级大纲树（Sidebar Outline Tree）**：侧边栏支持按 `1.1`、`1.1.1` 等十进制多级章节实时折叠与展开，一眼看清全书知识脉络。
-* **波形刻度标记（Seekbar Ticks）**：进度条内嵌各个小节时间点刻度，悬停即刻预览小节标题。
-* **分节卡片与顶部药丸**：播放正文中清晰插入分节卡片，顶部提供水平滑动药丸快速跨节跳转。
-
-### 4. 离线就绪与 PWA 体验
-* **一键章节离线缓存**：内置 CacheStorage 与 Service Worker，点击“缓存当前章节”即可断网离线收听。
-* **独立离线文件**：项目根目录下提供全套标准的 `.mp3` 音频文件与匹配的 `.srt` / `.vtt` 双语字幕文件，可直接导入系统播放器或第三方播放软件。
-
-### 5. 极速、纯粹、无干扰
-* 零用户追踪、零广告、无需登录、秒开即听。
-* 支持系统级深色（Dark）/ 浅色（Light）模式自适应切换。
-* 全站完整的双语国际化（中/英界面自由切换）。
+To make this comprehensive 400+ page monograph accessible on-the-go—during daily commutes, walks, or gym sessions—this project converted all 12 chapters into natural English speech and built a lightweight, distraction-free **bilingual synchronized web reader**.
 
 ---
 
-## 📖 全书章节总览
+## ✨ Key Features
 
-| # | 章节 (Chapter) | 英文标题 (Title EN) | 中文标题 (Title ZH) | 音频时长 | 句数 (Cues) | 小节数 |
+### 1. Three Reading Modes
+* **Bilingual View (中英双语)**: Side-by-side or stacked English narration with aligned Chinese translation. Active sentence highlights dynamically in sync with audio playback.
+* **English Immersion (纯英文)**: Hides Chinese text for pure, native-level technical listening practice.
+* **Chinese Overview (纯中文)**: Hides English subtitles to skim through core architectural concepts quickly in Chinese.
+
+### 2. Temporal Precision & Sentence-Looping
+* **Smart Auto-Scroll**: Active sentences smoothly auto-scroll into the screen's golden reading zone. Manually scrolling temporarily disengages auto-scroll to allow browsing; one click instantly re-locks tracking.
+* **Single-Sentence Repeat (A-B Loop, Key: <kbd>R</kbd>)**: Encounter unfamiliar jargon or complex system terminology? Press `R` to loop the current sentence indefinitely until fully grasped.
+* **Millisecond Click-to-Seek**: Click any sentence card in the transcript to jump playback directly to that millisecond.
+
+### 3. 293 Hierarchical Sub-Chapter Landmarks
+* **Decimal Outline Tree**: Sidebar organizes sections with hierarchical decimal numbers (`1.1`, `1.1.1`), allowing instant folding/expansion of subsections.
+* **Seekbar Milestone Ticks**: Audio progress bar features visual tick marks for every sub-chapter, with tooltip previews on hover.
+* **Section Divider Cards & Sticky Pills**: Prominent visual cards split subsections in the transcript, accompanied by a horizontally-scrollable top pill bar for swift section jumping.
+
+### 4. Offline Ready & Standalone Files
+* **PWA / One-Click Chapter Caching**: Built with CacheStorage and Service Workers. Hit "Cache Chapter" to save audio locally for flights or network dead-zones.
+* **Standard Offline Media**: The repository root includes complete, standard `.mp3` audio tracks and matching `.srt` / `.vtt` subtitle files, ready for import into podcast apps or mobile media players.
+
+### 5. Fast, Clean & Privacy-First
+* Zero tracking, zero ads, no login required. Instant static page load.
+* Full dark mode / light mode theme support.
+* Comprehensive UI internationalization (toggle between English and Chinese interface anytime).
+
+---
+
+## 📖 Chapter Breakdown & Durations
+
+| # | Chapter | Title (EN) | Title (ZH) | Duration | Sentences (Cues) | Sub-Sections |
 |:---:|:---|:---|:---|:---:|:---:|:---:|
 | **0** | Introduction | Practice Precedes Naming | 实践在前，命名在后 | 26:16 | 160 | 5 |
 | **1** | Chapter 1 | Getting Started with AI Agents | 初识 AI Agent | 89:29 | 574 | 17 |
@@ -86,115 +90,116 @@ $$\text{Agent} = \text{Model} + \text{Harness} (\text{约束} + \text{验证} + 
 | **9** | Chapter 9 | Continual Evolution of Agents | Agent 持续演进 | 84:00 | 536 | 14 |
 | **10** | Chapter 10 | Multi-Agent Collaboration | 多 Agent 协作 | 124:08 | 822 | 29 |
 | **11** | Afterword | Afterword: Co-Evolution of Two Clouds | 后记：两朵云的协同演化 | 12:19 | 81 | 3 |
-| **Σ** | **全书总计** | **12 Chapters** | **12 个完整章节** | **20h 56m** | **8,052 句** | **293 节** |
+| **Σ** | **Total** | **12 Chapters** | **12 个完整章节** | **20h 56m 21s** | **8,052 Cues** | **293 Sections** |
 
 ---
 
-## ⌨️ 快捷键操作指南
+## ⌨️ Keyboard Shortcuts
 
-在播放器页面（`reader.html`）支持以下全局桌面快捷键：
+On the reader interface (`reader.html`), the following desktop shortcuts are supported:
 
-| 快捷键 | 功能操作 |
+| Key | Action |
 |:---|:---|
-| <kbd>Space</kbd> | 播放 / 暂停音频 |
-| <kbd>←</kbd> | 快退 5 秒 |
-| <kbd>→</kbd> | 快进 5 秒 |
-| <kbd>↑</kbd> | 跳转到上一句字幕 |
-| <kbd>↓</kbd> | 跳转到下一句字幕 |
-| <kbd>R</kbd> | 开启 / 关闭当前句子单句循环复读（A-B Loop） |
-| <kbd>Esc</kbd> | 关闭当前弹出的快捷键或关于弹窗 |
+| <kbd>Space</kbd> | Play / Pause audio playback |
+| <kbd>←</kbd> | Rewind 5 seconds |
+| <kbd>→</kbd> | Fast-forward 5 seconds |
+| <kbd>↑</kbd> | Jump to previous subtitle sentence |
+| <kbd>↓</kbd> | Jump to next subtitle sentence |
+| <kbd>R</kbd> | Toggle single-sentence repeat loop (A-B Loop) |
+| <kbd>Esc</kbd> | Close current modal dialog |
 
 ---
 
-## 🛠️ 有声书制作管线
+## 🛠️ Audio Synthesis & Alignment Pipeline
 
-本项目不仅包含前端播放器，还沉淀了一套完整的开源技术书有声化与字幕对齐工作流：
+In addition to the front-end player, this repository includes the complete engineering pipeline used to normalize, synthesize, and align technical books:
 
 ```mermaid
 flowchart LR
-    A[原书 Markdown / 中文] --> B[口语化适配与清洗]
-    B --> C[自然英文语音合成 Neural TTS]
-    C --> D[时间戳抽取 .vtt / .srt]
-    D --> E[句级对齐引擎 align_engine.py]
-    E --> F[结构化播放数据 build_bilingual_data.py]
-    F --> G[Web 同步播放器 & 离线缓存]
+    A[Original Markdown / Book Source] --> B[Speech Normalization & Cleansing]
+    B --> C[Neural TTS Synthesis]
+    C --> D[Timestamp Extraction .vtt / .srt]
+    D --> E[Bilingual Alignment Engine align_engine.py]
+    E --> F[Static Data Generation build_bilingual_data.py]
+    F --> G[Web Audio Reader & PWA Cache]
 ```
 
-### 工具脚本说明
-* **`audio_pipeline.py`**：负责章节切分、排版文本抽取、代码与数学公式口语化规整，调用神经 TTS 批量合成音频。
-* **`align_engine.py`**：时间轴对齐引擎，利用动态时间规整与句级断句规则，将英文音频时间戳与中文翻译逐句精确挂钩。
-* **`build_bilingual_data.py`**：将各章节生成的 `.srt` / `.vtt` 与结构化段落打包为前端专用的高效静态模块（`data/chapter*.js`）。
-* **`data/sections_meta.json`**：全书 293 个层级子章节的锚点与起始时间映射。
+### Pipeline Script Highlights
+* **`audio_pipeline.py`**: Handles text chunking, formatting cleanup, LaTeX formula speech expansion, code block vocalization, and batch Neural TTS audio generation.
+* **`align_engine.py`**: Sentence-level alignment engine utilizing dynamic boundary matching to anchor English audio timestamps 1-to-1 against Chinese translations.
+* **`build_bilingual_data.py`**: Compiles raw subtitle files and section metadata into optimized JavaScript static payloads (`data/chapter*.js`).
+* **`data/sections_meta.json`**: Indexed database of 293 hierarchical sub-chapters, timing anchors, and headings.
 
 ---
 
-## 🚀 快速开始与本地运行
+## 🚀 Quick Start & Local Preview
 
-本项目采用纯原生 Web 前端技术（HTML5 + CSS3 + Vanilla ES6），无需 Node.js 构建打包，零后端依赖。
+Built strictly with vanilla web technologies (HTML5, CSS3, ES6 JavaScript). Zero build steps, zero node_modules, and zero backend required.
 
-### 1. 克隆仓库
+### 1. Clone the repository
 ```bash
 git clone https://github.com/<your-username>/ai-agent-audiobook.git
 cd ai-agent-audiobook
 ```
 
-### 2. 启动本地静态服务器
-可直接使用 Python 内置服务器或任意静态文件服务器：
+### 2. Start a local static file server
+Run with Python 3, Node.js, or any static file server:
 
 ```bash
-# 使用 Python 3
+# Python 3
 python3 -m http.server 8000
 
-# 或使用 Node.js / npx
+# or Node / npx
 npx serve .
 ```
 
-### 3. 打开浏览器
-* 首页书库导航：`http://localhost:8000/index.html`
-* 播放器直达：`http://localhost:8000/reader.html#chapter1`
+### 3. Open in your browser
+* **Library Homepage**: `http://localhost:8000/index.html`
+* **Direct Player**: `http://localhost:8000/reader.html#chapter1`
 
 ---
 
-## 📂 项目目录结构
+## 📂 Project Directory Structure
 
 ```text
-├── index.html                   # 门户首页（图书介绍、章节选听、资源入口）
-├── reader.html                  # 双语精听播放器主页面
+├── index.html                   # Monograph landing page (overview, chapter selector, resources)
+├── reader.html                  # Bilingual audio listening application
 ├── css/
-│   ├── style.css                # 播放器核心设计系统与响应式样式
-│   └── landing.css              # 门户首页视觉样式
+│   ├── style.css                # Audio reader design system, layout, and responsive rules
+│   └── landing.css              # Monograph landing page styles
 ├── js/
-│   ├── app.js                   # 播放器核心逻辑（音频同步、平滑跟随、快捷键、缓存）
-│   └── i18n.js                  # 完整中英双语国际化翻译词典与切换器
+│   ├── app.js                   # Reader controller (audio sync, auto-scroll, shortcuts, caching)
+│   └── i18n.js                  # Complete bilingual internationalization dictionaries (EN/ZH)
 ├── data/
-│   ├── chapters_meta.js         # 全书 12 章节元信息与小节索引
-│   ├── sections_meta.json       # 293 处小节起止时间戳
-│   ├── introduction.js          # 引言双语逐句数据
-│   ├── chapter1.js ~ chapter10.js # 1-10 章双语逐句数据
-│   └── afterword.js             # 后记双语逐句数据
-├── assets/                      # 图标、封面与矢量素材
-├── *.mp3                        # 全书各章节完整离线音频文件
-├── *.vtt / *.srt                # 全书各章节时间戳字幕文件
-├── align_engine.py              # 中英句子级时间戳对齐算法引擎
-├── audio_pipeline.py            # 有声书语音合成与预处理工程管线
-├── build_bilingual_data.py      # 前端播放数据编译构建脚本
-├── sw.js                        # Service Worker 离线缓存支持
-└── README.md                    # 项目说明文档
+│   ├── chapters_meta.js         # Metadata for 12 chapters and sub-chapter hierarchies
+│   ├── sections_meta.json       # 293 sub-chapter timestamp mappings
+│   ├── introduction.js          # Introduction bilingual sentence cues
+│   ├── chapter1.js ~ chapter10.js # Chapters 1 to 10 bilingual sentence cues
+│   └── afterword.js             # Afterword bilingual sentence cues
+├── assets/                      # Icons, vector badges, and visual assets
+├── *.mp3                        # Full-length offline audio files for all 12 chapters
+├── *.vtt / *.srt                # Standard subtitle tracks with millisecond timestamps
+├── align_engine.py              # Sentence-level timestamp alignment engine
+├── audio_pipeline.py            # Neural TTS synthesis and preprocessing pipeline
+├── build_bilingual_data.py      # Build tool compiling data bundles for web player
+├── sw.js                        # Service Worker for offline PWA chapter caching
+├── README.md                    # English documentation (this file)
+└── README_zh.md                 # Chinese documentation
 ```
 
 ---
 
-## 🔗 相关资源与官方链接
+## 🔗 Official Book Links & Resources
 
-* **原书作者 GitHub**：[Dr. Bojie Li (@bojieli)](https://github.com/bojieli)
-* **原书官方代码与资料库**：[bojieli/ai-agent-book](https://github.com/bojieli/ai-agent-book)
-* **原书官方在线阅读版**：[bojieli.github.io/ai-agent-book/astro/](https://bojieli.github.io/ai-agent-book/astro/)
-* **官方 15 种语言电子书发布**：[GitHub Releases (EPUB & PDF)](https://github.com/bojieli/ai-agent-book/releases)
+* **Author GitHub**: [Dr. Bojie Li (@bojieli)](https://github.com/bojieli)
+* **Official Book Repository**: [bojieli/ai-agent-book](https://github.com/bojieli/ai-agent-book)
+* **Official Online Astro Reader**: [bojieli.github.io/ai-agent-book/astro/](https://bojieli.github.io/ai-agent-book/astro/)
+* **Official E-Book Releases (15 Languages)**: [GitHub Releases](https://github.com/bojieli/ai-agent-book/releases)
 
 ---
 
-## 📄 开源许可与致谢
+## 📄 License & Acknowledgments
 
-* 原书《深入理解 AI Agent：设计原理与工程实践》版权归作者 **李博杰** 所有，根据原书开源协议传播。
-* 本项目的播放器代码与数据对齐工程脚本采用 [MIT 许可证](LICENSE) 开源。
-* 欢迎前往原作者李博杰老师的 GitHub 仓库 [bojieli/ai-agent-book](https://github.com/bojieli/ai-agent-book) 点亮 ⭐️ Star，致敬开源作者的无私贡献！
+* The book *《深入理解 AI Agent：设计原理与工程实践》* (*AI Agents in Depth*) is copyrighted by **Dr. Bojie Li** and distributed under open-source terms.
+* The web reader application, UI design system, and alignment scripts in this repository are released under the [MIT License](LICENSE).
+* Please consider giving a ⭐️ Star to Dr. Bojie Li's official repository [bojieli/ai-agent-book](https://github.com/bojieli/ai-agent-book) to support his outstanding open-source contributions!
