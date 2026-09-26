@@ -1,3 +1,5 @@
+window.AUDIO_BASE_URL = window.AUDIO_BASE_URL || 'https://pub-6690c174d1244590a46ba7967d1c6f47.r2.dev/';
+
 window.CHAPTERS_META = [
   {
     "key": "introduction",

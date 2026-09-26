@@ -58,6 +58,18 @@
     return window.TechVoiceI18N ? window.TechVoiceI18N.getLang() === 'zh' : true;
   }
 
+  function resolveAudioUrl(audioPath) {
+    if (!audioPath) return '';
+    if (audioPath.startsWith('http://') || audioPath.startsWith('https://')) {
+      return audioPath;
+    }
+    const base = window.AUDIO_BASE_URL || '';
+    if (base) {
+      return base.endsWith('/') ? base + audioPath : base + '/' + audioPath;
+    }
+    return audioPath;
+  }
+
   // Pure Vector SVGs for UI components
   const SVGS = {
     play: `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>`,
@@ -301,7 +313,7 @@
 
     // Load Audio
     const wasPlaying = !audio.paused;
-    audio.src = meta.audio;
+    audio.src = resolveAudioUrl(meta.audio);
     audio.playbackRate = state.playbackRate;
     audio.load();
 
@@ -328,7 +340,7 @@
       state.cachedChapters.clear();
       for (const req of keys) {
         const url = new URL(req.url);
-        const found = window.CHAPTERS_META.find(ch => url.pathname.endsWith(ch.audio));
+        const found = window.CHAPTERS_META.find(ch => url.pathname.endsWith(ch.audio) || url.href.endsWith(ch.audio));
         if (found) {
           state.cachedChapters.add(found.key);
         }
@@ -388,9 +400,13 @@
       if (confirmClear) {
         try {
           const audioCache = await caches.open('ai-agent-audio-v1');
+          const audioUrl = resolveAudioUrl(meta.audio);
+          await audioCache.delete(audioUrl);
           await audioCache.delete(meta.audio);
-          const fullPath = new URL(meta.audio, window.location.href).pathname;
-          await audioCache.delete(fullPath);
+          try {
+            const fullPath = new URL(audioUrl, window.location.href).pathname;
+            await audioCache.delete(fullPath);
+          } catch (e) {}
           state.cachedChapters.delete(curKey);
           updateCacheBtnState();
           renderChapterNav();
@@ -407,7 +423,8 @@
     updateCacheBtnState();
 
     try {
-      const response = await fetch(meta.audio);
+      const audioUrl = resolveAudioUrl(meta.audio);
+      const response = await fetch(audioUrl);
       if (!response.ok) throw new Error(`HTTP error ${response.status}`);
 
       const contentLength = response.headers.get('content-length');
@@ -440,8 +457,11 @@
       });
 
       const audioCache = await caches.open('ai-agent-audio-v1');
-      const audioUrl = new URL(meta.audio, window.location.href).pathname;
-      await audioCache.put(audioUrl, cachedResponse);
+      await audioCache.put(audioUrl, cachedResponse.clone());
+      try {
+        const pathname = new URL(audioUrl, window.location.href).pathname;
+        await audioCache.put(pathname, cachedResponse);
+      } catch (e) {}
 
       state.cachedChapters.add(curKey);
       state.isCaching = false;
@@ -465,7 +485,7 @@
       const link = document.createElement('link');
       link.rel = 'prefetch';
       link.as = 'fetch';
-      link.href = nextMeta.audio;
+      link.href = resolveAudioUrl(nextMeta.audio);
       document.head.appendChild(link);
       console.log('[Audio Preload] Next chapter prefetching:', nextMeta.name);
     }

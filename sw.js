@@ -114,18 +114,22 @@ self.addEventListener('fetch', (event) => {
   const request = event.request;
   const url = new URL(request.url);
 
-  // Only handle GET requests within same origin
-  if (request.method !== 'GET' || url.origin !== self.location.origin) {
+  // Only handle GET requests
+  if (request.method !== 'GET') {
     return;
   }
 
-  // 1. Audio Files Handling (.mp3)
+  // 1. Audio Files Handling (.mp3) - supports both local and Cloudflare R2 CDN
   if (url.pathname.endsWith('.mp3')) {
     event.respondWith(
       (async () => {
         const audioCache = await caches.open(CACHE_AUDIO_NAME);
-        // Match by clean URL path (strip query params if any)
-        const cached = await audioCache.match(url.pathname);
+        const filename = url.pathname.split('/').pop();
+        // Match by full request, URL href, pathname, or filename
+        const cached = (await audioCache.match(request)) ||
+                       (await audioCache.match(url.href)) ||
+                       (await audioCache.match(url.pathname)) ||
+                       (await audioCache.match(filename));
         if (cached) {
           return handleAudioRangeRequest(request, cached);
         }
@@ -133,6 +137,11 @@ self.addEventListener('fetch', (event) => {
         return fetch(request);
       })()
     );
+    return;
+  }
+
+  // Only handle app shell and static assets within same origin
+  if (url.origin !== self.location.origin) {
     return;
   }
 
