@@ -457,6 +457,10 @@ kbd {
   z-index: 50;
 }
 
+.top-bar-nav-row {
+  display: contents;
+}
+
 .top-bar-left {
   display: flex;
   align-items: center;
@@ -464,6 +468,7 @@ kbd {
   overflow: hidden;
   min-width: 0;
   flex: 1;
+  order: 1;
 }
 
 .top-bar-left .btn-icon {
@@ -500,10 +505,11 @@ kbd {
   letter-spacing: -0.01em;
 }
 
-.top-bar-right {
+.top-bar-sub-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  order: 2;
+  margin-right: 10px;
   flex-shrink: 0;
 }
 
@@ -544,6 +550,8 @@ kbd {
   display: flex;
   align-items: center;
   gap: 6px;
+  order: 3;
+  flex-shrink: 0;
 }
 
 /* Action Tool Buttons */
@@ -1458,7 +1466,317 @@ kbd {
   .sidebar-toggle-btn {
     display: inline-flex;
   }
+}
+
+@media (max-width: 768px) {
+  /* Layout stability */
+  .app-container {
+    width: 100%;
+    min-height: 100dvh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .main-content {
+    width: 100%;
+    min-width: 0;
+    height: 100%;
+  }
+
+  /* Top App Bar Mobile Architecture */
+  .top-bar {
+    height: auto;
+    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--bg-sidebar);
+  }
+
+  .top-bar-nav-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 8px;
+    order: 1;
+  }
+
+  .top-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    flex: 1;
+    order: 1;
+  }
+
+  .btn-back-home {
+    padding: 0 8px;
+    height: 32px;
+    font-size: 11.5px;
+    flex-shrink: 0;
+    border-radius: 6px;
+  }
+
+  .sidebar-toggle-btn {
+    display: inline-flex;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border-radius: 6px;
+  }
+
+  .current-chapter-title {
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+    flex: 1;
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
+  }
+
+  .top-bar-tools {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    order: 2;
+  }
+
+  .btn-tool-shortcuts,
+  .btn-tool-github {
+    display: none !important; /* Hide desktop shortcuts & github button on mobile */
+  }
+
+  .btn-tool-sm {
+    height: 32px;
+    padding: 0 8px;
+  }
+
+  /* Subtitle view mode segmented control */
+  .top-bar-sub-row {
+    width: 100%;
+    margin-right: 0;
+    order: 2;
+  }
+
+  .view-mode-group {
+    width: 100%;
+    display: flex;
+    background: var(--bg-card);
+    padding: 3px;
+    border-radius: 8px;
+    border: 1px solid var(--border-subtle);
+  }
+
+  .view-btn {
+    flex: 1;
+    text-align: center;
+    padding: 6px 0;
+    font-size: 12px;
+    font-weight: 550;
+    border-radius: 6px;
+  }
+
+  /* Sticky Audio Player Mobile Architecture */
+  .player-container {
+    padding: 8px 12px 10px 12px;
+    gap: 8px;
+  }
+
+  .player-progress-row {
+    gap: 8px;
+  }
+
+  .time-display {
+    font-size: 10.5px;
+    min-width: 34px;
+  }
+
+  .seek-bar {
+    height: 6px;
+  }
+
+  .player-controls-row {
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .playback-controls {
+    width: 100%;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .btn-control {
+    width: 36px;
+    height: 36px;
+  }
+
+  .btn-control.btn-play {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--text-accent);
+    color: #080c14;
+    border: none;
+    box-shadow: 0 2px 12px rgba(56, 189, 248, 0.35);
+  }
+
+  .tool-controls {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .btn-toggle-tool.btn-cache {
+    flex: 1;
+    justify-content: center;
+    font-size: 11px;
+    padding: 0 6px;
+    height: 32px;
+    white-space: nowrap;
+  }
+
+  .speed-select {
+    height: 32px;
+    padding: 0 6px;
+    font-size: 11px;
+    flex-shrink: 0;
+  }
+
+  .btn-toggle-tool#btn-autoscroll {
+    flex: 1;
+    justify-content: center;
+    font-size: 11px;
+    padding: 0 6px;
+    height: 32px;
+    white-space: nowrap;
+  }
+
+  /* Transcript & Cues */
   .transcript-container {
-    padding: 16px 16px 120px 16px;
+    padding: 12px 12px 130px 12px;
+    gap: 8px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .chapter-overview-bar {
+    padding: 10px 12px;
+    margin-bottom: 10px;
+  }
+
+  .overview-header {
+    margin-bottom: 6px;
+  }
+
+  .overview-title {
+    font-size: 10px;
+  }
+
+  .section-pill {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  .section-divider-card {
+    margin: 18px 0 10px 0;
+    padding: 12px 14px;
+  }
+
+  .section-title-primary {
+    font-size: 14px;
+  }
+
+  .section-title-secondary {
+    font-size: 12px;
+  }
+
+  .cue-card {
+    padding: 10px 12px;
+    gap: 10px;
+    border-radius: 6px;
+  }
+
+  .cue-meta-col {
+    padding-top: 1px;
+    min-width: 38px;
+  }
+
+  .cue-timestamp {
+    font-size: 10px;
+    padding: 1px 4px;
+  }
+
+  .cue-btn-repeat {
+    opacity: 0.6; /* visible on touch screens */
+    width: 24px;
+    height: 24px;
+  }
+
+  .cue-text-col {
+    min-width: 0;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  .en-text {
+    font-size: 14.5px;
+    line-height: 1.55;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  .zh-text {
+    font-size: 13px;
+    line-height: 1.55;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+
+  .chapter-end-nav {
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 24px;
+    padding-top: 16px;
+  }
+
+  .btn-nav-chapter {
+    min-width: 100%;
+    width: 100%;
+    padding: 10px 14px;
+  }
+}
+
+@media (max-width: 380px) {
+  .playback-controls {
+    gap: 5px;
+  }
+
+  .btn-control {
+    width: 32px;
+    height: 32px;
+  }
+
+  .btn-control.btn-play {
+    width: 38px;
+    height: 38px;
+  }
+
+  .btn-back-home span {
+    display: none; /* Icon only on extra small devices */
+  }
+
+  .btn-back-home {
+    padding: 0 6px;
   }
 }

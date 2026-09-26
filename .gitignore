@@ -18,6 +18,9 @@ repo/
 # Audio files (hosted on Cloudflare R2 CDN)
 *.mp3
 
+# Node dependencies
+node_modules/
+
 # Cloudflare Wrangler cache
 .wrangler/
 .vercel
