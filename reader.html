@@ -1,17 +1,17 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-theme="dark">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>深入浅出 AI Agent - 开源技术书双语精听</title>
-  <meta name="description" content="《深入浅出 AI Agent》（AI Agents in Depth）全书 21 小时中英双语对照听书。涵盖上下文工程、工具系统、代码智能体与强化学习后训练等底层原理。">
+  <title>AI Agents in Depth - Bilingual Audio Reader</title>
+  <meta name="description" content="AI Agents in Depth: 21 hours of spoken audio with sentence-aligned bilingual subtitles. Design principles and engineering practice.">
   <meta name="theme-color" content="#080c14">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="assets/icon.svg">
   <link rel="stylesheet" href="css/style.css">
   <link rel="icon" type="image/svg+xml" href="assets/icon.svg">
 </head>
-<body>
+<body class="hide-zh">
   <div class="app-container">
     <!-- Left Sidebar -->
     <aside class="sidebar" id="sidebar">
@@ -88,9 +88,9 @@
         <div class="top-bar-right">
           <!-- View Mode Switcher -->
           <div class="view-mode-group" role="tablist">
-            <button class="view-btn active" data-mode="bilingual" data-i18n="reader_view_bilingual" data-i18n-title="reader_view_bilingual_tip" title="中英双语对照">中英双语</button>
-            <button class="view-btn" data-mode="en" data-i18n="reader_view_en" data-i18n-title="reader_view_en_tip" title="纯英文沉浸式听力">纯英文</button>
-            <button class="view-btn" data-mode="zh" data-i18n="reader_view_zh" data-i18n-title="reader_view_zh_tip" title="纯中文速览">纯中文</button>
+            <button class="view-btn" data-mode="bilingual" data-i18n="reader_view_bilingual" data-i18n-title="reader_view_bilingual_tip" title="Bilingual View">Bilingual</button>
+            <button class="view-btn active" data-mode="en" data-i18n="reader_view_en" data-i18n-title="reader_view_en_tip" title="English Immersion">English</button>
+            <button class="view-btn" data-mode="zh" data-i18n="reader_view_zh" data-i18n-title="reader_view_zh_tip" title="Chinese Overview">Chinese</button>
           </div>
 
           <div class="top-bar-tools">
@@ -101,7 +101,7 @@
                 <line x1="2" y1="12" x2="22" y2="12"/>
                 <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
               </svg>
-              <span id="lang-switch-text" style="font-size: 11px; font-weight: 600; font-family: var(--font-mono);">EN</span>
+              <span id="lang-switch-text" style="font-size: 11px; font-weight: 600; font-family: var(--font-mono);">中文</span>
             </button>
 
             <!-- GitHub Repo Link -->

@@ -14,7 +14,7 @@
     isPlaying: false,
     repeatCurrent: false,
     autoScroll: true,
-    viewMode: 'bilingual', // 'bilingual' | 'en' | 'zh'
+    viewMode: 'en', // 'en' | 'bilingual' | 'zh'
     playbackRate: 1.0,
     theme: 'dark',
     cachedChapters: new Set(),
@@ -136,10 +136,8 @@
       }
       updateThemeUI();
 
-      const savedMode = localStorage.getItem('ai_agent_view_mode');
-      if (savedMode) {
-        setViewMode(savedMode);
-      }
+      const savedMode = localStorage.getItem('ai_agent_view_mode') || 'en';
+      setViewMode(savedMode);
 
       const savedRate = localStorage.getItem('ai_agent_rate');
       if (savedRate) {

@@ -20,3 +20,5 @@ repo/
 
 # Cloudflare Wrangler cache
 .wrangler/
+.vercel
+.env*

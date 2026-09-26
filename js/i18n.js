@@ -440,14 +440,14 @@
         localStorage.setItem('techvoice_ui_lang', urlParam);
         return urlParam;
       }
-      return localStorage.getItem('techvoice_ui_lang') || 'zh';
+      return localStorage.getItem('techvoice_ui_lang') || 'en';
     } catch (e) {
-      return 'zh';
+      return 'en';
     }
   }
 
   function setLang(lang) {
-    if (lang !== 'zh' && lang !== 'en') lang = 'zh';
+    if (lang !== 'zh' && lang !== 'en') lang = 'en';
     localStorage.setItem('techvoice_ui_lang', lang);
     document.documentElement.setAttribute('lang', lang === 'zh' ? 'zh-CN' : 'en');
     
