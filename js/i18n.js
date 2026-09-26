@@ -119,7 +119,7 @@
 
       // Footer
       footer_title: "TechVoice · 开源技术书精听小站",
-      footer_desc: "© 2026. 原书内容源自李博杰《深入浅出 AI Agent》。英文有声版与双语字幕由本站个人独立制作，非原作者发布。代码与音频遵循开源共享许可。",
+      footer_desc: "© 2026. 原书作者：李博杰。英文有声版与双语字幕由本站独立制作。",
       footer_cta: "打开播放器 →",
 
       // Reader UI labels
@@ -331,7 +331,7 @@
 
       // Footer
       footer_title: "TechVoice · Open Tech Book Audio Reader",
-      footer_desc: '© 2026. Original book by Bojie Li. English audio edition & bilingual subtitles independently created by this site\'s author, not published by the original author. Open-source licensed.',
+      footer_desc: "© 2026. Original book by Bojie Li. English audio edition & bilingual subtitles independently created by this site.",
       footer_cta: "Open Player →",
 
       // Reader UI labels
