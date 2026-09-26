@@ -312,9 +312,10 @@
     transcriptEl.appendChild(navDiv);
 
     // Sponsor Banner
-    const bannerTitle = isZh ? '☕ 觉得有声听力项目有帮助？' : '☕ Finding this audiobook helpful?';
-    const bannerDesc = isZh ? '本项目由 AI 辅助与开源社区共同倾力制作，包含 21 小时全书双语有声精读。欢迎赞赏支持鼓励我们持续更新！' : 'This project features 21 hours of studio-quality neural audio and bilingual alignment. Your sponsorship helps us maintain and create more open-source engineering audiobooks!';
-    const bannerBtnText = isZh ? '💖 赞赏支持作者' : '💖 Sponsor the Project';
+    const dict = window.TechVoiceI18N ? window.TechVoiceI18N.data[isZh ? 'zh' : 'en'] : null;
+    const bannerTitle = dict ? dict.reader_banner_title : (isZh ? '☕ 觉得这个听书小站有帮助？' : '☕ Finding this audio reader helpful?');
+    const bannerDesc = dict ? dict.reader_banner_desc : (isZh ? '全书 12 章节、21 小时中英双语音频由个人学习整理制作。如果对你有帮助，欢迎请喝杯咖啡支持日常维护！' : 'This 21-hour audio edition was created for personal study and shared openly. If it helps your learning, feel free to buy a coffee to support maintenance!');
+    const bannerBtnText = dict ? dict.reader_banner_btn : (isZh ? '☕ 请喝杯咖啡' : '☕ Buy a Coffee');
 
     const sponsorBanner = document.createElement('div');
     sponsorBanner.className = 'chapter-sponsor-banner';
