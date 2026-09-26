@@ -735,26 +735,8 @@
     navDiv.innerHTML = prevHtml + nextHtml;
     transcriptEl.appendChild(navDiv);
 
-    // Sponsor Banner
-    const dict = window.TechVoiceI18N ? window.TechVoiceI18N.data[isZh ? 'zh' : 'en'] : null;
-    const bannerTitle = dict ? dict.reader_banner_title : (isZh ? '觉得这个听书小站有帮助？' : 'Finding this audio reader helpful?');
-    const bannerDesc = dict ? dict.reader_banner_desc : (isZh ? '全书 12 章节、21 小时中英双语音频由个人学习整理制作。如果对你有帮助，欢迎请喝杯咖啡支持日常维护！' : 'This 21-hour audio edition was created for personal study and shared openly. If it helps your learning, feel free to buy a coffee to support maintenance!');
-    const bannerBtnText = dict ? dict.reader_banner_btn : (isZh ? '请喝杯咖啡' : 'Buy a Coffee');
-    const coffeeSvg = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>`;
-
-    const sponsorBanner = document.createElement('div');
-    sponsorBanner.className = 'chapter-sponsor-banner';
-    sponsorBanner.innerHTML = `
-      <div class="sponsor-banner-text">
-        <h4>${bannerTitle}</h4>
-        <p>${bannerDesc}</p>
-      </div>
-      <button class="btn-icon btn-sponsor" id="btn-banner-sponsor">
-        ${coffeeSvg}
-        <span>${bannerBtnText}</span>
-      </button>
-    `;
-    transcriptEl.appendChild(sponsorBanner);
+    // Sponsor Banner (Hidden for now)
+    // transcriptEl.appendChild(sponsorBanner);
 
     // Event listeners
     const prevBtnEl = document.getElementById('btn-ch-prev');
@@ -945,8 +927,10 @@
   });
 
   // Modal triggers
-  document.getElementById('btn-open-sponsor').addEventListener('click', () => openModal(sponsorModal));
-  document.getElementById('btn-sidebar-sponsor').addEventListener('click', () => openModal(sponsorModal));
+  const btnOpenSponsor = document.getElementById('btn-open-sponsor');
+  if (btnOpenSponsor) btnOpenSponsor.addEventListener('click', () => openModal(sponsorModal));
+  const btnSidebarSponsor = document.getElementById('btn-sidebar-sponsor');
+  if (btnSidebarSponsor) btnSidebarSponsor.addEventListener('click', () => openModal(sponsorModal));
   document.getElementById('btn-open-about').addEventListener('click', () => openModal(aboutModal));
   document.getElementById('btn-shortcuts').addEventListener('click', () => openModal(shortcutsModal));
 
