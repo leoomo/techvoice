@@ -177,7 +177,46 @@
       reader_modal_sc_play: "播放 / 暂停",
       reader_modal_sc_seek: "快退 5 秒 / 快进 5 秒",
       reader_modal_sc_cues: "跳转到上一句 / 下一句",
-      reader_modal_sc_close: "关闭当前弹窗"
+      reader_modal_sc_repeat: "单句循环复读（A-B Loop）",
+      reader_modal_sc_mode: "切换显示模式（双语 / 纯英文 / 纯中文）",
+      reader_modal_sc_close: "关闭当前弹窗",
+      reader_modal_sc_space: "Space 空格",
+
+      // Branding & Book metadata
+      book_title_main: "深入理解 AI Agent",
+      book_title_sub: "AI AGENTS IN DEPTH",
+      book_author_meta: "李博杰 著 · 21h 有声精读",
+      mock_cover_tag: "TECHVOICE AUDIO 01",
+      mock_cover_title: "深入理解<br>AI Agent",
+      mock_cover_sub: "设计原理与工程实践",
+      mock_cover_author: "李博杰 著",
+
+      // Index Chapter Pills
+      idx_ch_0: "引言 · 实践在前，命名在后",
+      idx_ch_1: "第1章 · 初识 AI Agent",
+      idx_ch_2: "第2章 · 上下文工程",
+      idx_ch_3: "第3章 · 用户记忆与知识库",
+      idx_ch_4: "第4章 · 工具系统与协议",
+      idx_ch_5: "第5章 · 代码智能体与通用系统",
+      idx_ch_6: "第6章 · 观察空间与动作空间",
+      idx_ch_7: "第7章 · Agent 评测",
+      idx_ch_8: "第8章 · 模型后训练",
+      idx_ch_9: "第9章 · 持续演进",
+      idx_ch_10: "第10章 · 多智能体协作",
+      idx_ch_11: "后记 · 两个云的共同演进",
+
+      // Tooltips & Titles
+      reader_back_lib_tip: "返回图书库首页",
+      reader_sidebar_toggle_tip: "展开/收起目录",
+      reader_view_bilingual_tip: "中英双语对照",
+      reader_view_en_tip: "纯英文沉浸式听力",
+      reader_view_zh_tip: "纯中文速览",
+      reader_github_tip: "查看 GitHub 开源仓库",
+      reader_shortcuts_tip: "键盘快捷键 (Shortcuts)",
+      reader_theme_tip: "切换深色/浅色模式",
+      reader_sponsor_tip: "请喝杯咖啡",
+      reader_autoscroll_tip: "字幕平滑跟随滚屏",
+      theme_toggle_title: "切换深色/浅色模式"
     },
     en: {
       // Header & Navigation
@@ -351,7 +390,44 @@
       reader_modal_sc_cues: "Previous / Next Sentence",
       reader_modal_sc_repeat: "Repeat Sentence (Press R)",
       reader_modal_sc_mode: "Cycle View Mode (Bilingual / English / Chinese)",
-      reader_modal_sc_close: "Close Modal"
+      reader_modal_sc_close: "Close Modal",
+      reader_modal_sc_space: "Space",
+
+      // Branding & Book metadata
+      book_title_main: "AI Agents in Depth",
+      book_title_sub: "AUDIO EDITION · 21H",
+      book_author_meta: "By Bojie Li · 21h Audio Edition",
+      mock_cover_tag: "TECHVOICE AUDIO 01",
+      mock_cover_title: "AI AGENTS<br>IN DEPTH",
+      mock_cover_sub: "Design Principles & Practice",
+      mock_cover_author: "By Bojie Li",
+
+      // Index Chapter Pills
+      idx_ch_0: "Intro · Practice Precedes Naming",
+      idx_ch_1: "Ch 1 · Getting Started with AI Agents",
+      idx_ch_2: "Ch 2 · Context Engineering",
+      idx_ch_3: "Ch 3 · Memory & Knowledge Bases",
+      idx_ch_4: "Ch 4 · Tools & Protocols",
+      idx_ch_5: "Ch 5 · Coding & General Agents",
+      idx_ch_6: "Ch 6 · Observation & Action Spaces",
+      idx_ch_7: "Ch 7 · Evaluating Agents",
+      idx_ch_8: "Ch 8 · Model Post-Training",
+      idx_ch_9: "Ch 9 · Continual Evolution",
+      idx_ch_10: "Ch 10 · Multi-Agent Collaboration",
+      idx_ch_11: "Afterword · Co-Evolution of Two Clouds",
+
+      // Tooltips & Titles
+      reader_back_lib_tip: "Back to Home Library",
+      reader_sidebar_toggle_tip: "Toggle Sidebar Outline",
+      reader_view_bilingual_tip: "Bilingual Side-by-Side",
+      reader_view_en_tip: "English Listening Only",
+      reader_view_zh_tip: "Chinese Reading Only",
+      reader_github_tip: "View GitHub Repository",
+      reader_shortcuts_tip: "Keyboard Shortcuts",
+      reader_theme_tip: "Toggle Dark / Light Mode",
+      reader_sponsor_tip: "Buy Me a Coffee",
+      reader_autoscroll_tip: "Smooth Auto-Scroll Subtitles",
+      theme_toggle_title: "Toggle Dark / Light Theme"
     }
   };
 

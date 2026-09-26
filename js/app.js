@@ -198,7 +198,7 @@
       item.href = `#${ch.key}`;
       
       const numLabel = ch.num === 0 ? 'Intro' : (ch.num === 11 ? 'End' : `Ch ${ch.num}`);
-      const titleDisplay = isZh ? `${ch.title_zh} (${ch.title_en})` : `${ch.title_en} (${ch.title_zh})`;
+      const titleDisplay = isZh ? `${ch.title_zh} (${ch.title_en})` : ch.title_en;
       const countLabel = isZh ? `${ch.cues_count} 句` : `${ch.cues_count} cues`;
       const isCached = state.cachedChapters.has(ch.key);
       const offlineBadge = isCached ? `<span class="nav-item-offline-badge"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:2px;"><polyline points="20 6 9 17 4 12"/></svg>${isZh ? '已离线' : 'Offline'}</span>` : '';
@@ -283,7 +283,7 @@
 
     // Update Header
     const isZh = isZhLang();
-    currentChapterTitleEl.textContent = isZh ? `${meta.name}: ${meta.title_zh} • ${meta.title_en}` : `${meta.name}: ${meta.title_en} • ${meta.title_zh}`;
+    currentChapterTitleEl.textContent = isZh ? `${meta.name}: ${meta.title_zh} • ${meta.title_en}` : `${meta.name}: ${meta.title_en}`;
     document.title = `AI Agents in Depth - ${meta.name}: ${isZh ? meta.title_zh : meta.title_en}`;
 
     // Update Cache button state for current chapter
@@ -608,6 +608,8 @@
         const secTagLabel = sec.level === 3 ? (isZh ? `小节${numBadge}` : `SUBSECTION${numBadge}`) : (isZh ? `章节${numBadge}` : `SECTION${numBadge}`);
         const primaryTitle = isZh ? sec.title_zh : sec.title_en;
         const secondaryTitle = isZh ? sec.title_en : sec.title_zh;
+        const primaryClass = isZh ? 'zh-text' : 'en-text';
+        const secondaryClass = isZh ? 'en-text' : 'zh-text';
         const numPrefix = sec.num ? `<span class="section-title-num">${sec.num}</span> ` : '';
 
         secDivider.innerHTML = `
@@ -621,8 +623,8 @@
             </span>
             <span class="section-timestamp">${sec.time_str}</span>
           </div>
-          <h3 class="section-title-primary">${numPrefix}${primaryTitle}</h3>
-          <div class="section-title-secondary">${sec.num ? sec.num + ' ' : ''}${secondaryTitle}</div>
+          <h3 class="section-title-primary ${primaryClass}">${numPrefix}${primaryTitle}</h3>
+          <div class="section-title-secondary ${secondaryClass}">${sec.num ? sec.num + ' ' : ''}${secondaryTitle}</div>
         `;
         secDivider.addEventListener('click', () => {
           const targetCue = state.cues.find(c => c.id === sec.cue_id) || { start: sec.start, id: sec.cue_id };
@@ -974,7 +976,8 @@
     const meta = window.CHAPTERS_META.find(c => c.key === state.currentChapterKey);
     if (meta) {
       const isZh = isZhLang();
-      currentChapterTitleEl.textContent = isZh ? `${meta.name}: ${meta.title_zh} • ${meta.title_en}` : `${meta.name}: ${meta.title_en} • ${meta.title_zh}`;
+      currentChapterTitleEl.textContent = isZh ? `${meta.name}: ${meta.title_zh} • ${meta.title_en}` : `${meta.name}: ${meta.title_en}`;
+      document.title = `AI Agents in Depth - ${meta.name}: ${isZh ? meta.title_zh : meta.title_en}`;
       renderSeekMarkers(meta);
       renderTranscript(meta);
       if (state.activeCueId) {
