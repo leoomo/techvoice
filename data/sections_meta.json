@@ -10,9 +10,9 @@
     },
     {
       "level": 2,
-      "cue_id": 5,
-      "start": 39.887,
-      "time_str": "00:39",
+      "cue_id": 61,
+      "start": 581.27,
+      "time_str": "09:41",
       "title_en": "Book Structure",
       "title_zh": "全书结构"
     },
@@ -52,57 +52,57 @@
     },
     {
       "level": 2,
-      "cue_id": 7,
-      "start": 51.787,
-      "time_str": "00:51",
+      "cue_id": 12,
+      "start": 97.237,
+      "time_str": "01:37",
       "title_en": "Modern Agent = LLM + Context + Tools",
       "title_zh": "现代 Agent = LLM + 上下文 + 工具"
     },
     {
       "level": 3,
-      "cue_id": 18,
-      "start": 165.312,
-      "time_str": "02:45",
+      "cue_id": 37,
+      "start": 377.851,
+      "time_str": "06:17",
       "title_en": "Observation and Action Spaces: The Interface Between Model and World",
       "title_zh": "观察空间与动作空间：模型与世界的接口"
     },
     {
       "level": 3,
-      "cue_id": 19,
-      "start": 182.125,
-      "time_str": "03:02",
+      "cue_id": 67,
+      "start": 721.548,
+      "time_str": "12:01",
       "title_en": "Tools: The Agent's Hands and Feet",
       "title_zh": "工具：Agent 的手脚"
     },
     {
       "level": 3,
-      "cue_id": 29,
-      "start": 290.201,
-      "time_str": "04:50",
+      "cue_id": 102,
+      "start": 1083.677,
+      "time_str": "18:03",
       "title_en": "LLM: The Agent's Brain",
       "title_zh": "LLM：Agent 的大脑"
     },
     {
       "level": 3,
-      "cue_id": 29,
-      "start": 290.201,
-      "time_str": "04:50",
+      "cue_id": 138,
+      "start": 1405.854,
+      "time_str": "23:25",
       "title_en": "Context: The Agent's Eyes",
       "title_zh": "上下文：Agent 的眼睛"
     },
     {
       "level": 3,
-      "cue_id": 86,
-      "start": 918.395,
-      "time_str": "15:18",
+      "cue_id": 177,
+      "start": 1784.64,
+      "time_str": "29:44",
       "title_en": "The ReAct Loop",
       "title_zh": "ReAct 循环"
     },
     {
       "level": 2,
-      "cue_id": 117,
-      "start": 1206.804,
-      "time_str": "20:06",
+      "cue_id": 229,
+      "start": 2244.08,
+      "time_str": "37:24",
       "title_en": "Harness Engineering: Building Reliable Systems Around the Model",
       "title_zh": "Harness 工程：模型之外的竞争力"
     },
@@ -132,25 +132,25 @@
     },
     {
       "level": 3,
-      "cue_id": 315,
-      "start": 2988.603,
-      "time_str": "49:48",
+      "cue_id": 342,
+      "start": 3197.603,
+      "time_str": "53:17",
       "title_en": "Orchestration Patterns: Workflow vs. Autonomous",
       "title_zh": "编排模式：工作流与自主"
     },
     {
       "level": 3,
-      "cue_id": 411,
-      "start": 3846.548,
-      "time_str": "64:06",
+      "cue_id": 442,
+      "start": 4188.053,
+      "time_str": "69:48",
       "title_en": "Guardrails and Safety",
       "title_zh": "护栏与安全性"
     },
     {
       "level": 3,
-      "cue_id": 490,
-      "start": 4597.563,
-      "time_str": "76:37",
+      "cue_id": 491,
+      "start": 4603.738,
+      "time_str": "76:43",
       "title_en": "The Five Harness Elements and the Building Part",
       "title_zh": "Harness 五要素与「构建」部分的对应"
     },
@@ -172,9 +172,9 @@
     },
     {
       "level": 2,
-      "cue_id": 547,
-      "start": 5176.485,
-      "time_str": "86:16",
+      "cue_id": 549,
+      "start": 5185.11,
+      "time_str": "86:25",
       "title_en": "Thought Questions",
       "title_zh": "思考题"
     }
@@ -190,9 +190,9 @@
     },
     {
       "level": 2,
-      "cue_id": 4,
-      "start": 14.812,
-      "time_str": "00:14",
+      "cue_id": 9,
+      "start": 64.687,
+      "time_str": "01:04",
       "title_en": "Context: The Key Factor Determining an Agent's Capability Ceiling",
       "title_zh": "上下文：决定 Agent 能力上限的关键"
     },
@@ -270,9 +270,9 @@
     },
     {
       "level": 3,
-      "cue_id": 287,
-      "start": 2443.771,
-      "time_str": "40:43",
+      "cue_id": 343,
+      "start": 2956.527,
+      "time_str": "49:16",
       "title_en": "KV Cache and Prompt Cache: Two Levels of Caching",
       "title_zh": "KV Cache 与 Prompt Cache：两个层级的缓存"
     },
@@ -302,9 +302,9 @@
     },
     {
       "level": 2,
-      "cue_id": 407,
-      "start": 3529.204,
-      "time_str": "58:49",
+      "cue_id": 417,
+      "start": 3620.704,
+      "time_str": "60:20",
       "title_en": "Prompt Engineering: Optimizing the System Prompt",
       "title_zh": "提示工程：优化系统提示词"
     },
@@ -323,22 +323,6 @@
       "time_str": "61:51",
       "title_en": "Structured Prompts: The Format of the System Prompt",
       "title_zh": "结构化提示：系统提示词的“格式”"
-    },
-    {
-      "level": 2,
-      "cue_id": 437,
-      "start": 3785.908,
-      "time_str": "63:05",
-      "title_en": "File Operations",
-      "title_zh": "文件操作"
-    },
-    {
-      "level": 2,
-      "cue_id": 437,
-      "start": 3785.908,
-      "time_str": "63:05",
-      "title_en": "Network Requests",
-      "title_zh": "网络请求"
     },
     {
       "level": 3,
@@ -406,9 +390,9 @@
     },
     {
       "level": 3,
-      "cue_id": 613,
-      "start": 5394.508,
-      "time_str": "89:54",
+      "cue_id": 620,
+      "start": 5461.783,
+      "time_str": "91:01",
       "title_en": "Skills in Context",
       "title_zh": "Skills 在上下文中的位置"
     },
@@ -462,17 +446,17 @@
     },
     {
       "level": 2,
-      "cue_id": 800,
-      "start": 7023.876,
-      "time_str": "117:03",
+      "cue_id": 802,
+      "start": 7032.763,
+      "time_str": "117:12",
       "title_en": "Context Compression Strategies",
       "title_zh": "上下文压缩策略"
     },
     {
       "level": 3,
-      "cue_id": 805,
-      "start": 7053.426,
-      "time_str": "117:33",
+      "cue_id": 806,
+      "start": 7065.201,
+      "time_str": "117:45",
       "title_en": "Why Compression Is Needed: Not Just a Length Issue",
       "title_zh": "为什么需要压缩：不只是长度问题"
     },
@@ -539,6 +523,14 @@
       "cue_id": 1,
       "start": 0.1,
       "time_str": "00:00",
+      "title_en": "Overview & Introduction",
+      "title_zh": "章节导读与概述"
+    },
+    {
+      "level": 2,
+      "cue_id": 13,
+      "start": 98.087,
+      "time_str": "01:38",
       "title_en": "User Memory System",
       "title_zh": "用户记忆系统"
     },
@@ -568,9 +560,9 @@
     },
     {
       "level": 3,
-      "cue_id": 93,
-      "start": 822.194,
-      "time_str": "13:42",
+      "cue_id": 110,
+      "start": 1012.068,
+      "time_str": "16:52",
       "title_en": "Advanced Knowledge Representation: Executable Code",
       "title_zh": "进阶知识表示形态：可执行代码"
     },
@@ -584,9 +576,9 @@
     },
     {
       "level": 3,
-      "cue_id": 126,
-      "start": 1117.531,
-      "time_str": "18:37",
+      "cue_id": 149,
+      "start": 1320.066,
+      "time_str": "22:00",
       "title_en": "Memory Framework Case Studies",
       "title_zh": "记忆框架案例"
     },
@@ -616,33 +608,33 @@
     },
     {
       "level": 3,
-      "cue_id": 221,
-      "start": 1995.523,
-      "time_str": "33:15",
+      "cue_id": 223,
+      "start": 2014.885,
+      "time_str": "33:34",
       "title_en": "Document Chunking",
       "title_zh": "文档分块（Chunking）"
     },
     {
       "level": 3,
-      "cue_id": 221,
-      "start": 1995.523,
-      "time_str": "33:15",
+      "cue_id": 244,
+      "start": 2207.625,
+      "time_str": "36:47",
       "title_en": "Dense Embeddings: From Lexical Association to Semantic Understanding",
       "title_zh": "稠密嵌入：从词汇关联到语义理解"
     },
     {
       "level": 3,
-      "cue_id": 221,
-      "start": 1995.523,
-      "time_str": "33:15",
+      "cue_id": 288,
+      "start": 2720.768,
+      "time_str": "45:20",
       "title_en": "Sparse Embeddings: Keyword-Based Exact-Match Retrieval",
       "title_zh": "稀疏嵌入：精确匹配的关键词检索"
     },
     {
       "level": 3,
-      "cue_id": 325,
-      "start": 3188.574,
-      "time_str": "53:08",
+      "cue_id": 326,
+      "start": 3196.224,
+      "time_str": "53:16",
       "title_en": "Hybrid Retrieval: Combining Semantic and Keyword Search",
       "title_zh": "混合检索：两全其美的艺术"
     },
@@ -656,49 +648,49 @@
     },
     {
       "level": 3,
-      "cue_id": 376,
-      "start": 3670.455,
-      "time_str": "61:10",
+      "cue_id": 398,
+      "start": 3931.315,
+      "time_str": "65:31",
       "title_en": "Structured Indexing: From Information Retrieval to Knowledge Modeling",
       "title_zh": "结构化索引：从信息检索到知识建模"
     },
     {
       "level": 3,
-      "cue_id": 376,
-      "start": 3670.455,
-      "time_str": "61:10",
+      "cue_id": 452,
+      "start": 4464.322,
+      "time_str": "74:24",
       "title_en": "The Filesystem Paradigm: Organizing Knowledge with Directory Structures",
       "title_zh": "文件系统范式：用目录结构组织知识"
     },
     {
       "level": 3,
-      "cue_id": 376,
-      "start": 3670.455,
-      "time_str": "61:10",
+      "cue_id": 481,
+      "start": 4780.37,
+      "time_str": "79:40",
       "title_en": "How Knowledge Should Be Updated",
       "title_zh": "知识应该如何更新"
     },
     {
       "level": 3,
-      "cue_id": 376,
-      "start": 3670.455,
-      "time_str": "61:10",
+      "cue_id": 556,
+      "start": 5402.233,
+      "time_str": "90:02",
       "title_en": "Agentic RAG: A Paradigm Shift Toward Tool-Based Knowledge Retrieval",
       "title_zh": "智能体化 RAG：将知识检索工具化的范式转变"
     },
     {
       "level": 3,
-      "cue_id": 376,
-      "start": 3670.455,
-      "time_str": "61:10",
+      "cue_id": 622,
+      "start": 6060.609,
+      "time_str": "101:00",
       "title_en": "RAG Technique: Contextual Retrieval",
       "title_zh": "RAG 技巧：上下文感知检索"
     },
     {
       "level": 3,
-      "cue_id": 377,
-      "start": 3698.655,
-      "time_str": "61:38",
+      "cue_id": 675,
+      "start": 6619.474,
+      "time_str": "110:19",
       "title_en": "Extracting Deep Knowledge from Datasets: From Information Retrieval to Knowledge Discovery",
       "title_zh": "从数据集中提取深度知识：从信息检索到知识发现"
     },
@@ -739,7 +731,7 @@
     {
       "level": 2,
       "cue_id": 9,
-      "start": 112.0,
+      "start": 112,
       "time_str": "01:52",
       "title_en": "Tool Classification",
       "title_zh": "工具的分类"
@@ -794,9 +786,9 @@
     },
     {
       "level": 3,
-      "cue_id": 190,
-      "start": 1975.68,
-      "time_str": "32:55",
+      "cue_id": 198,
+      "start": 2058.855,
+      "time_str": "34:18",
       "title_en": "Hierarchical Organization and On-Demand Loading",
       "title_zh": "层次化组织与按需加载"
     },
@@ -818,25 +810,25 @@
     },
     {
       "level": 2,
-      "cue_id": 284,
-      "start": 2957.964,
-      "time_str": "49:17",
+      "cue_id": 285,
+      "start": 2964.926,
+      "time_str": "49:24",
       "title_en": "Perception Tools",
       "title_zh": "感知工具"
     },
     {
       "level": 3,
-      "cue_id": 303,
-      "start": 3148.178,
-      "time_str": "52:28",
+      "cue_id": 317,
+      "start": 3279.653,
+      "time_str": "54:39",
       "title_en": "Multimodal Perception",
       "title_zh": "多模态感知"
     },
     {
       "level": 2,
-      "cue_id": 311,
-      "start": 3227.778,
-      "time_str": "53:47",
+      "cue_id": 347,
+      "start": 3525.609,
+      "time_str": "58:45",
       "title_en": "Execution Tools",
       "title_zh": "执行工具"
     },
@@ -871,6 +863,14 @@
       "cue_id": 1,
       "start": 0.1,
       "time_str": "00:00",
+      "title_en": "Overview & Introduction",
+      "title_zh": "章节导读与概述"
+    },
+    {
+      "level": 2,
+      "cue_id": 13,
+      "start": 108.037,
+      "time_str": "01:48",
       "title_en": "Coding Agent",
       "title_zh": "Coding Agent"
     },
@@ -908,17 +908,17 @@
     },
     {
       "level": 3,
-      "cue_id": 193,
-      "start": 1738.633,
-      "time_str": "28:58",
+      "cue_id": 195,
+      "start": 1755.783,
+      "time_str": "29:15",
       "title_en": "Failure and Error Recovery",
       "title_zh": "故障与错误恢复"
     },
     {
       "level": 3,
-      "cue_id": 194,
-      "start": 1746.17,
-      "time_str": "29:06",
+      "cue_id": 285,
+      "start": 2638.366,
+      "time_str": "43:58",
       "title_en": "Implementation Tips for Coding Agents",
       "title_zh": "Coding Agent 的实现技巧"
     },
@@ -948,25 +948,25 @@
     },
     {
       "level": 2,
-      "cue_id": 416,
-      "start": 3856.631,
-      "time_str": "64:16",
+      "cue_id": 448,
+      "start": 4206.69,
+      "time_str": "70:06",
       "title_en": "Code: The Meta-Capability of a General Agent",
       "title_zh": "代码：通用 Agent 的元能力"
     },
     {
       "level": 3,
-      "cue_id": 458,
-      "start": 4292.845,
-      "time_str": "71:32",
+      "cue_id": 464,
+      "start": 4336.445,
+      "time_str": "72:16",
       "title_en": "Code as a Thinking Tool",
       "title_zh": "代码作为思考工具"
     },
     {
       "level": 3,
-      "cue_id": 486,
-      "start": 4550.006,
-      "time_str": "75:50",
+      "cue_id": 496,
+      "start": 4653.643,
+      "time_str": "77:33",
       "title_en": "Code as a Constraint for Business Rules",
       "title_zh": "代码作为业务规则的约束"
     },
@@ -980,17 +980,17 @@
     },
     {
       "level": 3,
-      "cue_id": 629,
-      "start": 5930.437,
-      "time_str": "98:50",
+      "cue_id": 638,
+      "start": 6045.862,
+      "time_str": "100:45",
       "title_en": "Code as a System Adapter",
       "title_zh": "代码作为系统适配器"
     },
     {
       "level": 3,
-      "cue_id": 629,
-      "start": 5930.437,
-      "time_str": "98:50",
+      "cue_id": 687,
+      "start": 6466.523,
+      "time_str": "107:46",
       "title_en": "Code as Generative UI",
       "title_zh": "代码作为生成式 UI"
     },
@@ -1038,9 +1038,9 @@
     },
     {
       "level": 2,
-      "cue_id": 19,
-      "start": 165.95,
-      "time_str": "02:45",
+      "cue_id": 25,
+      "start": 245.387,
+      "time_str": "04:05",
       "title_en": "Async and Event-Driven: When the World Comes Looking for You",
       "title_zh": "异步与事件驱动：当世界主动找上门"
     },
@@ -1102,9 +1102,9 @@
     },
     {
       "level": 3,
-      "cue_id": 215,
-      "start": 1958.718,
-      "time_str": "32:38",
+      "cue_id": 298,
+      "start": 2544.984,
+      "time_str": "42:24",
       "title_en": "Model-Native Asynchrony: GPT-6 Astra",
       "title_zh": "模型原生异步：GPT-6 Astra"
     },
@@ -1126,33 +1126,33 @@
     },
     {
       "level": 3,
-      "cue_id": 342,
-      "start": 2882.361,
-      "time_str": "48:02",
+      "cue_id": 343,
+      "start": 2888.049,
+      "time_str": "48:08",
       "title_en": "Interaction timing: from cascaded to full-duplex",
       "title_zh": "交互时序：从级联到全双工"
     },
     {
       "level": 3,
-      "cue_id": 344,
-      "start": 2892.149,
-      "time_str": "48:12",
+      "cue_id": 351,
+      "start": 2977.511,
+      "time_str": "49:37",
       "title_en": "Paradigm 1 · Cascaded pipeline",
       "title_zh": "范式一 · 级联流水线（Cascading）"
     },
     {
       "level": 3,
-      "cue_id": 347,
-      "start": 2924.449,
-      "time_str": "48:44",
+      "cue_id": 394,
+      "start": 3296.555,
+      "time_str": "54:56",
       "title_en": "Paradigm 2 · End-to-end omnimodal models (Omni)",
       "title_zh": "范式二 · 端到端全模态模型（Omni）"
     },
     {
       "level": 3,
-      "cue_id": 348,
-      "start": 2942.349,
-      "time_str": "49:02",
+      "cue_id": 406,
+      "start": 3395.08,
+      "time_str": "56:35",
       "title_en": "Paradigm 3 · Full-duplex interactive models",
       "title_zh": "范式三 · 全双工交互模型"
     },
@@ -1182,25 +1182,25 @@
     },
     {
       "level": 3,
-      "cue_id": 478,
-      "start": 3971.884,
-      "time_str": "66:11",
+      "cue_id": 479,
+      "start": 3986.871,
+      "time_str": "66:26",
       "title_en": "Action Space Design",
       "title_zh": "动作空间设计"
     },
     {
       "level": 3,
-      "cue_id": 478,
-      "start": 3971.884,
-      "time_str": "66:11",
+      "cue_id": 497,
+      "start": 4161.893,
+      "time_str": "69:21",
       "title_en": "Visual Grounding",
       "title_zh": "视觉定位（Grounding）"
     },
     {
       "level": 3,
-      "cue_id": 482,
-      "start": 4019.043,
-      "time_str": "66:59",
+      "cue_id": 548,
+      "start": 4641.865,
+      "time_str": "77:21",
       "title_en": "A Computer Use Agent That Can Watch Animations and Hear Sound",
       "title_zh": "能看动画、能听声音的 Computer Use Agent"
     },
@@ -1246,9 +1246,9 @@
     },
     {
       "level": 3,
-      "cue_id": 636,
-      "start": 5510.847,
-      "time_str": "91:50",
+      "cue_id": 644,
+      "start": 5612.584,
+      "time_str": "93:32",
       "title_en": "Long-Horizon Planning and Task Decomposition",
       "title_zh": "长程规划与任务分解"
     },
@@ -1278,9 +1278,9 @@
     },
     {
       "level": 3,
-      "cue_id": 704,
-      "start": 6099.844,
-      "time_str": "101:39",
+      "cue_id": 719,
+      "start": 6265.344,
+      "time_str": "104:25",
       "title_en": "From Simulation to a Real Robot",
       "title_zh": "从仿真环境到真实机器人"
     },
@@ -1360,9 +1360,9 @@
     },
     {
       "level": 2,
-      "cue_id": 126,
-      "start": 1082.517,
-      "time_str": "18:02",
+      "cue_id": 128,
+      "start": 1104.367,
+      "time_str": "18:24",
       "title_en": "The Evaluation Environment",
       "title_zh": "评估环境"
     },
@@ -1448,33 +1448,33 @@
     },
     {
       "level": 3,
-      "cue_id": 272,
-      "start": 2476.72,
-      "time_str": "41:16",
+      "cue_id": 277,
+      "start": 2527.982,
+      "time_str": "42:07",
       "title_en": "LLM-as-a-Judge: The Core of Automated Evaluation",
       "title_zh": "LLM-as-a-Judge：自动化评估的核心"
     },
     {
       "level": 3,
-      "cue_id": 273,
-      "start": 2493.507,
-      "time_str": "41:33",
+      "cue_id": 379,
+      "start": 3507.38,
+      "time_str": "58:27",
       "title_en": "Failure Attribution: Locate the First Error in a Trajectory",
       "title_zh": "失败归因：从整条轨迹定位首个错误"
     },
     {
       "level": 3,
-      "cue_id": 280,
-      "start": 2540.32,
-      "time_str": "42:20",
+      "cue_id": 451,
+      "start": 4329.646,
+      "time_str": "72:09",
       "title_en": "End-to-End and Trajectory-Prefix Regression Tasks",
       "title_zh": "端到端回归任务与轨迹前缀回归任务"
     },
     {
       "level": 3,
-      "cue_id": 284,
-      "start": 2587.32,
-      "time_str": "43:07",
+      "cue_id": 477,
+      "start": 4608.168,
+      "time_str": "76:48",
       "title_en": "Pairwise Comparison and Model Ranking",
       "title_zh": "配对比较与模型排名"
     },
@@ -1520,9 +1520,9 @@
     },
     {
       "level": 2,
-      "cue_id": 613,
-      "start": 5880.542,
-      "time_str": "98:00",
+      "cue_id": 635,
+      "start": 6116.391,
+      "time_str": "101:56",
       "title_en": "Statistical Significance of Evaluation Results",
       "title_zh": "评估结果的统计显著性"
     },
@@ -1674,17 +1674,17 @@
     },
     {
       "level": 2,
-      "cue_id": 20,
-      "start": 127.825,
-      "time_str": "02:07",
+      "cue_id": 51,
+      "start": 422.494,
+      "time_str": "07:02",
       "title_en": "From Pre-training to RL: An Overview of the Four Training Stages",
       "title_zh": "从预训练到 RL：四阶段全景"
     },
     {
       "level": 3,
-      "cue_id": 57,
-      "start": 450.932,
-      "time_str": "07:30",
+      "cue_id": 61,
+      "start": 535.449,
+      "time_str": "08:55",
       "title_en": "What Pre-training Does: Predicting the Next Token",
       "title_zh": "预训练在做什么：预测下一个词"
     },
@@ -1698,9 +1698,9 @@
     },
     {
       "level": 3,
-      "cue_id": 74,
-      "start": 641.886,
-      "time_str": "10:41",
+      "cue_id": 84,
+      "start": 739.236,
+      "time_str": "12:19",
       "title_en": "The Essence of SFT: Predict the Next Token with Different Data",
       "title_zh": "SFT 的本质：换了数据的“预测下一个词”"
     },
@@ -1722,9 +1722,9 @@
     },
     {
       "level": 2,
-      "cue_id": 194,
-      "start": 1663.759,
-      "time_str": "27:43",
+      "cue_id": 196,
+      "start": 1682.584,
+      "time_str": "28:02",
       "title_en": "From Classic RL Agents to Modern Agents [Optional Reading]",
       "title_zh": "从经典 RL Agent 到现代 Agent [可选阅读]"
     },
@@ -1738,25 +1738,25 @@
     },
     {
       "level": 3,
-      "cue_id": 209,
-      "start": 1793.596,
-      "time_str": "29:53",
+      "cue_id": 233,
+      "start": 2044.993,
+      "time_str": "34:04",
       "title_en": "Two Action Representations: Classic RL Settings and Variable-Length LLM Policies",
       "title_zh": "两种动作表示：经典 RL 设置与 LLM 的变长策略"
     },
     {
       "level": 2,
-      "cue_id": 220,
-      "start": 1902.205,
-      "time_str": "31:42",
+      "cue_id": 342,
+      "start": 3119.987,
+      "time_str": "51:59",
       "title_en": "Model Pre-training Basics [Optional Reading]",
       "title_zh": "模型预训练基础 [可选阅读]"
     },
     {
       "level": 2,
-      "cue_id": 347,
-      "start": 3165.687,
-      "time_str": "52:45",
+      "cue_id": 375,
+      "start": 3453.498,
+      "time_str": "57:33",
       "title_en": "Mid-training: Filling Knowledge and Foundational Capability Gaps",
       "title_zh": "Mid-training：补知识与基础能力"
     },
@@ -1778,9 +1778,9 @@
     },
     {
       "level": 2,
-      "cue_id": 429,
-      "start": 3946.519,
-      "time_str": "65:46",
+      "cue_id": 506,
+      "start": 4755.332,
+      "time_str": "79:15",
       "title_en": "SFT Data Synthesis: From Demonstrations to Trainable Trajectories",
       "title_zh": "SFT 数据合成：从示范到可训练轨迹"
     },
@@ -1826,9 +1826,9 @@
     },
     {
       "level": 3,
-      "cue_id": 686,
-      "start": 6772.023,
-      "time_str": "112:52",
+      "cue_id": 689,
+      "start": 6809.786,
+      "time_str": "113:29",
       "title_en": "Environment: The Training Ground for the Model",
       "title_zh": "环境：模型练习的场地"
     },
@@ -1882,33 +1882,33 @@
     },
     {
       "level": 3,
-      "cue_id": 766,
-      "start": 7524.216,
-      "time_str": "125:24",
+      "cue_id": 768,
+      "start": 7539.416,
+      "time_str": "125:39",
       "title_en": "Where the Reward Comes From: Rules, Human Preference and Model Judgment",
       "title_zh": "奖励来自哪里：规则、人类偏好与模型评判"
     },
     {
       "level": 3,
-      "cue_id": 766,
-      "start": 7524.216,
-      "time_str": "125:24",
+      "cue_id": 786,
+      "start": 7690.724,
+      "time_str": "128:10",
       "title_en": "When the Reward Is Given: Outcome or Process",
       "title_zh": "奖励在什么时候给：结果还是过程"
     },
     {
       "level": 3,
-      "cue_id": 766,
-      "start": 7524.216,
-      "time_str": "125:24",
+      "cue_id": 801,
+      "start": 7857.844,
+      "time_str": "130:57",
       "title_en": "How Much Information the Reward Must Express: Scalar, Vector, Generative Diagnosis",
       "title_zh": "奖励需要表达多少信息：标量、向量与生成式诊断"
     },
     {
       "level": 3,
-      "cue_id": 767,
-      "start": 7533.566,
-      "time_str": "125:33",
+      "cue_id": 811,
+      "start": 7928.081,
+      "time_str": "132:08",
       "title_en": "A Correct Outcome Is Not Enough: Path Constraints and RLVP",
       "title_zh": "结果正确还不够：路径约束与 RLVP"
     },
@@ -1970,9 +1970,9 @@
     },
     {
       "level": 2,
-      "cue_id": 945,
-      "start": 9272.96,
-      "time_str": "154:32",
+      "cue_id": 956,
+      "start": 9389.435,
+      "time_str": "156:29",
       "title_en": "Post-Training Practical Takeaways",
       "title_zh": "后训练实践要点"
     },
@@ -2012,9 +2012,9 @@
     },
     {
       "level": 2,
-      "cue_id": 60,
-      "start": 593.167,
-      "time_str": "09:53",
+      "cue_id": 66,
+      "start": 658.442,
+      "time_str": "10:58",
       "title_en": "Four Methods for Continual Agent Evolution",
       "title_zh": "Agent 持续进化的四种方法"
     },
@@ -2036,17 +2036,17 @@
     },
     {
       "level": 3,
-      "cue_id": 115,
-      "start": 1133.81,
-      "time_str": "18:53",
+      "cue_id": 188,
+      "start": 1871.028,
+      "time_str": "31:11",
       "title_en": "Encoding Experience as Programs",
       "title_zh": "将经验写成程序"
     },
     {
       "level": 3,
-      "cue_id": 115,
-      "start": 1133.81,
-      "time_str": "18:53",
+      "cue_id": 313,
+      "start": 3054.312,
+      "time_str": "50:54",
       "title_en": "Encoding Experience in Parameters",
       "title_zh": "将经验写入参数"
     },
@@ -2150,57 +2150,57 @@
     },
     {
       "level": 2,
-      "cue_id": 54,
-      "start": 490.955,
-      "time_str": "08:10",
+      "cue_id": 91,
+      "start": 857.844,
+      "time_str": "14:17",
       "title_en": "Multi-Agent Collaboration with Shared Context",
       "title_zh": "共享上下文的多 Agent 协作"
     },
     {
       "level": 2,
-      "cue_id": 54,
-      "start": 490.955,
-      "time_str": "08:10",
+      "cue_id": 116,
+      "start": 1094.975,
+      "time_str": "18:14",
       "title_en": "Multi-Agent Collaboration Without Shared Context",
       "title_zh": "不共享上下文的多 Agent 协作"
     },
     {
       "level": 3,
-      "cue_id": 118,
-      "start": 1107.35,
-      "time_str": "18:27",
+      "cue_id": 144,
+      "start": 1313.849,
+      "time_str": "21:53",
       "title_en": "The File System from an Agent's Perspective",
       "title_zh": "Agent 眼中的文件系统"
     },
     {
       "level": 3,
-      "cue_id": 118,
-      "start": 1107.35,
-      "time_str": "18:27",
+      "cue_id": 187,
+      "start": 1763.919,
+      "time_str": "29:23",
       "title_en": "Communication and Control Between Agents",
       "title_zh": "Agent 间的通信与控制"
     },
     {
       "level": 3,
-      "cue_id": 246,
-      "start": 2358.798,
-      "time_str": "39:18",
+      "cue_id": 247,
+      "start": 2375.711,
+      "time_str": "39:35",
       "title_en": "Peer Collaboration Pattern: Mutual Checks and Iterative Improvement",
       "title_zh": "对等协作模式：相互制衡与迭代改进"
     },
     {
       "level": 3,
-      "cue_id": 246,
-      "start": 2358.798,
-      "time_str": "39:18",
+      "cue_id": 342,
+      "start": 3334.191,
+      "time_str": "55:34",
       "title_en": "Manager Pattern: Centralized Coordination",
       "title_zh": "管理者模式：中心化协调"
     },
     {
       "level": 3,
-      "cue_id": 246,
-      "start": 2358.798,
-      "time_str": "39:18",
+      "cue_id": 481,
+      "start": 4502.096,
+      "time_str": "75:02",
       "title_en": "Decentralized Pattern",
       "title_zh": "去中心化模式"
     },
@@ -2222,49 +2222,49 @@
     },
     {
       "level": 3,
-      "cue_id": 547,
-      "start": 5207.48,
-      "time_str": "86:47",
+      "cue_id": 562,
+      "start": 5346.217,
+      "time_str": "89:06",
       "title_en": "Failure Mode One: Concurrency Conflicts in Shared File Systems",
       "title_zh": "失败模式一：共享文件系统的并发冲突"
     },
     {
       "level": 3,
-      "cue_id": 547,
-      "start": 5207.48,
-      "time_str": "86:47",
+      "cue_id": 579,
+      "start": 5485.37,
+      "time_str": "91:25",
       "title_en": "Failure Mode Two: Cascading Amplification of Errors",
       "title_zh": "失败模式二：错误的级联放大"
     },
     {
       "level": 3,
-      "cue_id": 547,
-      "start": 5207.48,
-      "time_str": "86:47",
+      "cue_id": 585,
+      "start": 5533.732,
+      "time_str": "92:13",
       "title_en": "Failure Mode Three: Homogeneous Convergence",
       "title_zh": "失败模式三：同质趋同"
     },
     {
       "level": 3,
-      "cue_id": 547,
-      "start": 5207.48,
-      "time_str": "86:47",
+      "cue_id": 594,
+      "start": 5598.07,
+      "time_str": "93:18",
       "title_en": "Failure Mode Four: Passing the Buck",
       "title_zh": "失败模式四：互相扯皮"
     },
     {
       "level": 3,
-      "cue_id": 547,
-      "start": 5207.48,
-      "time_str": "86:47",
+      "cue_id": 603,
+      "start": 5668.207,
+      "time_str": "94:28",
       "title_en": "Failure Mode Five: Runaway Loops",
       "title_zh": "失败模式五：循环失控"
     },
     {
       "level": 3,
-      "cue_id": 547,
-      "start": 5207.48,
-      "time_str": "86:47",
+      "cue_id": 608,
+      "start": 5694.832,
+      "time_str": "94:54",
       "title_en": "Failure Mode Six: Comprehension Debt and Cognitive Surrender",
       "title_zh": "失败模式六：理解债与认知投降"
     },
@@ -2278,9 +2278,9 @@
     },
     {
       "level": 3,
-      "cue_id": 625,
-      "start": 5811.169,
-      "time_str": "96:51",
+      "cue_id": 630,
+      "start": 5867.257,
+      "time_str": "97:47",
       "title_en": "Stanford AI Town: Social Simulation of Generative Agents",
       "title_zh": "斯坦福 AI 小镇：生成式 Agent 的社会模拟"
     },
@@ -2360,9 +2360,9 @@
     },
     {
       "level": 2,
-      "cue_id": 38,
-      "start": 366.11,
-      "time_str": "06:06",
+      "cue_id": 44,
+      "start": 422.51,
+      "time_str": "07:02",
       "title_en": "The Co-Evolution of Models and Agents",
       "title_zh": "模型与 Agent 的共同演进"
     }
