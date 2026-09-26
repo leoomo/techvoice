@@ -14,3 +14,6 @@ audio_chunks/
 
 # Upstream book repository clone
 repo/
+
+# Audio files (hosted on Cloudflare R2 CDN)
+*.mp3
