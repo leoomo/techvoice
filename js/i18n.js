@@ -55,8 +55,8 @@
       featured_ch_title: "全书 12 章节选听：",
 
       // Monograph & Assets Library
-      library_label: "RESOURCES & DOWNLOADS",
-      library_title: "相关资源与离线下载",
+      library_label: "RESOURCES & LINKS",
+      library_title: "相关资源与配套链接",
       
       lib_card1_pill: "在线播放 · 21h",
       lib_card1_title: "在线双语精听播放器",
@@ -66,14 +66,13 @@
       lib_card1_tag3: "单句循环",
       lib_card1_btn: "进入网页播放器 →",
 
-      lib_card2_pill: "电子书下载 · 45MB",
-      lib_card2_title: "Kindle / 手机离线电子书 (EPUB)",
-      lib_card2_desc: "顺便打包整理了中英文排版精良的 EPUB 电子书，公式和代码格式都处理好了，可以放进 Kindle、微信读书或 Apple Books 离线看。",
-      lib_card2_tag1: "EPUB",
-      lib_card2_tag2: "Kindle 适配",
-      lib_card2_tag3: "离线阅读",
-      lib_card2_btn_en: "英文版 EPUB (22.9M)",
-      lib_card2_btn_zh: "中文版 EPUB (22.5M)",
+      lib_card2_pill: "官方电子书发布",
+      lib_card2_title: "原书电子书与 Releases (EPUB / PDF)",
+      lib_card2_desc: "原作者李博杰在 GitHub Releases 持续提供最新排版的 EPUB 与 PDF 电子书，支持中英双语及 15 种社区语言版本，推荐直接前往官方仓库获取。",
+      lib_card2_tag1: "GitHub Releases",
+      lib_card2_tag2: "EPUB / PDF",
+      lib_card2_tag3: "15 种语言",
+      lib_card2_btn: "前往 GitHub Releases 获取电子书 →",
 
       lib_card3_pill: "原书 GitHub 仓库",
       lib_card3_title: "原作者开源代码与原文",
@@ -168,10 +167,10 @@
       reader_modal_about_author_bio: "<b>李博杰 (Bojie Li)</b>：Pine AI 联合创始人兼首席科学家，中国科学院大学兼职讲师，前微软亚洲研究院首席研究员。在计算机系统与分布式 AI 领域有深入研究，本书是他总结的关于现代 AI Agent 架构与工程实践的开源力作。",
       reader_modal_about_formula_title: "全书核心公式",
       reader_modal_about_formula_body: "Agent = LLM (大脑) + 上下文 (眼睛) + 工具 (手脚)<br>Agent = Model + Harness (约束 + 验证 + 纠错)",
-      reader_modal_about_res_title: "配套资源与下载",
+      reader_modal_about_res_title: "配套资源与官方链接",
       reader_modal_about_res_repo: "<b>原书 GitHub 仓库</b>：<a href=\"https://github.com/bojieli/ai-agent-book\" target=\"_blank\">github.com/bojieli/ai-agent-book</a>",
-      reader_modal_about_res_en_epub: "<b>英文版电子书</b>：<a href=\"AI-Agents-in-Depth-en-Kindle-Inline.epub\" download>AI-Agents-in-Depth-en-Kindle-Inline.epub (22.9MB)</a>",
-      reader_modal_about_res_zh_epub: "<b>中文版电子书</b>：<a href=\"AI-Agent-Book-zh-CN-Kindle-Inline.epub\" download>AI-Agent-Book-zh-CN-Kindle-Inline.epub (22.5MB)</a>",
+      reader_modal_about_res_releases: "<b>官方电子书发布 (Releases)</b>：<a href=\"https://github.com/bojieli/ai-agent-book/releases\" target=\"_blank\">github.com/bojieli/ai-agent-book/releases</a>（包含中英及 15 种语言 EPUB / PDF）",
+      reader_modal_about_res_online: "<b>官方在线完整阅读</b>：<a href=\"https://bojieli.github.io/ai-agent-book/astro/\" target=\"_blank\">bojieli.github.io/ai-agent-book/astro/</a>",
       reader_modal_about_res_offline: "<b>离线音频与字幕</b>：根目录下的 <code>.mp3</code> 和 <code>.srt</code> / <code>.vtt</code> 文件可直接导入手机播放器离线收听。",
 
       reader_modal_sc_play: "播放 / 暂停",
@@ -266,8 +265,8 @@
       featured_ch_title: "Jump to Any Chapter:",
 
       // Monograph & Assets Library
-      library_label: "RESOURCES & DOWNLOADS",
-      library_title: "Resources & Offline Downloads",
+      library_label: "RESOURCES & LINKS",
+      library_title: "Companion Resources & Links",
 
       lib_card1_pill: "Web Player · 21h",
       lib_card1_title: "Web Audio Player & Subtitles",
@@ -277,14 +276,13 @@
       lib_card1_tag3: "Sentence Loop",
       lib_card1_btn: "Open Web Player →",
 
-      lib_card2_pill: "E-Books · 45MB",
-      lib_card2_title: "Kindle & E-Book Editions (EPUB)",
-      lib_card2_desc: "Carefully formatted EPUB e-books in both English and Chinese. Formulas and code blocks are cleanly rendered, ready for Kindle or your favorite e-reader.",
-      lib_card2_tag1: "EPUB",
-      lib_card2_tag2: "Kindle Ready",
-      lib_card2_tag3: "Offline Reading",
-      lib_card2_btn_en: "English EPUB (22.9M)",
-      lib_card2_btn_zh: "Chinese EPUB (22.5M)",
+      lib_card2_pill: "Official Releases",
+      lib_card2_title: "Official E-Books & Releases (EPUB / PDF)",
+      lib_card2_desc: "Dr. Bojie Li actively maintains and publishes the latest compiled EPUB and PDF editions across 15 languages on GitHub Releases. Visit the official repository to get the latest builds.",
+      lib_card2_tag1: "GitHub Releases",
+      lib_card2_tag2: "EPUB / PDF",
+      lib_card2_tag3: "15 Languages",
+      lib_card2_btn: "Get E-Books on GitHub Releases →",
 
       lib_card3_pill: "Original GitHub Repo",
       lib_card3_title: "Original Book Repository & Code",
@@ -379,10 +377,10 @@
       reader_modal_about_author_bio: "<b>Dr. Bojie Li</b>: Co-Founder & Chief Scientist of Pine AI, adjunct lecturer at UCAS, and former Principal Researcher at Microsoft Research Asia. A veteran systems and distributed AI researcher, this book represents his comprehensive open-source work on modern AI Agent architectures.",
       reader_modal_about_formula_title: "Core Architectural Formulas",
       reader_modal_about_formula_body: "Agent = LLM (Brain) + Context (Eyes) + Tools (Hands & Feet)<br>Agent = Model + Harness (Constraint + Verification + Error Correction)",
-      reader_modal_about_res_title: "Companion Resources & Links",
+      reader_modal_about_res_title: "Companion Resources & Official Links",
       reader_modal_about_res_repo: "<b>Official GitHub Repository</b>: <a href=\"https://github.com/bojieli/ai-agent-book\" target=\"_blank\">github.com/bojieli/ai-agent-book</a>",
-      reader_modal_about_res_en_epub: "<b>English EPUB</b>: <a href=\"AI-Agents-in-Depth-en-Kindle-Inline.epub\" download>AI-Agents-in-Depth-en-Kindle-Inline.epub (22.9MB)</a>",
-      reader_modal_about_res_zh_epub: "<b>Chinese EPUB</b>: <a href=\"AI-Agent-Book-zh-CN-Kindle-Inline.epub\" download>AI-Agent-Book-zh-CN-Kindle-Inline.epub (22.5MB)</a>",
+      reader_modal_about_res_releases: "<b>Official E-Book Releases</b>: <a href=\"https://github.com/bojieli/ai-agent-book/releases\" target=\"_blank\">github.com/bojieli/ai-agent-book/releases</a> (EPUB & PDF across 15 languages)",
+      reader_modal_about_res_online: "<b>Official Online Reading</b>: <a href=\"https://bojieli.github.io/ai-agent-book/astro/\" target=\"_blank\">bojieli.github.io/ai-agent-book/astro/</a>",
       reader_modal_about_res_offline: "<b>Offline Audio & Subtitles</b>: Standalone <code>.mp3</code> and <code>.srt</code> / <code>.vtt</code> files in the root folder can be imported into your phone player for offline listening.",
 
       reader_modal_sc_play: "Play / Pause",
