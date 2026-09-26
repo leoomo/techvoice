@@ -138,8 +138,8 @@ flowchart LR
 
 ### 1. 克隆仓库
 ```bash
-git clone https://github.com/<your-username>/ai-agent-audiobook.git
-cd ai-agent-audiobook
+git clone https://github.com/leoomo/techvoice.git
+cd techvoice
 ```
 
 ### 2. 启动本地静态服务器

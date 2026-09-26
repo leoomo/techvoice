@@ -138,8 +138,8 @@ Built strictly with vanilla web technologies (HTML5, CSS3, ES6 JavaScript). Zero
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/<your-username>/ai-agent-audiobook.git
-cd ai-agent-audiobook
+git clone https://github.com/leoomo/techvoice.git
+cd techvoice
 ```
 
 ### 2. Start a local static file server
