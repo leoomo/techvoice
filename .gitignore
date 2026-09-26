@@ -1,0 +1,16 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Temporary TTS chunks
+audio_chunks/
+
+# Backup and temp files
+*.bak
+*.swp
+*.tmp
+.DS_Store
+
+# Upstream book repository clone
+repo/

@@ -1,0 +1,326 @@
+WEBVTT
+
+1
+00:00:00.100 --> 00:00:05.425
+Afterword: Back to Agent = LLM + Context + Tools .
+
+2
+00:00:05.375 --> 00:00:11.187
+This book opened with a formula: Agent = LLM + Context + Tools.
+
+3
+00:00:11.187 --> 00:00:15.150
+All ten chapters unfold within these three words.
+
+4
+00:00:15.150 --> 00:00:27.800
+Chapter 1 establishes a three-layer understanding of the formula—the implementation layer, the intuitive layer, and the academic layer—and presents the orchestration spectrum from workflows to autonomous Agents.
+
+5
+00:00:27.800 --> 00:00:35.675
+The chapters that follow unfold progressively along the sequence “Building—Evaluation and Evolution—Collaboration.
+
+6
+00:00:35.675 --> 00:00:39.175
+Building Agents (Chapters 2–6).
+
+7
+00:00:39.175 --> 00:00:47.637
+Context engineering determines what an Agent sees within a task, while memory and knowledge bases extend information across sessions.
+
+8
+00:00:47.637 --> 00:01:02.575
+Tools define what it can do, code generation provides the meta-capability to create new tools and systems, and the interaction chapter pushes the observation and action spaces out of text turn-taking into voice, GUIs, and the physical world.
+
+9
+00:01:02.575 --> 00:01:06.862
+Evaluation and Evolution (Chapters 7–9).
+
+10
+00:01:06.862 --> 00:01:22.825
+Evaluation turns performance into trustworthy signals, post-training writes high-dimensional capabilities into model parameters, and continuous evolution transforms production experience into controlled updates to knowledge, instructions, programs, or parameters.
+
+11
+00:01:22.825 --> 00:01:25.650
+Collaboration (Chapter 10).
+
+12
+00:01:25.650 --> 00:01:32.637
+Multi-agent collaboration further changes how context, tools, and responsibility are organized.
+
+13
+00:01:32.637 --> 00:01:36.087
+These three levels are not independent shelves.
+
+14
+00:01:36.087 --> 00:01:56.150
+Chapter 9, in particular, depends on all the foundations established earlier: without trajectories and knowledge systems, experience has nowhere to be stored; without code capability, an Agent cannot modify tools and Harnesses; and without evaluation, the system cannot determine whether a modification is progress or regression.
+
+15
+00:01:56.150 --> 00:02:04.925
+Chapter 9 is therefore the convergence point at which the book shifts from “how to build an Agent” to “how to make an Agent improve over the long term.
+
+16
+00:02:04.925 --> 00:02:06.762
+Two Clouds .
+
+17
+00:02:06.762 --> 00:02:16.662
+In 1900, Lord Kelvin said two clouds still hung over the clear sky of physics—later, one became relativity and the other quantum mechanics.
+
+18
+00:02:16.662 --> 00:02:22.262
+Today the sky over Agents is hardly clear either, and I too see two clouds.
+
+19
+00:02:22.262 --> 00:02:28.100
+The first cloud is how Agents can interact with their environment in a streaming, real-time way.
+
+20
+00:02:28.100 --> 00:02:40.512
+Today, the vast majority of Agents still operate in a turn-by-turn "request-response" mode: you finish a sentence, it thinks through an entire paragraph, and then spits out the result all at once.
+
+21
+00:02:40.512 --> 00:02:49.025
+But the real world doesn't stop and wait for it to finish thinking—speech gets interrupted, the scene keeps changing, emails keep arriving.
+
+22
+00:02:49.025 --> 00:03:01.012
+A truly "living" Agent should be able to listen while thinking and speak while thinking, start planning while you're still mid-sentence, and notice on its own that "this email needs handling" even when no one has asked.
+
+23
+00:03:01.012 --> 00:03:06.512
+There are two paths toward this real-time capability, often pursued in parallel.
+
+24
+00:03:06.512 --> 00:03:21.850
+One is architectural separation of fast and slow—real-time responsiveness and intelligence are nearly orthogonal axes that a single model struggles to span, so a fast frontend model keeps the conversational rhythm while a slow backend model does the deep thinking.
+
+25
+00:03:21.850 --> 00:03:33.700
+The other is making inference itself faster—when decode speed is high enough, the turn-by-turn wait becomes so short it nearly disappears, blurring the line between turn-by-turn and "real-time.
+
+26
+00:03:33.700 --> 00:03:58.025
+This path is being rapidly advanced by chips and inference engines: Xiaomi MiMo has pushed a 1T-parameter model past 1000 token/s on a single 8-GPU node, while dedicated solutions that hardcode the entire model into a chip (like the Taalas HC1) push an 8-billion-parameter model to about 17000 token/s with a response time under 100 milliseconds.
+
+27
+00:03:58.025 --> 00:04:08.100
+When a model can spit out thousands of words per second, the experiential gap between "think, then speak" and "think while speaking" is simply erased.
+
+28
+00:04:08.260 --> 00:04:17.172
+The second cloud is how Agents can, like humans, keep accumulating experience from the successes and failures of their interactions with the environment.
+
+29
+00:04:17.122 --> 00:04:34.972
+Today's models are more like a genius with a superb memory who can't learn anything new: during training they memorize human knowledge down to the last detail, but once on the job they barely grow—after each task, the pitfalls they've stepped in and the tricks they've figured out are mostly discarded along with the context.
+
+30
+00:04:34.972 --> 00:04:39.660
+Whether this is a real problem depends on two opposing hypotheses.
+
+31
+00:04:39.660 --> 00:04:52.610
+One is the "Small World Hypothesis": a sufficiently large model—say, with trillions of parameters—already contains almost all the important general knowledge of the physical world; learning once is enough.
+
+32
+00:04:52.610 --> 00:05:15.247
+Those who hold this view (including researchers at OpenAI and Anthropic) would point out that programming is the one domain where AI is strongest today—not because code is somehow special to models, but because programming is humanity's most open field: vast amounts of open-source code sit there, ready to be learned from, while most industries have no public information or data at all.
+
+33
+00:05:15.247 --> 00:05:24.935
+So what the frontier labs are really doing is going industry by industry, partnering with each to "distill" its professional capability into the same large model.
+
+34
+00:05:24.935 --> 00:05:35.847
+According to this view, the bottleneck is neither the model's capacity nor its ability to learn, but whether there's enough data—feed the data in, train once, and the problem is solved.
+
+35
+00:05:35.847 --> 00:05:45.097
+But the “Big World Hypothesis” points to a layer that cannot be supplied by “training once”: knowledge specific to a particular user or company.
+
+36
+00:05:45.097 --> 00:05:55.560
+A particular company's coding standards and presentation style, along with a particular client's distinctive temperament, are absent from every training corpus and change constantly.
+
+37
+00:05:55.560 --> 00:06:06.110
+To fit this “big world” composed of countless specific situations, a model must continue learning after deployment; it cannot arrive from the factory with everything configured.
+
+38
+00:06:06.110 --> 00:06:21.035
+This is precisely the direction explored by memory in Chapter 3 and continuous evolution in Chapter 9: should experience be written into knowledge documents, instructions, or programs, or should selected experience be used to update model parameters?
+
+39
+00:06:21.035 --> 00:06:31.785
+More broadly, both “RSI (recursive self-improvement)” and “AI for Science” are pushing Agents toward frontiers where no ready-made answers exist.
+
+40
+00:06:31.785 --> 00:06:40.397
+There, an Agent can only learn autonomously from repeated experimental successes and failures rather than turning back to humans for every decision.
+
+41
+00:06:40.397 --> 00:06:47.435
+The model's strongest capability will therefore ultimately be not memorization, but learning and adaptation.
+
+42
+00:06:47.435 --> 00:06:51.735
+Neither cloud will be blown away by any single model upgrade.
+
+43
+00:06:51.735 --> 00:07:02.510
+To understand how they will eventually be dispelled, we first need to see one thing clearly: models and Agents have never been upstream and downstream of each other; they move forward together.
+
+44
+00:07:02.510 --> 00:07:05.760
+The Co-Evolution of Models and Agents .
+
+45
+00:07:05.760 --> 00:07:25.110
+Look back at the layers of fallback logic in those harnesses—multi-level context compression, retry logic that trips a circuit breaker only after thousands of failures, permission checks that pessimistically default to "unsafe"—and every stretch of seemingly ugly "spaghetti code" records a place where the model is still shaky.
+
+46
+00:07:25.110 --> 00:07:41.735
+When the next generation of models internalizes these constraints, the corresponding code can be deleted; and the reason models can internalize them is precisely that Agents have already stumbled through those pits on the model's behalf in real business, condensing the lessons into signals for the next round of training.
+
+47
+00:07:41.735 --> 00:07:53.097
+Users pose real challenges; the application layer uses harnesses to patch over what the model can't yet do well; those patches in turn become training signals for the model's next iteration.
+
+48
+00:07:53.097 --> 00:07:56.110
+This is a self-reinforcing flywheel.
+
+49
+00:07:56.260 --> 00:08:02.910
+This flywheel also answers the question left hanging in Chapter 1: will models eventually eat the Harness?
+
+50
+00:08:02.860 --> 00:08:06.822
+This book's view is yes—but not all at once.
+
+51
+00:08:06.822 --> 00:08:11.735
+Models will eat it layer by layer, and the process will never be complete.
+
+52
+00:08:11.735 --> 00:08:27.510
+Every capability a model stably internalizes lets the corresponding Harness layer be deleted—Chapter 6's interaction model is one such case: behaviors like interruption and interjection that once had to be assembled with an external harness are now built directly into the model.
+
+53
+00:08:27.510 --> 00:08:30.497
+But this "eating" will never be finished.
+
+54
+00:08:30.497 --> 00:08:35.822
+First, training takes months—the model can wait, but the business cannot.
+
+55
+00:08:35.822 --> 00:08:45.310
+Second, a model cannot internalize every constraint and preference of real business; there is always a newest boundary that needs external logic as a backstop.
+
+56
+00:08:45.310 --> 00:08:53.622
+Third, every generation of models opens a new capability frontier, and the frontier is exactly where the model is least reliable.
+
+57
+00:08:53.622 --> 00:09:00.885
+So the Harness will not disappear; it simply keeps migrating, together with the model, toward each new frontier.
+
+58
+00:09:00.885 --> 00:09:11.360
+This is also how the Bitter Lesson reads in the Agent era: general methods will win in the end—but every stretch of road inside that "in the end" is paved by the Harness.
+
+59
+00:09:11.360 --> 00:09:16.210
+And the flywheel spins fastest in the hands of those who hold both ends.
+
+60
+00:09:16.210 --> 00:09:24.235
+What Anthropic is doing with Claude Code is exactly this: letting its own model and its own harness feed each other and co-evolve.
+
+61
+00:09:24.235 --> 00:09:33.397
+The model knows how the harness will call it; the harness knows where the model's boundaries lie; every change on either end feeds back to the other immediately.
+
+62
+00:09:33.397 --> 00:09:43.260
+In one experiment, changing nothing but the harness—same model—lifted task accuracy from 52.8% to 66.5%.
+
+63
+00:09:43.260 --> 00:09:52.672
+That shows how much leverage the harness has today, but it is also a reminder: the harness has that much leverage precisely because the model hasn't gotten there yet.
+
+64
+00:09:52.672 --> 00:10:05.235
+And for the same reason, this flywheel itself is the deepest moat of this era: the tighter real business, feedback data, and model iteration mesh together, the harder it is for anyone to catch up from the outside.
+
+65
+00:10:05.235 --> 00:10:09.660
+What this means for you depends on which end of the flywheel you stand on.
+
+66
+00:10:09.660 --> 00:10:18.635
+If you're building models, the moat is to get this flywheel spinning—let feedback from real-world scenarios flow back into training as quickly as possible.
+
+67
+00:10:18.635 --> 00:10:34.135
+If you're building applications on top of models, the harness is your sharpest short-term technical lever, but be clear-eyed: each time the model internalizes a layer of constraints, it will—almost in passing—wipe out a batch of advantages built on the harness alone.
+
+68
+00:10:34.135 --> 00:10:48.972
+The truly lasting moats at the application layer usually lie outside technology: exclusive data, solid distribution channels, user trust, network effects, and the physical-world scenarios that require humans and Agents to work together.
+
+69
+00:10:48.972 --> 00:10:55.547
+The prudent play is to use the harness to buy time, and use that time to build barriers beyond technology.
+
+70
+00:10:55.547 --> 00:11:00.160
+So don't fret over whether the framework in your hands will become obsolete.
+
+71
+00:11:00.160 --> 00:11:07.147
+Models iterate every few months; specific APIs, products, and leaderboards will all turn over.
+
+72
+00:11:07.147 --> 00:11:15.510
+But the three questions—what it sees, what it can do, and how to verify it's doing things right—will not become obsolete.
+
+73
+00:11:15.510 --> 00:11:22.635
+They describe not the usage of a particular model, but the fundamental way an intelligent system interacts with the world.
+
+74
+00:11:22.635 --> 00:11:33.822
+Master them, and whatever new capability the next generation of models brings, you'll know where it fits in the formula—and you'll see at a glance how far it still is from blowing those two clouds away.
+
+75
+00:11:33.988 --> 00:11:40.513
+Agent technology is still evolving at full speed; no single book can keep up with every change.
+
+76
+00:11:40.463 --> 00:11:50.413
+But if what this book leaves you with is not the specific usage of some API but the judgment to stay clear-headed amid the waves of technology, then it has fulfilled its mission.
+
+77
+00:11:50.413 --> 00:11:56.525
+All of this book's text, illustrations, and companion experiment code are open source.
+
+78
+00:11:56.525 --> 00:12:03.638
+You're welcome to visit the repository, run the experiments with your own hands, and submit issues and PRs.
+
+79
+00:12:03.638 --> 00:12:12.450
+And the most fascinating thing about Agents is precisely this: they can create new capabilities by writing code, and even improve themselves.
+
+80
+00:12:12.450 --> 00:12:17.075
+Having read this far, you already hold the principles of "creation.
+
+81
+00:12:17.075 --> 00:12:19.613
+Now, go create something.
+

@@ -1,0 +1,2144 @@
+1
+00:00:00,100 --> 00:00:03,937
+Chapter 9: Continual Evolution of Agents.
+
+2
+00:00:03,887 --> 00:00:17,912
+Today’s Agents face a striking capability paradox: they can solve previously unseen complex tasks zero-shot, yet after handling ten thousand similar tasks, they may still repeat tomorrow the mistakes they made on the first day.
+
+3
+00:00:17,912 --> 00:00:23,500
+Once a model is on the job, can it keep getting better at that job the way a new hire does?
+
+4
+00:00:23,500 --> 00:00:39,537
+The ability to learn autonomously from experience—what is now called continual learning—is becoming essential for Agents to progress from “being able to complete tasks” to “being able to work reliably,” and it is also a central research topic for the next generation of models.
+
+5
+00:00:39,537 --> 00:00:56,000
+Today’s notion of “continual learning” is not the same problem as the earlier line of research on “learn a new task and forget the old one”: forgetting is only one sub-problem, and the harder part is that no one tells the model which parts of today’s experience it got right and which it got wrong.
+
+6
+00:00:56,000 --> 00:01:01,175
+For now, models remain far from capable of continual learning on their own.
+
+7
+00:01:01,175 --> 00:01:06,262
+A deployed model does not automatically change its parameters after an inference.
+
+8
+00:01:06,262 --> 00:01:19,962
+The in-context learning, state maintenance, and compression discussed in Chapter 2 allow an Agent to adapt within the current task; once the context ends, however, these changes do not naturally carry over to the next task.
+
+9
+00:01:19,962 --> 00:01:24,775
+Storing conversations in memory is not equivalent to learning new behavior.
+
+10
+00:01:24,775 --> 00:01:34,125
+Raw trajectories may be lengthy and contain effective strategies alongside accidental successes, incorrect attributions, and untrusted inputs.
+
+11
+00:01:34,125 --> 00:01:40,450
+An important distinction is easy to miss here: preserving experience is not the same as learning from it.
+
+12
+00:01:40,450 --> 00:01:59,337
+Placing a hundred trajectories in a long context or vector store may help the model retrieve a case when needed, but it does not automatically compare cases: which steps recur across successful trajectories, which practices work only with an older interface, or whether a success came from a sound strategy rather than environmental chance.
+
+13
+00:01:59,337 --> 00:02:09,387
+Learning occurs only after the system actively evaluates, compares, generalizes, and validates the evidence—not when a log is written to disk.
+
+14
+00:02:09,387 --> 00:02:20,262
+User memory in Chapter 3 primarily captures “what the user and the world are like”; experience learning in this chapter goes further, capturing “what to do under which conditions.
+
+15
+00:02:20,262 --> 00:02:27,075
+The former helps an Agent remember more; the latter helps it become more proficient rather than merely more knowledgeable.
+
+16
+00:02:27,075 --> 00:02:31,425
+Why not let the model train itself directly after every task?
+
+17
+00:02:31,425 --> 00:02:36,000
+Because production environments rarely provide clean learning signals.
+
+18
+00:02:36,000 --> 00:02:45,800
+User satisfaction does not imply compliance; local parameter updates can also cause capability forgetting, policy drift, or safety degradation.
+
+19
+00:02:45,800 --> 00:02:58,350
+If a running model is allowed to modify its own parameters directly based on unverified feedback, erroneous experience and Prompt injection may become entrenched and continue to amplify across later tasks.
+
+20
+00:02:58,350 --> 00:03:11,000
+On the other hand, periodic training of foundation models can improve general capabilities, but it cannot promptly absorb the private rules, tool changes, and local experience encountered daily by each Agent.
+
+21
+00:03:11,000 --> 00:03:38,850
+Therefore, while models themselves cannot yet learn continually and reliably, “learning” must first be constructed as an autonomous system around the model—what this book calls continual evolution, as distinct from continual learning at the level of model weights: record operational evidence, verify outcomes and processes, extract common patterns from multiple trajectories, and then decide whether to update knowledge, instructions, programs, or model parameters.
+
+22
+00:03:38,850 --> 00:03:47,350
+Every modification must first become a candidate version and may alter the next round of operation only after regression testing and safety checks.
+
+23
+00:03:47,500 --> 00:03:53,137
+The preceding chapters have already introduced the principal components required by this system.
+
+24
+00:03:53,087 --> 00:04:10,675
+Chapter 2 addresses within-task state, Chapter 3 provides knowledge infrastructure, Chapter 5 gives Agents the meta-capability to create tools and modify systems, Chapter 7 establishes evaluation and verification, and Chapter 8 explains how to update model parameters.
+
+25
+00:04:10,675 --> 00:04:17,887
+The task of Chapter 9 is to organize these components into the continual evolution loop shown in Figure 9-1.
+
+26
+00:04:17,887 --> 00:04:23,437
+As illustrated in Figure 9-1 Overall loop of continual Agent evolution.
+
+27
+00:04:23,437 --> 00:04:33,087
+Continual evolution must arise from traceable operational experience, change subsequent behavior, and be verified not to cause significant degradation.
+
+28
+00:04:33,087 --> 00:04:49,462
+This chapter first discusses how to determine what exactly went well or wrong in a run; it then compares four update methods and their applicable boundaries; finally, it examines how these updates are verified, released, revised, and retired during long-term operation.
+
+29
+00:04:49,462 --> 00:04:53,362
+Deriving Learning Signals from Operational Trajectories.
+
+30
+00:04:53,362 --> 00:04:58,875
+The starting point of continual evolution is the evaluation described in Chapter 7.
+
+31
+00:04:58,875 --> 00:05:08,625
+If the system does not know whether a task was completed or which step caused success or failure, reflections generated by a language model can only be guesses.
+
+32
+00:05:08,625 --> 00:05:18,237
+Evaluating a trajectory amounts to answering three questions in order: was the task completed, was it completed in an allowed manner, and was the user well served?
+
+33
+00:05:18,237 --> 00:05:23,325
+Figure 9-2 organizes them into a three-layer verification structure.
+
+34
+00:05:23,325 --> 00:05:31,062
+As illustrated in Figure 9-2 Three-layer trajectory verification from environmental outcomes to an LLM Rubric.
+
+35
+00:05:31,062 --> 00:05:36,237
+The bottom-layer outcome verifier answers, “Was the task actually completed?
+
+36
+00:05:36,237 --> 00:05:50,812
+It reads test results, database states, and tool returns: a Coding Agent can run tests, type checks, and performance benchmarks; an Agent processing a refund for a user can query the order status and actual refund amount.
+
+37
+00:05:50,812 --> 00:06:00,475
+Such signals come from real environmental states and are generally more reliable than the model’s descriptions of its own behavior, which makes this the layer to establish first.
+
+38
+00:06:00,475 --> 00:06:05,775
+The middle-layer process verifier answers, “Was it completed in an allowed manner?
+
+39
+00:06:05,775 --> 00:06:20,062
+A correct outcome does not imply a correct process: deleting failing test cases can also make tests pass, and telling a user, “We will issue your refund within seven days; please be patient,” may produce temporary satisfaction.
+
+40
+00:06:20,062 --> 00:06:29,475
+This layer checks business rules, permissions, and action sequences, distinguishing an outcome that has been achieved from one achieved by an allowed path.
+
+41
+00:06:29,475 --> 00:06:37,912
+Policy stores, permission tables, and action traces can all be stated precisely, so this layer too can be judged by code.
+
+42
+00:06:37,912 --> 00:06:42,737
+The upper-layer quality verifier answers, “Was the user well served?
+
+43
+00:06:42,737 --> 00:06:54,850
+Examples include whether customer service was patient, whether it offered compliant alternatives, whether a research report identified the key evidence, and whether the generated text is natural and concise.
+
+44
+00:06:54,850 --> 00:07:01,125
+These dimensions do not decide whether the task was completed, but they do affect the user’s experience.
+
+45
+00:07:01,125 --> 00:07:11,725
+LLM-as-a-Judge, introduced in Chapter 7, can be used here: define a Rubric in advance and require the verifier to score each item and cite trajectory evidence.
+
+46
+00:07:11,725 --> 00:07:41,225
+For a customer-service Agent, Table 9-1 expands the three layers into seven dimensions that can be scored item by item: task outcome belongs to the outcome layer; rule compliance, privacy boundaries, and promise-action consistency belong to the process layer; expression quality and compliant alternatives belong to the quality layer; factual reliability spans two layers, in that whatever can be matched against tool returns is verified by code while the remainder is judged by the Rubric.
+
+47
+00:07:41,225 --> 00:07:46,662
+Table 9-1 Trajectory evaluation dimensions for a customer-service Agent
+
+48
+00:07:46,662 --> 00:07:57,425
+Dimension: Task outcome; Verification question: Was the user’s core request resolved?; Primary evidence: Final environmental state, tool results.
+
+49
+00:07:57,580 --> 00:08:10,605
+Dimension: Rule compliance; Verification question: Were any policies, permissions, or required procedures violated?; Primary evidence: Policy repository, action trajectory.
+
+50
+00:08:10,555 --> 00:08:22,280
+Dimension: Privacy boundaries; Verification question: Was any information disclosed that should not have been provided?; Primary evidence: Response text, data-access records.
+
+51
+00:08:22,280 --> 00:08:33,655
+Dimension: Factual reliability; Verification question: Are statements supported by knowledge or tool results?; Primary evidence: Cited sources, tool returns.
+
+52
+00:08:33,655 --> 00:08:45,692
+Dimension: Promise–action consistency; Verification question: Did the actions claimed as completed actually occur?; Primary evidence: Comparison of responses and tool logs.
+
+53
+00:08:45,692 --> 00:08:58,480
+Dimension: Expression quality; Verification question: Is the language natural and concise, without repetition or templated phrasing?; Primary evidence: Full conversation, language Rubric.
+
+54
+00:08:58,480 --> 00:09:11,905
+Dimension: Compliant alternatives; Verification question: When the original plan was infeasible, was an allowed alternative found?; Primary evidence: User goal, policies, and subsequent actions.
+
+55
+00:09:11,905 --> 00:09:17,167
+The form of the verifier’s output determines whether it can serve as a learning signal.
+
+56
+00:09:17,167 --> 00:09:23,955
+A single overall score reflects only how well one run went; it cannot indicate what should be changed.
+
+57
+00:09:23,955 --> 00:09:41,417
+An evaluation that later stages can learn from must contain at least four elements: whether the task succeeded, partially succeeded, or failed; a separate verdict for each dimension; the evidence location behind each verdict (which conversation turn, which tool call); and a failure-type label.
+
+58
+00:09:41,417 --> 00:09:46,805
+The verifier should also be permitted to decline to score when evidence is insufficient.
+
+59
+00:09:46,805 --> 00:09:53,167
+Rather than hardening a low-confidence verdict into a fact, the case should be excluded from the learning set.
+
+60
+00:09:53,167 --> 00:10:03,042
+Only with these four elements can the four update methods discussed in the next section determine whether to update knowledge, the Prompt, a program, or model parameters.
+
+61
+00:10:03,042 --> 00:10:10,955
+Experiment 9-1 intermediate difficulty, two stars: : Build a Trajectory Verifier for a Customer-Service Agent
+
+62
+00:10:10,955 --> 00:10:24,505
+Objective: Convert a customer-service trajectory into a structured diagnosis that can support subsequent learning, and test whether “multidimensional conclusions with evidence” identify root causes better than a single overall score.
+
+63
+00:10:24,505 --> 00:10:39,655
+Experiment description: Compare “one overall score” with “a conclusion, evidence, and confidence for every dimension,” and observe which better distinguishes task failure, rule violations, false promises, and expression problems.
+
+64
+00:10:39,655 --> 00:10:44,742
+Continual evolution cannot rely only on success rate or one score.
+
+65
+00:10:44,742 --> 00:10:58,442
+Only by retaining what went wrong, why, and where the evidence is can later modules determine whether to update knowledge, the Prompt, a program, or model parameters; low-confidence cases should not enter the learning set automatically.
+
+66
+00:10:58,442 --> 00:11:01,767
+Four Methods for Continual Agent Evolution.
+
+67
+00:11:01,767 --> 00:11:07,417
+Learning signals indicate that an Agent should change, but not where that change should occur.
+
+68
+00:11:07,417 --> 00:11:17,480
+The primary basis for choosing an update method is not how long an experience has persisted, but whether the target capability can be naturally represented by a particular medium.
+
+69
+00:11:17,480 --> 00:11:36,992
+Facts and experience are suited to knowledge documents; strategies that can be clearly expressed in language belong in Prompts or Skills; precisely executable procedures and constraints should be encoded as programs; and high-dimensional capabilities such as perception, language style, and implicit strategies must enter model parameters.
+
+70
+00:11:36,992 --> 00:11:41,755
+Figure 9-3 shows these four methods and their relationships.
+
+71
+00:11:41,755 --> 00:11:47,417
+As illustrated in Figure 9-3 Four update methods for continual evolution.
+
+72
+00:11:47,417 --> 00:11:51,217
+Table 9-2 provides a concise comparison.
+
+73
+00:11:51,217 --> 00:12:04,155
+The four methods are not mutually exclusive: a medical-imaging Agent relies on parameters to identify lesions, uses a knowledge base to provide current guidelines, and employs code to calculate risk indicators.
+
+74
+00:12:04,155 --> 00:12:16,567
+A customer-service model derives its natural tone from post-training, obtains enterprise-specific policies from knowledge and Skills, and relies on server-side code to enforce critical compliance requirements.
+
+75
+00:12:16,732 --> 00:12:22,119
+Table 9-2 Applicable boundaries of four continual evolution methods
+
+76
+00:12:22,069 --> 00:12:40,569
+Update method: Experience knowledge base; Suitable content: Facts, experiential patterns, exceptions, and sources; Primary advantages: Fast updates, traceability, on-demand retrieval; Primary limitations: Depends on retrieval and correct model application.
+
+77
+00:12:40,569 --> 00:13:00,882
+Update method: Prompt and Skill; Suitable content: Decision principles that require interpreting context, exceptions, and priorities, but can still be expressed in natural language; Primary advantages: Interpretable, controllable scope; Primary limitations: Prone to bloat, conflict, or being ignored.
+
+78
+00:13:00,882 --> 00:13:17,794
+Update method: Programs and Harness; Suitable content: Deterministic procedures, tools, and hard constraints; Primary advantages: Testable, stable execution, low cost; Primary limitations: Higher development and maintenance costs.
+
+79
+00:13:17,794 --> 00:13:35,082
+Update method: Model parameters; Suitable content: High-dimensional perception, generation style, and implicit strategies; Primary advantages: Strong generalization, low inference overhead; Primary limitations: High update and regression costs.
+
+80
+00:13:35,082 --> 00:13:50,832
+A single capability can be supported by several parts of the system: facts go into the knowledge base, the principles that explain exceptions go into a Skill, code enforces permissions that must not be bypassed, and high-dimensional recognition is learned through model parameters.
+
+81
+00:13:50,832 --> 00:13:57,907
+Deciding where to make a change produces only an update proposal; it must still pass validation before release.
+
+82
+00:13:57,907 --> 00:14:01,057
+Consolidating Experience into Knowledge.
+
+83
+00:14:01,057 --> 00:14:08,719
+The most lightweight form of evolution is to organize recurring experience from multiple runs into retrievable knowledge documents.
+
+84
+00:14:08,719 --> 00:14:20,157
+The “experience knowledge base” described here shares storage, indexing, and retrieval technologies with Chapter 3, but differs in its knowledge sources and verification objectives.
+
+85
+00:14:20,157 --> 00:14:34,469
+Chapter 3 primarily extracts “what the user and the world are like” from user conversations, documents, and datasets; this chapter extracts “what should be done under which conditions” from Agent action trajectories and outcomes.
+
+86
+00:14:34,469 --> 00:14:50,019
+For example, “This airline requires special meals to be reserved twenty-four hours in advance” is domain knowledge, whereas “Check the special-meal deadline before booking to avoid discovering only after payment that the request cannot be fulfilled” is action experience.
+
+87
+00:14:50,019 --> 00:14:54,207
+Raw trajectories are unsuitable as formal knowledge units.
+
+88
+00:14:54,207 --> 00:15:01,482
+They are lengthy and noisy, containing raw tool output, incidental detours, and environmental details.
+
+89
+00:15:01,482 --> 00:15:19,032
+A more robust system retains three layers of data: immutable raw trajectories for auditing; per-run analyses recording the outcome and candidate lessons; and comparisons, clustering, and induction across multiple similar trajectories to produce future-oriented Markdown knowledge documents.
+
+90
+00:15:19,032 --> 00:15:33,307
+A formal document typically specifies applicable scenarios, recommended strategies, prohibited practices, exceptions, evidence sources, and the latest verification time rather than retelling the complete course of a single task.
+
+91
+00:15:33,460 --> 00:15:38,935
+This design shares the same two-stage principle as User-as-Code in Chapter 3.
+
+92
+00:15:38,885 --> 00:15:46,560
+User-as-Code first appends conversational facts to an immutable log and then periodically rebuilds a structured user model.
+
+93
+00:15:46,560 --> 00:15:52,997
+Experience learning should likewise preserve evidence first and generate mutable knowledge offline afterward.
+
+94
+00:15:52,997 --> 00:15:56,510
+Figure 9-4 illustrates this process.
+
+95
+00:15:56,510 --> 00:16:09,985
+Separating recording from organization prevents a single accidental success or network failure from immediately changing the Agent, while allowing the system to identify common patterns only after observing multiple successes and failures.
+
+96
+00:16:09,985 --> 00:16:16,335
+As illustrated in Figure 9-4 From evaluated trajectories to experience knowledge documents.
+
+97
+00:16:16,335 --> 00:16:20,360
+Experience documents are not simple trajectory summaries.
+
+98
+00:16:20,360 --> 00:16:33,535
+Transferable content emerges from comparison: what successful trajectories of the same type did, what failed trajectories lacked, in which environment versions a strategy was effective, and under which prerequisites it failed.
+
+99
+00:16:33,535 --> 00:16:42,185
+Chapter 3 has already introduced knowledge extraction, clustering, and retrieval, so this chapter does not repeat those algorithms.
+
+100
+00:16:42,185 --> 00:16:51,972
+Instead, it focuses on how trajectory evaluation becomes a condition for extraction and whether the extracted knowledge improves performance on subsequent tasks.
+
+101
+00:16:51,972 --> 00:16:57,072
+A complete knowledge-distillation pipeline can be divided into five steps.
+
+102
+00:16:57,072 --> 00:17:01,860
+First, preserve immutable trajectories and environmental outcomes.
+
+103
+00:17:01,860 --> 00:17:12,047
+Next, produce a structured analysis for each run, listing the task type, required capabilities, observed strategies, errors, and exceptions.
+
+104
+00:17:12,047 --> 00:17:20,160
+Then aggregate runs by task family and build an evidence table showing which trajectories support or contradict each candidate pattern.
+
+105
+00:17:20,160 --> 00:17:24,710
+Only candidates that meet the support threshold enter formal documents.
+
+106
+00:17:24,710 --> 00:17:30,372
+Finally, evaluate transfer on new tasks that were not used during distillation.
+
+107
+00:17:30,372 --> 00:17:41,310
+Keeping formal knowledge separate from candidate analyses allows the system to generalize again without altering the original evidence and to revoke a conclusion precisely when the environment changes.
+
+108
+00:17:41,310 --> 00:17:46,022
+GAIA experience learning provides an intuitive example.
+
+109
+00:17:46,022 --> 00:18:05,022
+GAIA contains multistep problems that combine search, web reading, file processing, and computation, while AWorld provides the environment for running Agents, invoking those tools, and recording trajectories: the former is like the exam, and the latter is the exam room and laboratory record system.
+
+110
+00:18:05,022 --> 00:18:11,772
+A simplistic approach generates a strategy summary and immediately vectorizes it after one successful run.
+
+111
+00:18:11,772 --> 00:18:25,472
+A stricter implementation first uses a GAIA answer verifier or another environmental verifier to label runs as successful, partially successful, or failed, and then compares multiple paths within the same task family.
+
+112
+00:18:25,472 --> 00:18:35,697
+Successful trajectories contribute candidate strategies, failures reveal which approaches to avoid, and partial successes reveal which segment worked and which still failed.
+
+113
+00:18:35,697 --> 00:18:43,522
+The natural-language reflection proposed by Reflexion can help generate candidate lessons, but reflection itself is not evidence.
+
+114
+00:18:43,522 --> 00:18:53,810
+Only content consistent with environmental outcomes, supported across trajectories, and showing positive transfer on new tasks should enter formal experience documents.
+
+115
+00:18:53,810 --> 00:18:56,922
+Encoding Experience as Instructions.
+
+116
+00:18:56,922 --> 00:19:04,435
+An experience knowledge base gives an Agent "material it can consult"; Prompts and Skills prescribe "how it should act.
+
+117
+00:19:04,435 --> 00:19:15,022
+Only when many similar trajectories repeatedly expose the same strategic error, and that error can be stated clearly in words, is it worth promoting experience into an instruction.
+
+118
+00:19:15,022 --> 00:19:28,422
+Three concepts should be kept apart here: the system Prompt applies to every task, a Skill is loaded on demand only when a domain or tool matches, and the program/Harness enforces permissions and other hard constraints.
+
+119
+00:19:28,422 --> 00:19:32,485
+Andrej Karpathy calls this practice System Prompt Learning
+
+120
+00:19:32,644 --> 00:19:37,956
+System prompt learning is not the same thing as the prompt engineering of Chapter 2.
+
+121
+00:19:37,906 --> 00:19:48,131
+Chapter 2 discusses how to organize a good Prompt; this section discusses what feedback is sufficient to trigger a change, and how an update proposal is released safely.
+
+122
+00:19:48,131 --> 00:19:58,019
+A change should be a minimal diff with provenance, not a full rewrite of the Prompt on every pass—precisely the minimal-diff-plus-rollback pattern named in Chapter 1.
+
+123
+00:19:58,019 --> 00:20:08,469
+A candidate version must be tested both on the boundary set that triggered the failure and on a retention set that already works: the former must improve, the latter must not regress.
+
+124
+00:20:08,469 --> 00:20:12,931
+Example 1: Turning the Escalation Boundary into Rules.
+
+125
+00:20:12,931 --> 00:20:27,781
+In the telecom policy of τ²-bench, escalation to a human agent is governed by only two statements of principle: escalate only when the request falls outside the Agent's scope of action, and try your best to resolve the issue before escalating.
+
+126
+00:20:27,781 --> 00:20:46,281
+When Chapter 7 dissected this environment the two lines revealed no problem; run the same environment with a weaker model and the deficiency surfaces at once—after a tool returns an error the Agent retries repeatedly and ends by escalating to a human, which is how 19 of the 20 tasks in the derivation set finished.
+
+127
+00:20:46,281 --> 00:20:58,656
+Hand those 19 failed trajectories to a model and let it induce, on its own, a handful of executable rules to append to the end of the policy; then rerun on a set of tasks that took no part in the derivation.
+
+128
+00:20:58,656 --> 00:21:06,706
+The pass rate rises from 12.3% to 19.3%, and not one task that had passed before is broken.
+
+129
+00:21:06,706 --> 00:21:11,044
+The evidence provided to the model determines which rules it can infer.
+
+130
+00:21:11,044 --> 00:21:34,344
+From the same 19 trajectories, supplying only failure summaries and error text yields "do not keep calling a tool that repeatedly returns the same error"; adding an inventory of which tools belong to the Agent and which to the user turns the result into "network status, SIM card, and APN checks belong to the user's device and should be performed by the user under guidance rather than called directly.
+
+131
+00:21:34,344 --> 00:21:39,819
+The first records a lesson; the second identifies who is responsible for each action.
+
+132
+00:21:39,819 --> 00:21:44,281
+A model treats observed behavior as the behavior that ought to occur.
+
+133
+00:21:44,281 --> 00:22:00,519
+Two of the first-version rules read "escalate to a human after three consecutive failed calls" and "escalate to a human if the user does not supply a number after two requests"—escalation is what appears most often in the trajectories, so the model took it for a reasonable fallback.
+
+134
+00:22:00,519 --> 00:22:08,019
+But in this evaluation escalation always counts as failure, so those two rules write failure into the specification.
+
+135
+00:22:08,019 --> 00:22:15,431
+Derived artifacts therefore cannot be released directly; they must pass verification independent of whatever produced them.
+
+136
+00:22:15,431 --> 00:22:19,331
+The underlying defects are often surprisingly simple.
+
+137
+00:22:19,331 --> 00:22:32,881
+In one typical baseline trajectory, the Agent needs the user's phone number, so it calls the lookup tool with "Please provide your phone number" filled into the parameter—five times in a row, five errors, then escalation.
+
+138
+00:22:32,881 --> 00:22:38,631
+It had already worked out that it should ask the user; it merely addressed the sentence to the tool.
+
+139
+00:22:38,631 --> 00:22:45,931
+Once the rules took effect, it first asked the user in the conversation, obtained the number, and then ran the query.
+
+140
+00:22:45,931 --> 00:22:55,144
+Later, when a tool rejected its attempt to check SIM card status, it switched to guiding the user through reseating the SIM card, and the task passed.
+
+141
+00:22:55,144 --> 00:23:04,894
+Experiment 9-2 intermediate difficulty, two stars: : Deriving Escalation and Tool-Use Rules from τ²-bench Failure Trajectories
+
+142
+00:23:04,894 --> 00:23:09,869
+Reuse the τ²-bench telecom environment from Chapter 7.
+
+143
+00:23:09,869 --> 00:23:19,756
+The derivation set and the transfer set are two disjoint task sets in the upstream repository to begin with, so the derivation process never touches the transfer set.
+
+144
+00:23:19,756 --> 00:23:34,881
+First run the derivation set with a weak model and keep the failed trajectories; have the rules induced by a model rather than written by hand, and append them to the end of the original policy; then compare the original policy against the two evolved versions on the transfer set.
+
+145
+00:23:34,881 --> 00:23:41,019
+Only the policy file differs across the three arms; the user simulator is held fixed.
+
+146
+00:23:41,188 --> 00:23:55,200
+Besides the pass rate, record three behavioral metrics that correspond directly to the rules: the escalation rate, the number of times the Agent oversteps and calls a user-side tool, and the number of calls issued with a missing parameter.
+
+147
+00:23:55,150 --> 00:24:04,300
+Both of the latter fall by roughly 80% in the evolved versions, which shows that the gain in pass rate comes from rules repairing specific actions.
+
+148
+00:24:04,300 --> 00:24:07,700
+The same approach transfers to other domains.
+
+149
+00:24:07,700 --> 00:24:24,713
+A typical bad case for an airline customer-service Agent is this: the user objects to a refund fee, a change fee, or a baggage policy, and the Agent calls transfer_to_human without looking up the policy, explaining the rule, or seeking a compliant alternative.
+
+150
+00:24:24,713 --> 00:24:34,825
+An ordinary policy dispute needs no escalation; only an explicit request for a human, or a situation involving safety, makes escalation mandatory.
+
+151
+00:24:34,825 --> 00:24:44,388
+The diagnosis again points to an escalation boundary that was never made explicit, and the fix is again to turn it into a single minimal rule with a recorded source.
+
+152
+00:24:44,388 --> 00:24:53,400
+Experiment 9-3 intermediate difficulty, two stars: : Optimizing an Airline Customer-Service System Prompt from Failure Trajectories
+
+153
+00:24:53,400 --> 00:25:06,963
+Objective: Have the airline customer-service Agent fix its habit of escalating to a human too early in ordinary policy disputes, while retaining the ability to transfer on an explicit request for a human and on safety incidents.
+
+154
+00:25:06,963 --> 00:25:23,463
+Description: Extract three dimensions from the failure trajectories—rule compliance, task resolution, and compliant workarounds—and generate one minimal Prompt patch with provenance; then compare it against the initial version and a hand-tuned version under identical conditions.
+
+155
+00:25:23,463 --> 00:25:32,613
+An update proposal enters staged rollout only after the boundary cases improve, the old tasks do not regress, and the release gate is passed.
+
+156
+00:25:32,613 --> 00:25:45,538
+What it shows: The point of automatic Prompt optimization is not to let the model freely rewrite a large block of text, but to turn an attributable failure into a local rule with a clear scope that can be rolled back and verified.
+
+157
+00:25:45,538 --> 00:25:52,288
+Example 2: Requirement Clarification Skill—From Direct Execution to Confirm First.
+
+158
+00:25:52,288 --> 00:25:55,450
+Chapter 2 explained how to write a Skill.
+
+159
+00:25:55,450 --> 00:26:12,638
+Here we assume the system already has a first version of a requirement-clarification Skill, and focus on something else: as the Agent keeps receiving user feedback in production, how does it decide automatically whether "when to ask first, what to ask, and when to simply begin" needs updating?
+
+160
+00:26:12,638 --> 00:26:15,563
+This is a classic procedural problem.
+
+161
+00:26:15,563 --> 00:26:20,400
+A user says "change the login page to support enterprise sign-in.
+
+162
+00:26:20,400 --> 00:26:33,313
+If the Agent starts immediately, it may make choices on the user's behalf—identity provider, fallback path, compatibility with existing users, rollout scope—that the user has not yet considered.
+
+163
+00:26:33,313 --> 00:26:40,050
+If it instead lists a dozen questions regardless of task size, a simple change turns into an interview.
+
+164
+00:26:40,050 --> 00:26:45,125
+Asking too little causes rework; asking too much causes interruption.
+
+165
+00:26:45,125 --> 00:26:51,588
+What the Skill needs to express is not "every task must be confirmed" but a scoped decision path.
+
+166
+00:26:51,588 --> 00:27:23,600
+A first version of the procedure might read: judge the task's ambiguity, risk, and cost of rework; for low-risk, easily reversible small changes, state the assumptions and proceed; when architecture, data, permissions, public interfaces, or wide-reaching changes are involved, ask a small number of questions that would genuinely change the plan; once answered, produce a short Spec or Plan listing goals, non-goals, key trade-offs, assumptions, and acceptance criteria, and hand it to the user for
+
+167
+00:27:23,600 --> 00:27:31,075
+confirmation; execute after confirmation, and pause to re-confirm whenever the original Spec turns out not to hold.
+
+168
+00:27:31,228 --> 00:27:35,128
+Continual evolution starts from operational evidence.
+
+169
+00:27:35,078 --> 00:27:44,828
+The system should record tasks, clarifying questions, Spec versions, user edits, execution results, and post-delivery rework together.
+
+170
+00:27:44,828 --> 00:28:02,440
+Negative feedback may be "this isn't what I imagined," but it may equally be "you asked too many questions"; positive feedback includes a smooth delivery after a single confirmation, less rework after the user amended the Spec, and low-risk tasks that were not interrupted by superfluous questions.
+
+171
+00:28:02,440 --> 00:28:11,240
+Storing an isolated complaint is not enough to trigger an update: feedback must be tied to a specific trajectory, task type, and outcome.
+
+172
+00:28:11,240 --> 00:28:17,603
+When many trajectories repeatedly reveal the same gap, the Agent can propose a minimal Skill update.
+
+173
+00:28:17,603 --> 00:28:32,490
+For instance, if several authentication changes revealed only after delivery that legacy sign-in still needed to work, a draft rule can require confirming "identity provider, fallback path, and compatibility scope" before execution.
+
+174
+00:28:32,490 --> 00:28:43,103
+Conversely, if a large number of typo fixes were each preceded by a round of questions, the draft rule should narrow the trigger to high-risk and highly ambiguous cases.
+
+175
+00:28:43,103 --> 00:28:47,103
+This procedure must be validated by controlled experiment.
+
+176
+00:28:47,103 --> 00:28:59,990
+One can compare three strategies—"execute directly," "ask first, then execute," and "ask, produce a Spec, confirm, then execute"—stratified by task complexity.
+
+177
+00:28:59,990 --> 00:29:15,290
+The metrics should include at least requirement-deviation rate, post-delivery rework count, number of clarification rounds, time to first useful output, user abandonment rate, the proportion of Specs that were edited, and the error rate on high-risk operations.
+
+178
+00:29:15,290 --> 00:29:26,553
+An update proposal reaches staged rollout only if it reduces requirement deviation without significantly increasing interruption, and passes regression on tasks that were not used to distill it.
+
+179
+00:29:26,553 --> 00:29:31,365
+This example also illustrates the boundary between Skill and Harness.
+
+180
+00:29:31,365 --> 00:29:45,915
+The Skill understands context and takes the initiative to ask questions, assemble the Spec, and explain trade-offs; the Harness vetoes high-risk writes, direct operations on main, or bypassing the release process when confirmation is missing.
+
+181
+00:29:45,915 --> 00:29:54,153
+A veto gate in the Harness cannot decide for the model how a PR should be described, nor choose the requirement design on its behalf.
+
+182
+00:29:54,153 --> 00:30:02,878
+As experience accumulates, stable conversational trajectories can further yield the SFT or RL training data needed in Chapter 8.
+
+183
+00:30:03,028 --> 00:30:12,465
+Experiment 9-4 intermediate difficulty, two stars: : Evolving a Requirement-Clarification and Spec-Confirmation Skill from User Feedback
+
+184
+00:30:12,415 --> 00:30:23,965
+Objective: Test whether the Agent can find a better clarification strategy between "requirement deviation" and "interaction interruption," and write verified improvements back into the Skill.
+
+185
+00:30:23,965 --> 00:30:41,378
+Description: Prepare one set of low-risk, low-ambiguity tasks and one set of high-risk tasks involving architecture, permissions, data, or public interfaces, and compare three procedures: execute directly, ask then execute, and ask then confirm a Spec.
+
+186
+00:30:41,378 --> 00:30:57,228
+Record user answers, Spec edits, delivery outcomes, and rework feedback, and let the Agent generate a Skill update proposal; the proposal must pass regression on held-out tasks, an interruption-cost check, and validation of the high-risk veto gate.
+
+187
+00:30:57,228 --> 00:31:11,028
+What it shows: Continual evolution is not appending every complaint to the Prompt, but identifying the scope from outcomes and feedback, proposing a minimal instruction update, and letting an independent evaluator decide whether to release it.
+
+188
+00:31:11,028 --> 00:31:13,990
+Encoding Experience as Programs.
+
+189
+00:31:13,990 --> 00:31:24,415
+When experience describes operations that are stable, repetitive, and verifiable, it is inefficient to have the model reread documentation and reason through them each time.
+
+190
+00:31:24,415 --> 00:31:34,965
+A more appropriate approach is to compile the experience into workflows, tools, or Harness code, turning a one-time exploration into a repeatedly executable program.
+
+191
+00:31:34,965 --> 00:31:49,415
+Chapter 5 explained how Coding Agents read and write files, run tests, and generate systems; this section focuses not on general code generation, but on how an Agent modifies future versions of itself based on its own trajectories.
+
+192
+00:31:49,415 --> 00:31:53,778
+The modifiable objects extend far beyond new tools.
+
+193
+00:31:53,778 --> 00:32:02,965
+At the operation layer, browser trajectories can be compiled into parameterized workflows, or adapters can be generated for changing APIs.
+
+194
+00:32:02,965 --> 00:32:11,203
+At the control layer, tool routing, retries, circuit breakers, and context compression strategies can be modified.
+
+195
+00:32:11,203 --> 00:32:19,915
+At the validation layer, parameter checks, state validators, and regression tests can be added in response to production failures.
+
+196
+00:32:19,915 --> 00:32:27,690
+At the architecture layer, a Reviewer Agent can be added or the information flow between planning and execution can be changed.
+
+197
+00:32:27,690 --> 00:32:32,278
+Browser workflows illustrate the value of programmatic experience.
+
+198
+00:32:32,278 --> 00:32:35,928
+They are analogous to recording a spreadsheet macro.
+
+199
+00:32:35,928 --> 00:32:46,865
+The first time an email is sent, a multimodal Agent uses an observe–reason–act loop to find the compose, recipient, subject, body, and send controls.
+
+200
+00:32:46,865 --> 00:32:58,103
+For another email, the process is unchanged; only the recipient and content differ, so there is no need to call the model again to rediscover the entire path from pixels and the DOM.
+
+201
+00:32:58,103 --> 00:33:06,840
+The system compiles the first exploratory trajectory into a small program containing parameters, state checks, and version information.
+
+202
+00:33:06,840 --> 00:33:14,153
+In the browser setting, the knowledge-distillation process shown in Figure 9-4 becomes a more concrete lifecycle:
+
+203
+00:33:14,153 --> 00:33:30,828
+Capture the trajectory: Record navigation, clicks, text entry, and drop-down selection, together with action parameters, the current URL, and element-locator evidence such as XPath, CSS, id, role, aria-label, and data-testid.
+
+204
+00:33:30,828 --> 00:33:36,928
+Locator evidence only helps find an element again; it does not prove that the task was completed.
+
+205
+00:33:36,928 --> 00:33:52,678
+Parameterize: Replace literals from the first run with template variables—for example, convert test@example.com, the subject, and the body into {recipient}, {subject}, and {content}—while leaving stable actions unchanged.
+
+206
+00:33:52,678 --> 00:34:02,290
+The teaching implementation uses regular expressions and template replacement; a production system may use structured task input or a constrained extraction model.
+
+207
+00:34:02,452 --> 00:34:13,252
+Define state checks: Add checks before and after actions, such as “the send button is visible” and “the URL after navigation belongs to the target site.
+
+208
+00:34:13,202 --> 00:34:23,189
+Add a final-state check for the workflow as a whole, such as “the sent-mail list contains the new message” or “the test page’s state value changed as expected.
+
+209
+00:34:23,189 --> 00:34:31,914
+Successfully executing an action is not the same as successfully completing the task; the final check must read the real page or backend state.
+
+210
+00:34:31,914 --> 00:34:36,752
+Validate the candidate: A first success produces only a candidate.
+
+211
+00:34:36,752 --> 00:34:44,027
+The system must reset the sandbox account or test site to an independent initial state and replay the candidate in full.
+
+212
+00:34:44,027 --> 00:34:50,889
+It can be published as validated only if all before-action, after-action, and final-state checks pass.
+
+213
+00:34:50,889 --> 00:35:03,327
+If a side-effecting task such as sending mail or placing an order has no safe reset callback, the workflow may be retained as an auditable candidate but must not be validated by repeating the action in a production account.
+
+214
+00:35:03,327 --> 00:35:15,477
+Match and replay: When a new task arrives, search the formal capability library for a workflow by intent and keywords, extract the current parameters, and execute it directly with Playwright.
+
+215
+00:35:15,477 --> 00:35:23,964
+Replay requires no step-by-step LLM calls, but it must still wait for elements to become available and complete every state check.
+
+216
+00:35:23,964 --> 00:35:42,452
+Invalidate and relearn: If the target element cannot be found, a state check fails, the API Schema changes, or the final state is wrong, stop subsequent actions immediately, move the old version from the searchable library to the invalid area, and fall back to the full Agent for fresh exploration.
+
+217
+00:35:42,452 --> 00:35:48,377
+Retain the old file for audit and comparison, but never let it continue to match silently.
+
+218
+00:35:48,377 --> 00:36:07,952
+For an email workflow, the compiled result is not merely “click these buttons in order,” but a small program parameterized by recipient, subject, and body: it checks the compose window and fields before sending, checks the success indicator afterward, and finally confirms that the corresponding message appears in the sent list.
+
+219
+00:36:07,952 --> 00:36:18,952
+In PreAct, such programs delivered an 8.5–13× end-to-end speedup on repeated tasks and required no step-by-step language-model calls during replay.
+
+220
+00:36:18,952 --> 00:36:27,664
+More importantly, process memory needs before-action validation, after-action validation, and independent pre-storage validation.
+
+221
+00:36:27,664 --> 00:36:39,014
+Otherwise, the system can produce a dangerous illusion: replay coverage is 100 percent and every button was clicked, yet one field was empty and the task was never actually completed.
+
+222
+00:36:39,014 --> 00:36:47,052
+Experiment 9-5 advanced difficulty, three stars: : Generating Verifiable Workflows from Browser Trajectories
+
+223
+00:36:47,052 --> 00:37:00,089
+Objective: Determine whether a web Agent can turn one expensive exploration into a reusable workflow and reject an incorrect replay when the page changes, rather than reporting success merely because every action ran.
+
+224
+00:37:00,089 --> 00:37:11,677
+Four-stage scenario: In the first stage, run “send a message with the subject ‘Test Email’ to test@example.com” on a test mail site or simulated messaging page.
+
+225
+00:37:11,677 --> 00:37:19,327
+The full Agent explores, while a wrapper captures actions, parameters, and page states and produces a candidate.
+
+226
+00:37:19,327 --> 00:37:33,877
+In the second stage, call validation_reset to restore the sandbox and independently replay the entire workflow; the candidate enters the formal capability library only if all before-action, after-action, and final-state checks pass.
+
+227
+00:37:33,877 --> 00:37:40,627
+In the third stage, perform the same kind of task with a different recipient, subject, and body.
+
+228
+00:37:40,627 --> 00:37:49,677
+The system should match the validated workflow, fill the new parameters, and replay it through Playwright without entering the step-by-step LLM loop.
+
+229
+00:37:49,677 --> 00:38:01,139
+In the fourth stage, change a button locator, page text, or final state and verify that the old workflow immediately becomes invalid and returns fallback_required=True.
+
+230
+00:38:01,300 --> 00:38:10,050
+Control design: A simplified baseline records only whether clicks, text entry, and other actions complete without exceptions.
+
+231
+00:38:10,000 --> 00:38:18,087
+The experimental condition also validates the page before each action, the page after each action, and the final task state.
+
+232
+00:38:18,087 --> 00:38:22,350
+Both conditions use the same trajectories and page changes.
+
+233
+00:38:22,350 --> 00:38:31,787
+Compare their false-positive rates on cases such as “the send button was clicked while a field was empty” and “Save was clicked but the data was not persisted.
+
+234
+00:38:31,787 --> 00:38:46,575
+Metrics and acceptance: Record end-to-end time for initial exploration and replay, number of LLM calls, success rate, false-success rate, workflow match rate, page-change detection rate, and number of fallbacks to relearning.
+
+235
+00:38:46,575 --> 00:39:02,412
+Without a reset callback, a workflow must remain a candidate; a version that fails validation must not be retrievable; parameterized replay must not reuse the first run’s recipient or content; and after a page change, dangerous subsequent actions must stop.
+
+236
+00:39:02,412 --> 00:39:06,875
+Acceleration matters only if all these conditions are satisfied.
+
+237
+00:39:06,875 --> 00:39:17,637
+The accompanying implementation is available at browser-use-rpa, which provides both a deterministic state-machine demonstration and an execution path that invokes a real browser Agent.
+
+238
+00:39:17,637 --> 00:39:23,787
+An Agent modifying its own code does not mean that the running process directly overwrites itself.
+
+239
+00:39:23,787 --> 00:39:42,700
+A production system should create a candidate branch from the current stable version, have a Coding Agent generate a minimal patch, and then sequentially run static checks, unit tests, security scans, failure-trajectory replay, and regression tests on old tasks before producing a new version eligible for canary deployment.
+
+240
+00:39:42,700 --> 00:40:01,050
+This turns “self-modification” into an auditable software release process and defines the boundary between Chapters 9 and 5: Chapter 5 provides the capability to modify systems, while this chapter provides a method for self-modification that is triggered by experience and constrained by a validation loop.
+
+241
+00:40:01,050 --> 00:40:07,287
+Git worktrees and pull requests provide a concrete example of this software development process.
+
+242
+00:40:07,287 --> 00:40:22,625
+A Skill should guide the Agent to create a separate worktree for the task, confirm the requirements and Spec, complete implementation and testing, make meaningful commits, and explain the background, approach, test results, and remaining risks in a pull request.
+
+243
+00:40:22,625 --> 00:40:26,087
+The Harness does not make these judgments for the model.
+
+244
+00:40:26,087 --> 00:40:34,387
+Before the Agent finishes, however, it can check whether the Agent committed directly to main or skipped the worktree or pull request.
+
+245
+00:40:34,387 --> 00:40:41,050
+If the workflow violates these boundaries, the Harness blocks completion and requires the Agent to correct it.
+
+246
+00:40:41,050 --> 00:40:45,200
+Making the patch small is not enough for reliable attribution.
+
+247
+00:40:45,200 --> 00:41:01,575
+Each modification request should also be a falsifiable change contract that records the failure evidence, inferred root cause, responsible Harness component, candidate change, behavior expected to improve, existing behavior that may regress, and tests for both.
+
+248
+00:41:01,575 --> 00:41:24,362
+Agentic Harness Engineering describes this in terms of component-, experience-, and decision-level observability: every editable component has a file-level representation; large collections of trajectories are distilled into evidence that can be inspected at increasing levels of detail; and every edit declares an impact prediction before execution, which the next round of results then tests.
+
+249
+00:41:24,362 --> 00:41:30,762
+A higher score can then be connected to a specific mechanism rather than remaining an uninterpretable trial.
+
+250
+00:41:30,762 --> 00:41:34,975
+The candidate generator should not receive only failed cases.
+
+251
+00:41:34,975 --> 00:41:42,362
+Self-Harness also supplies successful behavior that must be preserved and records of previously rejected modifications.
+
+252
+00:41:42,362 --> 00:41:50,425
+The former tells the Agent what the repair must not break; the latter prevents it from resubmitting the same failed idea in different words.
+
+253
+00:41:50,425 --> 00:42:02,362
+Failure evidence, success constraints, and prior attempts together define a bounded candidate space and are more useful than indiscriminately loading all source code and raw logs into the modifying Agent.
+
+254
+00:42:02,524 --> 00:42:05,836
+Tool creation follows the same protocol.
+
+255
+00:42:05,786 --> 00:42:17,761
+Alita presents a case in which an Agent must identify the number mentioned immediately after dinosaurs first appear in a YouTube 360 VR video narrated by the voice actor for Gollum in The Lord of the Rings.
+
+256
+00:42:17,761 --> 00:42:32,649
+After recognizing that it lacks subtitle-reading capability, the Agent finds and tests youtube-transcript-api, wraps it as a new subtitle tool, and extracts the answer 100000000 from the transcript.
+
+257
+00:42:32,649 --> 00:42:41,174
+A new tool enters the capability library only after safety scanning, functional tests, and successful reuse on later tasks.
+
+258
+00:42:41,174 --> 00:42:55,486
+Chapter 4’s proactive tool discovery asks which existing tool fits; Chapter 5 asks how to write a tool; this chapter asks what operational evidence should trigger creation and how a new tool becomes a validated long-term capability.
+
+259
+00:42:55,486 --> 00:43:03,586
+Experiment 9-6 advanced difficulty, three stars: : Triggering Agent Self-Modification from Failure Trajectories
+
+260
+00:43:03,586 --> 00:43:20,686
+Objective: Given multiple trajectories in which tool calls are repeatedly retried after returning errors marked retryable=false, determine whether the system can locate the root cause in retry and circuit-breaker code and produce a candidate fix without breaking recovery from transient failures.
+
+261
+00:43:20,686 --> 00:43:26,674
+Procedure: The diagnosis module first aggregates the same fault across different tasks.
+
+262
+00:43:26,674 --> 00:43:36,099
+It creates a modification request only after the cross-trajectory support threshold is met and targets retry_policy.py in the stable version.
+
+263
+00:43:36,099 --> 00:43:46,461
+The candidate generator reads the failure diagnosis, the transient-failure recovery behavior that must be preserved, previously rejected changes, and the stable source.
+
+264
+00:43:46,461 --> 00:43:54,874
+Before emitting a minimal code diff, it predicts that calls after non-retryable errors should fall while transient-timeout recovery should not.
+
+265
+00:43:54,874 --> 00:44:02,949
+Whether the generator is deterministic or a real LLM Coding Agent, it may write only to an isolated candidate directory.
+
+266
+00:44:02,949 --> 00:44:18,124
+The validation Harness then compiles the candidate, replays the original failure trajectories, verifies that a non-retryable error stops immediately and opens the circuit breaker, and retests that transient timeouts still retry according to the original threshold.
+
+267
+00:44:18,124 --> 00:44:33,024
+Diagnostic control and metrics: Treat “add one sentence to the Prompt telling the Agent not to repeat the call” as a conceptual example of choosing the wrong modification layer, demonstrating why a deterministically enforceable retry constraint belongs in code.
+
+268
+00:44:33,024 --> 00:44:39,699
+The executable experiment compares deterministic and LLM patch generators under the same release gate.
+
+269
+00:44:39,699 --> 00:44:50,136
+Record the number of calls after non-retryable errors, transient-error recovery rate, regressions on old tasks, patch size, and candidate acceptance rate.
+
+270
+00:44:50,136 --> 00:44:56,499
+Acceptance criteria: Passing every check produces only release_to_canary.
+
+271
+00:44:56,499 --> 00:45:03,524
+Failure of any static check, failure replay, or old-task regression returns reject_candidate.
+
+272
+00:45:03,524 --> 00:45:19,899
+release_manifest.json must record the failure cluster, source trajectories, inferred root cause, target component and file, code diff, expected repair, possible regressions, check results, candidate version, and rollback version.
+
+273
+00:45:19,899 --> 00:45:25,074
+Rejected candidates must retain their failure reasons for the next generation round.
+
+274
+00:45:25,074 --> 00:45:33,611
+The patch-generating Agent must not modify stable code, validators, audit logs, or the gate that approves its own release.
+
+275
+00:45:33,611 --> 00:45:38,261
+The accompanying implementation is available at self-modifying-agent.
+
+276
+00:45:38,261 --> 00:45:46,649
+It supports either a deterministic candidate generator or a real LLM Coding Agent, with both paths sharing the same release gate.
+
+277
+00:45:46,804 --> 00:45:51,991
+Experiment 9-7 applies the same protocol to the verification layer.
+
+278
+00:45:51,941 --> 00:46:02,916
+Only repeated user corrections, downvotes, and audits pointing to an unconfirmed high-risk operation create a change request; the candidate is written to an isolated directory.
+
+279
+00:46:02,916 --> 00:46:12,116
+Classify dangerous deletions and git push --force from tool names and arguments, and bind a one-time confirmation token to the concrete operation.
+
+280
+00:46:12,116 --> 00:46:22,329
+A candidate must pass AST/static checks, boundary replay (including forged and reused tokens), and holdout replay before canary release.
+
+281
+00:46:22,329 --> 00:46:30,866
+Experiment 9-7 intermediate difficulty, two stars: : A User-Feedback-Triggered Confirmation Gate for High-Risk Operations
+
+282
+00:46:30,866 --> 00:46:41,504
+Objective: Test whether the system can discover gaps in safety workflows from user corrections and post-hoc audits, and generate confirmation gates for high-risk tool calls.
+
+283
+00:46:41,504 --> 00:46:50,216
+Description: Evaluate proposed confirmation gates against both a dangerous-operation boundary set and a normal-operation preservation set.
+
+284
+00:46:50,216 --> 00:47:01,504
+The proposal must block unconfirmed high-risk invocations without impeding normal tasks; the Agent generating the proposal has no authority to modify safety tests or approval rules.
+
+285
+00:47:01,504 --> 00:47:07,991
+What the Experiment Shows: Safety evolution cannot rely on self-certification by the modifier.
+
+286
+00:47:07,991 --> 00:47:19,829
+That an update proposal generated by a real model may be rejected by the safety gate demonstrates that independent verifiers and immutable roots of trust are far more important than a "plausible-looking proposal.
+
+287
+00:47:19,829 --> 00:47:25,016
+Case: DeepSeek Harness—Self-Evolution Where Everything Is a Plugin.
+
+288
+00:47:25,016 --> 00:47:32,791
+Chapter 1's comparison table classifies DeepSeek Harness (dsh) as an “Agent self-evolution framework”.
+
+289
+00:47:32,791 --> 00:47:45,191
+Its foundation paper, Cordis, observes that conventional composition is static: function calls, module imports, and class inheritance are fixed at compile time and do not change at runtime.
+
+290
+00:47:45,191 --> 00:47:54,341
+Plugin systems and self-evolving Harnesses instead require dynamic composition, with components loaded, unloaded, and reconfigured while running.
+
+291
+00:47:54,341 --> 00:47:59,904
+Every Agent self-modification is, in essence, a dynamic composition.
+
+292
+00:47:59,904 --> 00:48:04,779
+The paper separates dynamic composition into two orthogonal dimensions.
+
+293
+00:48:04,779 --> 00:48:18,341
+Temporal composability asks whether all changes a component made to the shared environment can be undone completely and safely when it is removed; the runtime must track every resource allocation, event registration, and state change.
+
+294
+00:48:18,341 --> 00:48:29,791
+Spatial composability asks whether components can declare, discover, and resolve dependencies in a structured, verifiable way and coordinate their lifecycles when those dependencies change.
+
+295
+00:48:29,791 --> 00:48:34,479
+The former concerns what changed; the latter, what is depended on.
+
+296
+00:48:34,479 --> 00:48:38,554
+A self-evolving Harness is the sharpest version of this problem.
+
+297
+00:48:38,554 --> 00:48:46,904
+The side effects to undo are long-lived and stateful, while dependencies can appear, disappear, or change identity at runtime.
+
+298
+00:48:46,904 --> 00:48:57,354
+Without temporal composability, every self-modification requires a full restart, discarding accumulated in-process state and repeatedly interrupting active tasks.
+
+299
+00:48:57,354 --> 00:49:08,266
+Without spatial composability, each module must improvise its own detection of dependency changes, and a simple code replacement can silently break dependents or introduce a cycle.
+
+300
+00:49:08,266 --> 00:49:13,604
+Cordis lifts two concepts normally confined to compile time into the runtime.
+
+301
+00:49:13,604 --> 00:49:28,104
+Effect systems, originally used to reason about how computation changes its environment, become reversible effects: every context transformation carries an explicit inverse tracked by the runtime, so removing a component restores the context.
+
+302
+00:49:28,104 --> 00:49:44,716
+Coeffect systems, originally used to reason about what a computation requires from its environment, become reactive coeffects: a component declares its dependencies as a specification, and every context change tells it whether to activate, deactivate, or remain unaffected.
+
+303
+00:49:44,716 --> 00:49:53,341
+A dynamic-composition calculus extends this property from one component to interleaved component systems—composability must be transitive.
+
+304
+00:49:53,500 --> 00:50:00,987
+The ceiling of self-evolution depends not on how well the model writes code, but on how composable its host system is.
+
+305
+00:50:00,937 --> 00:50:12,125
+That is why dsh makes model adapters, tool registries, session logs, and even the Agent's main loop plugins: there is no privileged kernel maintainable only by humans.
+
+306
+00:50:12,125 --> 00:50:18,962
+Composability answers whether a component can be installed and removed safely, not whether it should be installed.
+
+307
+00:50:18,962 --> 00:50:24,062
+Model-written plugins live only in process memory and disappear on restart.
+
+308
+00:50:24,062 --> 00:50:32,450
+They cannot be promoted automatically to official plugins; persistence requires the slower worktree-plus-Pull-Request route described earlier.
+
+309
+00:50:32,450 --> 00:50:35,200
+Evolution also has a cost.
+
+310
+00:50:35,200 --> 00:50:40,250
+A runtime plugin changes the tools and Prompt fragments visible to the model.
+
+311
+00:50:40,250 --> 00:50:47,500
+Once the request prefix changes, the KV Cache discussed in Chapter 2 is invalid from that point onward.
+
+312
+00:50:47,500 --> 00:50:54,312
+A dsh plugin's documentation therefore needs to describe its impact on context and KV Cache.
+
+313
+00:50:54,312 --> 00:50:57,337
+Encoding Experience in Parameters.
+
+314
+00:50:57,337 --> 00:51:08,400
+Knowledge, instructions, and programs all rest on one premise: the target capability can be adequately represented outside the model through text, rules, or code.
+
+315
+00:51:08,400 --> 00:51:21,612
+Yet capabilities such as medical-image understanding, natural speech prosody, removing a formulaic “AI feel” from text, and long-horizon planning are difficult to compress into a few rules or workflows.
+
+316
+00:51:21,612 --> 00:51:27,150
+Such capabilities must be learned through post-training and encoded in model parameters.
+
+317
+00:51:27,150 --> 00:51:42,700
+Deciding where curly quotation marks should be used falls between these approaches: code can parse document syntax boundaries, a Skill can express context and exceptions, and post-training can internalize the ability to recognize the relevant patterns across tasks.
+
+318
+00:51:42,700 --> 00:51:49,675
+Whether a capability should be parameterized is not determined solely by whether the task is stable over the long term.
+
+319
+00:51:49,675 --> 00:52:01,162
+Domain shifts caused by new imaging equipment may still require LoRA or continual fine-tuning; rapidly changing linguistic styles can also be accommodated through periodic preference training.
+
+320
+00:52:01,162 --> 00:52:09,025
+Stability affects update frequency and cost, but the representational nature of the capability determines its primary medium.
+
+321
+00:52:09,025 --> 00:52:19,237
+Conversely, a long-stable rule for approving transfers should not rely solely on parametric memory; server-side code must still provide deterministic guarantees.
+
+322
+00:52:19,237 --> 00:52:27,000
+Chapter 8 provided a complete discussion of SFT, distillation, and RL, so this section does not repeat it.
+
+323
+00:52:27,000 --> 00:52:43,487
+For continual evolution, the key is to transform evaluated production trajectories into training data: high-quality demonstrations can be used for SFT, explicit preferences can form paired data, and interactions with reliable environmental rewards can be used for RL.
+
+324
+00:52:43,487 --> 00:52:52,037
+Before training, private information must still be removed, erroneous trajectories filtered out, and an independent regression set retained.
+
+325
+00:52:52,037 --> 00:52:58,325
+After training, the system must check whether general capabilities or safety alignment have been forgotten.
+
+326
+00:52:58,325 --> 00:53:02,362
+From Updating Artifacts to Updating the “Update Method”.
+
+327
+00:53:02,362 --> 00:53:16,362
+The preceding four methods ask where experience is written, but continual evolution has another, orthogonal axis: is the system optimizing the contents of an artifact, or the method used to produce, manage, and validate artifacts?
+
+328
+00:53:16,362 --> 00:53:27,350
+Along this axis, the optimization target can expand from an individual rule or memory → structured context → workflow → Harness code → optimizer code that generates candidate solutions.
+
+329
+00:53:27,350 --> 00:53:34,987
+These are five levels at which the system can search for improvements, rather than five additional ways to store experience.
+
+330
+00:53:34,987 --> 00:53:40,712
+Knowledge, Prompts, Skills, and programs may appear at several of these levels.
+
+331
+00:53:40,876 --> 00:53:51,913
+The innermost level changes only artifact content—for example, adding a local rule to a system Prompt after a failed trajectory or adding an exception to an experience document.
+
+332
+00:53:51,863 --> 00:53:58,813
+Such changes have a small blast radius and are easier to attribute and roll back, so they should be the default.
+
+333
+00:53:58,813 --> 00:54:14,688
+Repeatedly asking a model to rewrite an entire Prompt or memory, however, introduces another form of degradation: successive attempts at brevity can gradually erase rare but important details, and interacting constraints can be collapsed into an overgeneral principle.
+
+334
+00:54:14,688 --> 00:54:22,363
+Agentic Context Engineering (ACE) maintains context as a collection of entries with stable identifiers.
+
+335
+00:54:22,363 --> 00:54:33,826
+Generation, reflection, and curation modules propose incremental updates, which deterministic logic merges and deduplicates instead of rewriting an ever-shorter text block each round.
+
+336
+00:54:33,826 --> 00:54:40,501
+It is a concrete research example of this chapter's earlier principles of minimal diffs and retained provenance.
+
+337
+00:54:40,501 --> 00:54:48,126
+At the next level, the optimization target is no longer merely what context contains but how context is constructed.
+
+338
+00:54:48,126 --> 00:55:09,376
+Meta Context Engineering (MCE) separates the two into inner and outer loops: the inner loop optimizes the context artifact for the current task under a given management method, while the outer loop uses results from multiple executions and validations to modify the context operations themselves—search, selection, filtering, and formatting.
+
+339
+00:55:09,376 --> 00:55:11,563
+The distinction matters.
+
+340
+00:55:11,563 --> 00:55:22,713
+Editing a retrieval rule changes a content-management mechanism; comparing several retrieval and curation mechanisms and retaining the one with better transfer is learning how to manage context.
+
+341
+00:55:22,713 --> 00:55:27,088
+The same idea extends to workflows and the entire Harness.
+
+342
+00:55:27,088 --> 00:55:37,363
+AFlow represents workflows composed of multiple LLM calls as code graphs and searches over combinations of nodes and control flow using execution feedback.
+
+343
+00:55:37,363 --> 00:55:48,751
+Meta-Harness has a Coding Agent inspect candidate Harness source, scores, and trajectories to search for improvements to the code governing how information is stored, retrieved, and presented.
+
+344
+00:55:48,751 --> 00:55:54,476
+Chapter 5 established code as a general language for expressing Agent system structure.
+
+345
+00:55:54,476 --> 00:56:03,801
+The additional point here is that code, together with its evaluation history, can itself become the object of continual search rather than a one-time output.
+
+346
+00:56:03,801 --> 00:56:08,213
+This kind of outer-loop search soon runs into the cost of feedback.
+
+347
+00:56:08,213 --> 00:56:21,988
+An exploration policy decides which candidate to continue from, when to open a new branch, how many Workers to run in parallel, and when to stop; whether it is any good often shows only after a long generate–evaluate chain.
+
+348
+00:56:21,988 --> 00:56:31,938
+If every candidate policy had to call the Agent and the evaluator all over again, optimizing the exploration policy itself could cost more than finishing the task.
+
+349
+00:56:31,938 --> 00:56:43,701
+Dream-RSI proposes a mechanism that differs from “summarizing history”: it preserves a completed discovery process as a discovery tree and then treats that tree as an empirical replay simulator.
+
+350
+00:56:43,701 --> 00:56:56,526
+The root node represents the initial workspace; each child node stores the workspace snapshot, candidate artifact, evaluation diagnostics, and score obtained by continuing from some historical state.
+
+351
+00:56:56,526 --> 00:57:06,901
+A candidate policy uses the same interface as online exploration to choose, step by step, which leaf node to expand or whether to open a new branch from the root.
+
+352
+00:57:06,901 --> 00:57:15,288
+The replayer only reveals results already recorded in the corresponding node; it never needs to rerun the underlying Agent or evaluator.
+
+353
+00:57:15,288 --> 00:57:26,601
+What makes replay valid is that the online and offline phases share the same decision interface, and the policy is only shown, step by step, the subtree expanded so far.
+
+354
+00:57:26,601 --> 00:57:36,363
+Online, a selected node really invokes the underlying Agent and evaluator; offline, the same choice returns only the successor recorded in history.
+
+355
+00:57:36,363 --> 00:57:48,488
+A candidate policy can therefore compare different branches, orderings, parallel batches, and stopping points, yet cannot peek at future results that were not yet visible when the online decision was made.
+
+356
+00:57:48,652 --> 00:58:11,064
+This forms a recursive loop with three phases: online exploration uses the current policy to generate new discovery trees; building the replay world adds those trees to the pool of historical simulators; offline dreaming lets a policy-development Agent modify the exploration-policy code and compare versions by candidate quality, execution cost, and parallel efficiency.
+
+357
+00:58:11,014 --> 00:58:19,164
+The selected policy goes back online, produces new trees, and widens the range of experience the next round can replay.
+
+358
+00:58:19,164 --> 00:58:29,864
+Because the candidate set keeps the current policy, a new version is at least no worse on the average replay score over existing history, but that guarantee holds only within that history.
+
+359
+00:58:29,864 --> 00:58:35,702
+This “replay” differs from the two ways of reusing history described earlier in the chapter.
+
+360
+00:58:35,702 --> 00:58:53,302
+Trajectory summarization compresses experience into knowledge or Prompts and changes what the Agent knows; browser workflow replay lets a program repeat a validated path in a new task and changes how the Agent repeats an execution; discovery-tree replay compares how the Agent organizes exploration.
+
+361
+00:58:53,302 --> 00:59:06,977
+Nor is it a full world model that can predict the consequences of arbitrary actions: it can only recombine branches actually taken in history, and it cannot guarantee that a policy scoring higher on old trees transfers to new tasks.
+
+362
+00:59:06,977 --> 00:59:20,114
+In this chapter's classification, history replay is not a fifth medium for updates alongside knowledge, Prompts, programs, and parameters; it is a new mechanism for producing and validating update proposals.
+
+363
+00:59:20,114 --> 00:59:28,264
+What Dream-RSI ultimately modifies is exploration-policy code, so the product still belongs to program/Harness.
+
+364
+00:59:28,264 --> 00:59:43,427
+Its novelty is to turn history, which previously served as context or training data, into an offline evaluation environment that can be interacted with repeatedly, pushing self-evolution up to the meta-policy level of “how to allocate exploration compute.
+
+365
+00:59:43,588 --> 00:59:50,913
+Experiment 9-8 advanced difficulty, three stars: : Give Hermes This Book: Can It Upgrade Itself?
+
+366
+00:59:50,863 --> 00:59:57,388
+Objective: Test whether an Agent can turn external knowledge into an update to its own capabilities.
+
+367
+00:59:57,388 --> 01:00:02,088
+The experiment supplies no problem statement and no feature checklist.
+
+368
+01:00:02,088 --> 01:00:12,063
+Hermes receives all ten chapters and its own source, then must understand the principles, inspect its implementation, and choose a worthwhile improvement itself.
+
+369
+01:00:12,063 --> 01:00:22,163
+Design: The book and source are readable context, while the stable version, independent Reviewer, and acceptance tests remain outside Hermes' editable scope.
+
+370
+01:00:22,163 --> 01:00:26,388
+Hermes must complete read → compare → choose → change → verify.
+
+371
+01:00:26,388 --> 01:00:34,725
+If a candidate is rejected, the review becomes input to the next learning round; Hermes cannot bypass the gate and declare success.
+
+372
+01:00:34,725 --> 01:00:43,688
+Real run: After reading the book, Hermes independently noticed that its saved trajectories lacked structured evidence that later learning could use directly.
+
+373
+01:00:43,688 --> 01:00:51,250
+It chose to turn execution outcomes into conservative learning signals, then edited its own source and added tests.
+
+374
+01:00:51,250 --> 01:00:59,275
+The first three independent reviews found mismatches with real data formats, persistence paths, and counting semantics.
+
+375
+01:00:59,275 --> 01:01:06,138
+Each finding went back to the original Hermes session for another correction; the fourth review accepted the candidate.
+
+376
+01:01:06,138 --> 01:01:10,863
+Rejection was not the end of the experiment, but part of the improvement loop.
+
+377
+01:01:10,863 --> 01:01:21,800
+Claim boundary: This run shows that an Agent can extract principles from long-form knowledge, map them onto its own code, and complete a self-update under external verification.
+
+378
+01:01:21,800 --> 01:01:29,375
+It does not show that the update already improves downstream task success; that requires a separate ablation experiment.
+
+379
+01:01:29,375 --> 01:01:32,800
+Reader Grace contributed the experiment idea.
+
+380
+01:01:32,800 --> 01:01:37,563
+Building a Continual-Evolution Closed Loop for Long-Term Operation.
+
+381
+01:01:37,563 --> 01:01:45,775
+The four update methods become continual evolution rather than one-off optimization only when incorporated into the same autonomous loop.
+
+382
+01:01:45,775 --> 01:02:08,900
+Figure 9-5 shows a more robust dual-loop architecture for production systems: the online execution loop only completes tasks and records evidence, without directly rewriting the production Agent; the offline evolution loop aggregates trajectories, diagnoses root causes, generates candidate modifications, and releases new versions only after they pass validation gates.
+
+383
+01:02:08,900 --> 01:02:14,688
+The two loops are connected through versioned experience repositories and evaluation sets.
+
+384
+01:02:14,688 --> 01:02:21,200
+As illustrated in Figure 9-5 Dual loops for online execution and offline evolution.
+
+385
+01:02:21,200 --> 01:02:25,975
+Voyager demonstrates a relatively complete continual-evolution loop.
+
+386
+01:02:25,975 --> 01:02:41,063
+In Minecraft, it selects new goals based on its current capabilities, iteratively refines programs using environmental feedback, stores successfully validated code in a skill library, and then combines existing skills to solve harder tasks.
+
+387
+01:02:41,063 --> 01:03:02,563
+An automatic curriculum, executable skills, and environmental validation are all indispensable: with a skill library but no curriculum, the Agent does not know what to learn next; with self-reflection but no environmental validation, the skill library accumulates errors; with exploration but no persistence, every task must still begin from scratch.
+
+388
+01:03:02,563 --> 01:03:11,263
+Although the knowledge, Prompt, tools, and parameters of real-world Agents are more complex, the basic learning process is similar.
+
+389
+01:03:11,263 --> 01:03:16,013
+More specifically, Voyager has three interlocking mechanisms.
+
+390
+01:03:16,013 --> 01:03:25,925
+The automatic curriculum generator proposes a suitably challenging next goal from current inventory, environment, and acquired skills, preventing random wandering.
+
+391
+01:03:25,925 --> 01:03:36,713
+The skill library stores successful programs as retrievable, composable code—for example, an advanced gathering skill can invoke basic movement and crafting skills.
+
+392
+01:03:36,713 --> 01:03:48,088
+The iterative prompting mechanism returns environmental observations, execution errors, and self-verification results to the next round of code generation until the task actually passes.
+
+393
+01:03:48,244 --> 01:03:54,106
+Discovery loop: hypothesis, experiment, evaluation, feedback.
+
+394
+01:03:54,056 --> 01:04:05,806
+Agent self-evolution systems such as Voyager follow a discovery loop made of hypothesis, experiment, evaluation, and feedback—the scientific method refined over centuries.
+
+395
+01:04:05,806 --> 01:04:18,506
+Discovery Loop, founded recently by Jeff Dean and colleagues, proposes automating that loop: propose an experiment, implement it, evaluate it, take the result, and feed it into the next round.
+
+396
+01:04:18,506 --> 01:04:22,044
+This is self-evolving Agents applied to science.
+
+397
+01:04:22,044 --> 01:04:30,306
+To avoid self-confirming stories and self-awarded success, the evolution described in this chapter must follow the scientific method.
+
+398
+01:04:30,306 --> 01:04:36,331
+In continual Agent evolution, two capabilities that are often conflated must be separated.
+
+399
+01:04:36,331 --> 01:04:46,956
+Harness updating produces valuable persistent changes from trajectories; Harness benefit is the task Agent's ability to find, activate, and correctly use those changes later.
+
+400
+01:04:46,956 --> 01:04:57,906
+A Skill may be perfectly written, yet a weaker task model may fail to load it in the right situation or to follow it over a long horizon, making the final score look as if nothing evolved.
+
+401
+01:04:57,906 --> 01:05:02,219
+End-to-end score alone therefore cannot diagnose the updater.
+
+402
+01:05:02,219 --> 01:05:08,881
+Model-swap experiments by Lin et al. show that these abilities relate differently to base-model capability.
+
+403
+01:05:08,881 --> 01:05:13,919
+Table 9-3 Layered evaluation metrics for continual evolution
+
+404
+01:05:13,919 --> 01:05:25,044
+Metric: Candidate-change validity; Question answered: Does the updater propose useful changes?; Primary evidence: Acceptance rate and gain in independent validation.
+
+405
+01:05:25,044 --> 01:05:38,431
+Metric: Artifact activation rate; Question answered: Does the task Agent load the new Skill, memory, or tool in the right situation?; Primary evidence: Retrieval, routing, and tool-call traces.
+
+406
+01:05:38,431 --> 01:05:50,994
+Metric: Successful adherence rate; Question answered: After activation, does the Agent follow the new rule or process?; Primary evidence: Action sequences and process verifiers.
+
+407
+01:05:50,994 --> 01:06:05,319
+Metric: Held-out task gain; Question answered: Does the overall system improve on tasks excluded from evolution, and does it generalize?; Primary evidence: Held-out task success rate, quality, and cost.
+
+408
+01:06:05,319 --> 01:06:12,356
+Evaluation is not an examination performed after learning ends, but an indispensable part of self-evolution.
+
+409
+01:06:12,356 --> 01:06:18,044
+Long-term evaluation should observe at least five types of outcomes simultaneously:
+
+410
+01:06:18,044 --> 01:06:26,381
+Regression, namely whether new experience conflicts with other existing experience and whether previously successful cases begin to fail;
+
+411
+01:06:26,381 --> 01:06:33,494
+Generalization, namely the improvements produced by new experience in scenarios not yet covered by the test set;
+
+412
+01:06:33,494 --> 01:06:38,144
+Token efficiency, namely the token cost of completing tasks;
+
+413
+01:06:38,144 --> 01:06:45,369
+Safety, namely whether rules, privacy protections, and refusal boundaries drift during evolution;
+
+414
+01:06:45,369 --> 01:06:58,094
+Long-term engineering quality, namely whether maintenance complexity, architectural consistency, ownership boundaries, backward compatibility, and future migration and debugging costs deteriorate.
+
+415
+01:06:58,094 --> 01:07:07,406
+Fixing only the current failed case while degrading performance on other existing cases or in new domains does not constitute successful continual evolution.
+
+416
+01:07:07,406 --> 01:07:15,019
+Experiment 9-9 advanced difficulty, three stars: : Evaluating Whether an Agent Is Continually Evolving
+
+417
+01:07:15,019 --> 01:07:31,319
+Objective: Distinguish among three long-term behaviors—saving one piece of feedback, merely appending forever, and genuinely updating, transferring, and retaining capabilities—so that repeatedly running the same tasks is not mistaken for continual evolution.
+
+418
+01:07:31,319 --> 01:07:40,481
+Four-stage task stream: The learning stage presents refund, identity-verification, and baggage-policy tasks that share latent patterns.
+
+419
+01:07:40,481 --> 01:07:48,344
+The transfer stage changes the phrasing, user, and local environment to test whether old experience applies to new tasks.
+
+420
+01:07:48,344 --> 01:07:57,744
+The rule-change stage updates the baggage limit from 20 kg to 23 kg and requires the system to replace or retire obsolete knowledge.
+
+421
+01:07:57,744 --> 01:08:04,069
+The retention stage retests unchanged capabilities and currently valid rules to measure forgetting.
+
+422
+01:08:04,069 --> 01:08:13,644
+External memory may be updated only after each feedback-bearing task ends; the expected action for the current task must never be leaked to the Agent in advance.
+
+423
+01:08:13,804 --> 01:08:17,829
+Control groups: static persists no feedback.
+
+424
+01:08:17,779 --> 01:08:24,141
+append_only remembers the first version of a rule but cannot resolve conflicts or retire it.
+
+425
+01:08:24,141 --> 01:08:28,891
+evolving stores versions and replaces old rules with new evidence.
+
+426
+01:08:28,891 --> 01:08:34,829
+The reference implementation verifies that the evaluation Harness can distinguish these behaviors.
+
+427
+01:08:34,829 --> 01:08:43,854
+A real experiment can put an LLM through the same ordered stream of 14 tasks, but outcomes must be computed by a Harness outside the model.
+
+428
+01:08:43,854 --> 01:09:01,954
+Metrics and acceptance: Report accuracy and the learning curve for each stage, and separately calculate transfer accuracy, tasks needed to recover after a new rule, old-capability retention, negative-transfer rate, safety-Rubric pass rate, and Token, latency, and storage costs.
+
+429
+01:09:01,954 --> 01:09:17,279
+For real systems that update Prompts, Skills, or a Harness, also record candidate-change validity, artifact activation rate, and successful adherence rate, so that “the update was correct but never loaded” is not misclassified as a failed update.
+
+430
+01:09:17,279 --> 01:09:29,741
+Even an Agent with high final accuracy does not qualify as continually evolving if it still cites retired rules, succeeds through unsafe shortcuts, or forgets existing capabilities after an update.
+
+431
+01:09:29,741 --> 01:09:34,304
+The accompanying implementation is available at self-evolution-eval.
+
+432
+01:09:34,304 --> 01:09:40,741
+By default, it compares three reference Agents: updatable, append-only, and static.
+
+433
+01:09:40,741 --> 01:09:46,816
+Use --profile llm to have a real LLM undergo the same long-term task stream.
+
+434
+01:09:46,816 --> 01:09:52,254
+The Boundary of a Verifiable Loop: When “Done” Does Not Mean “Progress”.
+
+435
+01:09:52,254 --> 01:10:03,604
+The preceding loop works most naturally for Coding, tool use, and business-state changes, where tests, environment state, or deterministic rules can provide rapid feedback.
+
+436
+01:10:03,604 --> 01:10:20,891
+Open-ended research, strategic planning, and complex product design are different: feedback is delayed, there may be no unique correct answer, and the objectives that matter most—research taste, long-term value, and maintainability—are difficult to turn into an immediate score.
+
+437
+01:10:20,891 --> 01:10:28,754
+A Harness can then execute the process flawlessly while merely producing things that look like results rather than advancing the real objective.
+
+438
+01:10:28,754 --> 01:10:32,291
+Autonomous research is a useful stress test.
+
+439
+01:10:32,291 --> 01:10:38,229
+Trehan and Chopra documented four end-to-end attempts to turn research ideas into papers.
+
+440
+01:10:38,229 --> 01:10:44,316
+Three failed during implementation or evaluation, and only one completed the full pipeline.
+
+441
+01:10:44,316 --> 01:10:47,204
+The failures fall into three groups.
+
+442
+01:10:47,204 --> 01:10:59,129
+First, implementation drift: once the proposed method becomes difficult, the Agent retreats toward a familiar implementation from its training distribution that no longer tests the original hypothesis.
+
+443
+01:10:59,129 --> 01:11:12,266
+Second, epistemic over-optimism: while the signal may still be noise, the system begins explaining it, patching the method, and announcing a finding, while failures and negative results are more easily ignored.
+
+444
+01:11:12,266 --> 01:11:23,929
+Third, missing tacit judgment: an Agent may be able to run experiments without knowing which baseline matters, which anomaly deserves investigation, or when a hypothesis should be abandoned.
+
+445
+01:11:23,929 --> 01:11:31,066
+These tasks require changes to the evidence and supervision structure, not merely a model that writes better papers:
+
+446
+01:11:31,066 --> 01:11:42,316
+Separate claims from evidence: Record provenance separately for citations, numbers, methods, and conclusions; the final document is only one rendering of the evidence graph.
+
+447
+01:11:42,316 --> 01:11:48,154
+ScientistOne's Chain-of-Evidence design links each class of claim to auditable sources.
+
+448
+01:11:48,154 --> 01:11:53,516
+This improves traceability but does not by itself make the research question valuable.
+
+449
+01:11:53,516 --> 01:12:03,654
+Retain negative results: Write failed experiments, rejected candidates, and stopping reasons to an immutable log with the same retrieval status as successes.
+
+450
+01:12:03,654 --> 01:12:12,791
+Otherwise the evolution module sees only survivors, revisits disproved paths, and learns to interpret ambiguous results as success.
+
+451
+01:12:12,791 --> 01:12:19,379
+Preserve search diversity: Open-ended search should not retain only the currently highest-scoring chain.
+
+452
+01:12:19,379 --> 01:12:31,804
+The candidate pool should also preserve some lower-scoring but meaningfully different branches by mechanism, code novelty, or hypothesis type, so that every solution does not converge on the same easy-to-score template.
+
+453
+01:12:31,972 --> 01:12:38,309
+Move human involvement upward: Human input is not limited to approving dangerous tool calls.
+
+454
+01:12:38,259 --> 01:12:46,872
+It also includes defining problems, reviewing evaluation criteria, interpreting anomalous results, and deciding when to stop.
+
+455
+01:12:46,872 --> 01:12:56,059
+With ambiguous feedback, these high-level judgments are harder to automate—and more valuable—than taking over individual execution steps.
+
+456
+01:12:56,059 --> 01:12:59,384
+Safety Boundaries for Continual Evolution.
+
+457
+01:12:59,384 --> 01:13:05,009
+An Agent’s self-evolution capability can turn a single error into a long-term risk.
+
+458
+01:13:05,009 --> 01:13:14,059
+If Prompt injection in web pages, email, or tool output is summarized as experience, it may take effect repeatedly across sessions.
+
+459
+01:13:14,059 --> 01:13:22,909
+If a malicious package found through automated search is wrapped as a tool, its impact can spread from one sandbox run to every subsequent task.
+
+460
+01:13:22,909 --> 01:13:29,572
+A defective verifier may also continue approving candidates that appear to improve but actually regress.
+
+461
+01:13:29,572 --> 01:13:39,397
+An Agent self-evolution system must therefore ask not only whether a candidate is stronger, but also who may modify what and what evidence justifies the change.
+
+462
+01:13:39,397 --> 01:13:43,472
+The first boundary is separating evidence from instructions.
+
+463
+01:13:43,472 --> 01:13:55,984
+Raw web pages, tool output, and any LLM summaries of them are untrusted evidence: they must not be executed as instructions or promoted directly into a Skill or similar long-term capability.
+
+464
+01:13:55,984 --> 01:14:04,272
+LLM summarization is a transformation for readability and processing, not a sanitization step that makes the input harmless.
+
+465
+01:14:04,272 --> 01:14:16,647
+The system should extract claims, source locations, and collection times into a fixed schema while preserving the raw content and provenance; extracted strings must never be executed as instructions.
+
+466
+01:14:16,647 --> 01:14:22,309
+Model-produced confidence is likewise an unverified estimate, not an approval gate.
+
+467
+01:14:22,309 --> 01:14:30,997
+Candidates must also pass deterministic schema, allowlist, and provenance checks before being submitted as version-controlled pull requests.
+
+468
+01:14:30,997 --> 01:14:39,284
+A reviewer independent of the generator should compare the change with the original evidence, with human approval added for high-risk Skill promotion.
+
+469
+01:14:39,284 --> 01:14:44,672
+The second boundary is separating candidate capabilities from production capabilities.
+
+470
+01:14:44,672 --> 01:14:52,909
+New knowledge, Prompts, Skills, programs, and parameters first enter a candidate area that cannot serve real traffic.
+
+471
+01:14:52,909 --> 01:15:03,834
+Newly generated code and external dependencies must also pass security checks such as sandbox execution, permission review, supply-chain scanning, and behavioral testing.
+
+472
+01:15:03,834 --> 01:15:11,047
+Only after security checks and regression tests pass may a candidate serve real traffic as a production capability.
+
+473
+01:15:11,047 --> 01:15:16,097
+The third boundary is that safety mechanisms must not be self-modifiable.
+
+474
+01:15:16,097 --> 01:15:31,034
+A business Agent may modify Prompts, Skills, the knowledge base, and tools, but it must not modify the validators, test cases, or release thresholds used to approve its own updates, nor the audit logs or stable-version backups.
+
+475
+01:15:31,034 --> 01:15:38,747
+Otherwise, an Agent can disguise regression as progress simply by lowering a test threshold or deleting failing cases.
+
+476
+01:15:38,747 --> 01:15:44,247
+Sleep Learning: Consolidation, Forgetting, and Capability Maintenance.
+
+477
+01:15:44,404 --> 01:15:52,466
+Sleep learning” is a cognitive analogy for offline consolidation; it does not require the process to run literally at night.
+
+478
+01:15:52,416 --> 01:15:58,804
+The online Agent’s primary responsibility is to complete the current task and append immutable evidence.
+
+479
+01:15:58,804 --> 01:16:13,504
+A background learning process reads a batch of new experience during idle periods or when gating conditions are met, compares old and new conclusions, merges duplicates, resolves conflicts, proposes candidate updates, and runs regressions.
+
+480
+01:16:13,504 --> 01:16:27,366
+Separating collection from organization prevents an accidental success, network failure, or malicious input from immediately rewriting long-term capabilities, and it allows consolidation to use larger batches and cheaper models.
+
+481
+01:16:27,366 --> 01:16:31,054
+A typical sleep-learning cycle has five steps:
+
+482
+01:16:31,054 --> 01:16:42,216
+Trigger: Reach a threshold for elapsed time, number of new trajectories, storage use, or error frequency, while confirming that no high-priority online task is running.
+
+483
+01:16:42,216 --> 01:16:51,141
+Orient: Read the production knowledge, Prompt, and Skill directories and their versions to understand existing capabilities and immutable boundaries.
+
+484
+01:16:51,141 --> 01:17:02,529
+Collect and consolidate: Find new signals in recently evaluated trajectories, merge duplicates, mark conflicts and applicability conditions, and prefer local patches.
+
+485
+01:17:02,529 --> 01:17:11,266
+Validate and approve: Evaluate candidates on transfer, retention, and safety sets; high-risk writes wait for human approval.
+
+486
+01:17:11,266 --> 01:17:23,716
+Prune and index: Update retrieval indexes and mark capabilities that are long unused or contradicted by new evidence as expired, archived, or deleted, while retaining provenance and rollback versions.
+
+487
+01:17:23,716 --> 01:17:29,904
+User memory is the most intuitive example, but it must be distinguished from action experience.
+
+488
+01:17:29,904 --> 01:17:37,254
+Claude Code’s auto memory maintains a MEMORY.md index and topic-specific detail files for each project.
+
+489
+01:17:37,254 --> 01:17:49,016
+At session startup it loads only a bounded prefix of the index and reads the remaining content on demand; when the index approaches its limit, the Agent is instructed to merge or move details elsewhere.
+
+490
+01:17:49,016 --> 01:17:55,929
+This shows that even plain-text memory requires capacity limits, layered loading, and active organization.
+
+491
+01:17:55,929 --> 01:18:04,241
+The currently documented mechanism primarily writes memory during sessions and should not simply be equated with a fixed nightly background task.
+
+492
+01:18:04,241 --> 01:18:08,966
+Hermes provides a more complete example of background memory evolution.
+
+493
+01:18:08,966 --> 01:18:23,316
+It separates long-term information into bounded MEMORY.md and USER.md files, SQLite/FTS5 search over prior sessions, on-demand Skills, and optional external memory providers such as Honcho.
+
+494
+01:18:23,316 --> 01:18:32,329
+Session search returns original messages rather than first summarizing them with an LLM, keeping retrieval distinct from generation and auditable.
+
+495
+01:18:32,329 --> 01:18:48,166
+When a task contains many tool calls, recovers from an error or dead end, receives a user correction, or discovers a non-obvious workflow, a background review can create or locally revise a Skill; memory and Skill writes can also pass through an approval gate.
+
+496
+01:18:48,166 --> 01:18:59,379
+A separate Curator tracks Skill usage, staleness, and archival status, performs deterministic pruning while idle, and may optionally invoke an LLM to merge content.
+
+497
+01:18:59,379 --> 01:19:05,404
+It saves a snapshot before making changes so that incorrect consolidation can be rolled back.
+
+498
+01:19:05,404 --> 01:19:11,491
+Continual evolution does not mean allowing knowledge, Prompts, and tools to grow without limit.
+
+499
+01:19:11,491 --> 01:19:28,279
+The context corruption discussed in Chapter 2 reappears over longer timescales: experience documents conflict with one another, Prompts become overwhelmed by boundary rules, Skill libraries accumulate duplicate capabilities, and repeated fine-tuning causes catastrophic forgetting.
+
+500
+01:19:28,279 --> 01:19:32,929
+The system therefore requires periodic offline consolidation:
+
+501
+01:19:32,929 --> 01:19:37,766
+Merge duplicate experience while retaining provenance and version information;
+
+502
+01:19:37,766 --> 01:19:43,854
+Move local rules from the global Prompt into domain-specific Skills to keep the global Prompt clean;
+
+503
+01:19:43,854 --> 01:19:53,166
+Keep Prompts and Skills clearly structured, like a handbook for new employees, and avoid enumerations resembling “99 ironclad rules.
+
+504
+01:19:53,166 --> 01:19:57,129
+Revalidate tools that have not been used for a long time;
+
+505
+01:19:57,129 --> 01:20:00,629
+Delete knowledge invalidated by new evidence;
+
+506
+01:20:00,629 --> 01:20:03,916
+Retrain LoRA from the original base model.
+
+507
+01:20:03,916 --> 01:20:05,804
+Chapter Summary.
+
+508
+01:20:05,956 --> 01:20:14,693
+Continual evolution is becoming one of the most important capabilities of Agents, but today's models still cannot perform it reliably on their own.
+
+509
+01:20:14,643 --> 01:20:25,106
+Contextual adaptation during inference does not persist automatically, while unvalidated online parameter updates amplify noise, attacks, and capability drift.
+
+510
+01:20:25,106 --> 01:20:31,206
+The more practical approach today is therefore to build a verifiable learning system around the model.
+
+511
+01:20:31,206 --> 01:20:49,256
+In terms of the book's larger structure, this chapter builds the experiment and feedback segment of Chapter 1's discovery loop: the proposal already exists, and the question becomes how one experiment grounded in real observation can tell whether it actually improved the system, and how the result is carried into the next round.
+
+512
+01:20:49,256 --> 01:21:00,831
+An Agent obtains learning signals from interaction and evaluation, then updates knowledge, Prompts, Skills, programs, or model parameters according to how the capability is represented.
+
+513
+01:21:00,831 --> 01:21:10,906
+The system can also optimize the methods used to manage and generate these artifacts, but it should prefer local changes that are attributable, verifiable, and reversible.
+
+514
+01:21:10,906 --> 01:21:21,706
+History can not only be distilled into static experience; within its support domain it can also be assembled into a replay environment that screens exploration policies at low cost.
+
+515
+01:21:21,706 --> 01:21:31,718
+This lets continual evolution act on “how exploration is organized,” not only on the knowledge, instructions, and programs that exploration produces.
+
+516
+01:21:31,718 --> 01:21:44,856
+Continual evolution should separate online execution from offline learning: record evidence online; generate and validate candidate updates offline; then release, consolidate, or roll them back gradually.
+
+517
+01:21:44,856 --> 01:21:49,731
+This loop is most reliable when outcomes are automatically verifiable.
+
+518
+01:21:49,731 --> 01:21:59,668
+For open-ended tasks with ambiguous objectives and delayed feedback, people must still participate in problem definition and the design of evaluation criteria.
+
+519
+01:21:59,668 --> 01:22:01,956
+Questions for Reflection.
+
+520
+01:22:01,956 --> 01:22:10,431
+intermediate difficulty, two stars:  An experience document is supported by three successful trajectories and one failed trajectory.
+
+521
+01:22:10,431 --> 01:22:14,018
+The failure occurred with a newer API version.
+
+522
+01:22:14,018 --> 01:22:20,706
+How should the system determine whether the experience has been invalidated or its applicability conditions have changed?
+
+523
+01:22:20,706 --> 01:22:30,168
+intermediate difficulty, two stars:  A customer-service Agent’s user satisfaction increases, but its rate of rule violations also rises.
+
+524
+01:22:30,168 --> 01:22:34,243
+Why can satisfaction not serve as the sole learning signal?
+
+525
+01:22:34,243 --> 01:22:37,168
+How would you design guardrail metrics?
+
+526
+01:22:37,168 --> 01:22:46,618
+advanced difficulty, three stars:  The same “false promise” problem can be mitigated through a Prompt, Harness checks, or parameter training.
+
+527
+01:22:46,618 --> 01:22:50,643
+What evidence would you use to choose where to make the modification?
+
+528
+01:22:50,643 --> 01:23:00,968
+advanced difficulty, three stars:  An Agent may modify tools and validators, but it should not be allowed to modify the trusted root that approves its own updates.
+
+529
+01:23:00,968 --> 01:23:05,543
+How would you separate the permissions and code boundaries of these two parts?
+
+530
+01:23:05,543 --> 01:23:15,293
+intermediate difficulty, two stars:  As the experience knowledge base grows, retrieval errors and knowledge conflicts may offset the benefits of learning.
+
+531
+01:23:15,293 --> 01:23:20,243
+How should versioning, freshness, and retirement mechanisms be designed?
+
+532
+01:23:20,243 --> 01:23:29,256
+advanced difficulty, three stars:  Parameter learning is effective for natural-language style but struggles to guarantee strict business rules.
+
+533
+01:23:29,256 --> 01:23:38,143
+Design a continual-evolution scheme for medical customer service that coordinates parameters, knowledge, Skills, and code-level constraints.
+
+534
+01:23:38,143 --> 01:23:49,718
+advanced difficulty, three stars:  An exploration policy scores highest on every old discovery tree during history replay, yet degrades in the next round of online exploration.
+
+535
+01:23:49,718 --> 01:23:55,956
+What support-domain bias, randomness, and evaluation overfitting could produce this result?
+
+536
+01:23:55,956 --> 01:24:00,118
+How would you partition the replay worlds and design release gates?
+

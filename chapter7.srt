@@ -1,0 +1,3516 @@
+1
+00:00:00,100 --> 00:00:03,450
+Chapter 7: Evaluating Agents.
+
+2
+00:00:03,400 --> 00:00:13,912
+The first six chapters laid out how to build a single Agent: its context, knowledge, tools, coding capabilities, and observation and action spaces.
+
+3
+00:00:13,912 --> 00:00:17,562
+But building an Agent does not mean it works correctly.
+
+4
+00:00:17,562 --> 00:00:23,012
+Reliable measurement is essential for guiding further model training and system improvement.
+
+5
+00:00:23,012 --> 00:00:30,287
+When building an Agent system, developers face numerous design choices that often lack obvious correct answers:
+
+6
+00:00:30,287 --> 00:00:32,650
+Which model should be used?
+
+7
+00:00:32,650 --> 00:00:35,587
+What tools should the model be able to call?
+
+8
+00:00:35,587 --> 00:00:40,000
+What data should the knowledge base store, and how should it be structured?
+
+9
+00:00:40,000 --> 00:00:42,887
+How should user memory be implemented?
+
+10
+00:00:42,887 --> 00:00:46,462
+How should the model's prompts and Skills be organized?
+
+11
+00:00:46,462 --> 00:00:49,650
+What constraints need to be added to the Harness?
+
+12
+00:00:49,650 --> 00:00:55,787
+How should evaluation results be transformed into learning signals for the Agent's continuous evolution?
+
+13
+00:00:55,787 --> 00:00:59,925
+Evaluation puts these decisions on a scientific footing.
+
+14
+00:00:59,925 --> 00:01:19,100
+Through systematic comparative experiments (change one variable at a time and observe the effect) and ablation experiments (disable one component at a time and observe how overall performance changes), you can distinguish genuine capability gains from superficial fluctuations—and avoid being penny wise and pound foolish.
+
+15
+00:01:19,100 --> 00:01:24,012
+Software engineering has a saying: you can't improve what you don't measure.
+
+16
+00:01:24,012 --> 00:01:29,925
+Without a repeatable evaluation system, an Agent can only be iterated on intuition.
+
+17
+00:01:29,925 --> 00:01:38,537
+From the perspective of Harness engineering introduced in Chapter 1, evaluation plays the core role of "verification" within the Harness.
+
+18
+00:01:38,537 --> 00:01:46,300
+A key insight is: the object of evaluation should not be just the model, but the combination of the model and the Harness.
+
+19
+00:01:46,300 --> 00:01:58,375
+The same model can perform wildly differently in different Harnesses — some teams have significantly improved the same model's performance on terminal tasks purely by optimizing the Harness (see Chapter 5).
+
+20
+00:01:58,375 --> 00:02:07,637
+So when an Agent evaluates poorly, the fix may not be a different model but a better Harness component (prompts, tool design, feedback loops).
+
+21
+00:02:07,637 --> 00:02:17,250
+A sound evaluation system should be able to tell apart two fundamentally different problems: "insufficient model capability" and "Harness design flaws.
+
+22
+00:02:17,250 --> 00:02:27,137
+A common way to tell them apart is the model swap experiment: hold the Harness constant, swap in a stronger or weaker model, and watch how much the score moves.
+
+23
+00:02:27,137 --> 00:02:32,000
+If a stronger model doesn't raise the score, the bottleneck is the Harness.
+
+24
+00:02:32,000 --> 00:02:42,925
+If a weaker model tanks the score and results swing sharply with model capability, the most direct reading is that the model itself is the bottleneck and current performance is dominated by the model.
+
+25
+00:02:42,925 --> 00:02:51,525
+Whether this is because the task is inherently hard or because the Harness relies too heavily on the model's prior knowledge requires further analysis.
+
+26
+00:02:51,525 --> 00:03:03,425
+Note that this differs from the ablation experiment above: ablation disables a Harness component to see how overall performance changes; model swapping holds the Harness constant and changes only the model.
+
+27
+00:03:03,425 --> 00:03:10,862
+The former locates which part inside the Harness matters; the latter tells you whether the bottleneck is the model or the Harness.
+
+28
+00:03:10,862 --> 00:03:16,200
+An evaluation system is worth even more in an era of rapid model evolution.
+
+29
+00:03:16,200 --> 00:03:28,137
+Models keep improving, but a new model that scores higher on public benchmarks will not necessarily do better on your task—it may even regress (perform worse than the old version in some respects).
+
+30
+00:03:28,137 --> 00:03:33,962
+Only a full run on your own evaluation dataset lets you make a data-driven upgrade decision.
+
+31
+00:03:33,962 --> 00:03:51,262
+A solid evaluation system even makes "building products for future models" a viable strategy: if the current model isn't good enough for commercial deployment, finish the product anyway, build the evaluation set, track each new model's performance, and launch the moment one clears the bar.
+
+32
+00:03:51,262 --> 00:04:04,350
+A complete evaluation system decomposes into four stages: what counts as success, where the tasks come from, who verifies, and how a score turns into a decision, as shown in Figure 7-1.
+
+33
+00:04:04,350 --> 00:04:10,600
+As illustrated in Figure 7-1: The Four Stages of an Agent Evaluation System.
+
+34
+00:04:10,600 --> 00:04:16,500
+Anatomy of an Evaluation Task: The telecom Domain of τ²-bench.
+
+35
+00:04:16,660 --> 00:04:23,210
+Let us begin by dissecting one real task from the telecom domain of τ²-bench in full.
+
+36
+00:04:23,160 --> 00:04:40,310
+τ²-bench is Sierra's open-source project; clone it locally with the command in chapter7/tau2-bench-eval/README.md, then open the task file data/tau2/domains/telecom/tasks_small.json.
+
+37
+00:04:40,310 --> 00:04:43,535
+The Four Components of a Task Definition.
+
+38
+00:04:43,535 --> 00:04:47,860
+Below is one task from that file, abridged for readability.
+
+39
+00:04:47,860 --> 00:04:52,597
+Refer to the companion repository for the complete code implementation.
+
+40
+00:04:52,597 --> 00:04:56,835
+Four design decisions in this definition deserve elaboration.
+
+41
+00:04:56,835 --> 00:05:00,522
+The user's knowledge boundary is modeled explicitly.
+
+42
+00:05:00,522 --> 00:05:06,522
+known_info contains only three facts: name, phone number, and country.
+
+43
+00:05:06,522 --> 00:05:13,347
+The two actual causes of the fault — airplane mode is on, data roaming is off — are not among them.
+
+44
+00:05:13,347 --> 00:05:21,947
+The user does not know, and therefore cannot volunteer them; the Agent can only obtain them by asking questions and guiding the user to check.
+
+45
+00:05:21,947 --> 00:05:35,522
+This is how progressive information disclosure is implemented at the level of the task definition: not by constraining the simulator with a prompt that says "don't reveal everything at once," but by modeling the user's knowledge as a field of its own.
+
+46
+00:05:35,522 --> 00:05:44,410
+Most benchmarks state the complete requirement at the start of the task, whereas a real user's opening line is often no more than "I can't get online.
+
+47
+00:05:44,410 --> 00:05:50,335
+Clarifying a request until it is actionable is itself part of what an Agent must be able to do.
+
+48
+00:05:50,335 --> 00:05:55,110
+The simulator receives a behavioral spec, not a script of lines.
+
+49
+00:05:55,110 --> 00:06:20,210
+task_instructions carries three kinds of constraint: an emotional setting (show mild frustration after the first unsuccessful attempt), an acceptance criterion (the issue counts as resolved only when the speed test returns excellent; poor, fair, and good are all rejected), and a grounding requirement — every answer about the device state must be based on the result of a tool call, "Never make up the results of tool calls.
+
+50
+00:06:20,210 --> 00:06:32,722
+The third is the most consequential: without a grounding constraint, the simulated user will follow the Agent's lead and confirm that the problem is fixed, and the evaluation degenerates into two models agreeing with each other.
+
+51
+00:06:32,722 --> 00:06:36,647
+The initial state is partitioned by which side controls it.
+
+52
+00:06:36,647 --> 00:06:48,747
+env_type takes two values, user and assistant: airplane mode and the roaming switch belong to the user's side, while the carrier-side enable_roaming belongs to the Agent's side.
+
+53
+00:06:48,747 --> 00:07:00,497
+This partition determines the shape of the fault — roaming is provisioned on the carrier side but switched off on the user's handset, so an Agent querying the database sees nothing but "configuration normal.
+
+54
+00:07:00,497 --> 00:07:06,810
+The fault sits on the side the database cannot see, and only guiding the user to check will surface it.
+
+55
+00:07:06,810 --> 00:07:11,885
+Scoring is defined in four layers, and this task uses only one of them.
+
+56
+00:07:11,885 --> 00:07:31,572
+env_assertions checks the final state (mobile data available, speed test at or above 200 Mbps and rated excellent), actions checks whether the key actions occurred and which side performed them, and communicate_info and nl_assertions check whether the necessary information was conveyed to the user.
+
+57
+00:07:31,572 --> 00:07:41,322
+This task's reward_basis declares only ENV_ASSERTION; the remaining layers are still computed and recorded but do not enter the final reward.
+
+58
+00:07:41,322 --> 00:07:45,897
+The scoring basis is declared per task rather than fixed globally.
+
+59
+00:07:45,897 --> 00:07:48,472
+The Trajectory of a Real Run.
+
+60
+00:07:48,472 --> 00:08:04,810
+We now ask the reader to run the evaluation tasks of the τ²-bench telecom domain, observe the task design, the user simulator, the process and outcome verification logic, and the Agent's execution trajectory, and analyze why the Agent fails.
+
+61
+00:08:04,810 --> 00:08:12,697
+Experiment 7-1 introductory difficulty, one star: : Run τ²-bench and Compare It with τ-bench
+
+62
+00:08:12,868 --> 00:08:22,130
+This experiment runs the τ²-bench evaluation framework to understand the design points of a human-computer interaction evaluation environment.
+
+63
+00:08:22,080 --> 00:08:34,343
+First, read the task definition file along the path taken in this section: each task consists of four parts — known information, task instructions, initial state, and success conditions.
+
+64
+00:08:34,343 --> 00:08:49,368
+Then run the full evaluation flow, observe the multi-turn dialogue between the user simulator and the Agent, and analyze typical failure modes (policy violations, omitted information, excessive escalation to a human agent, and so on).
+
+65
+00:08:49,368 --> 00:08:57,018
+As illustrated in Figure 7-3: Dual-Control Environment and Layered Verification in τ²-bench.
+
+66
+00:08:57,018 --> 00:09:04,018
+The companion repository retains one run record (chapter7/tau2-bench-eval).
+
+67
+00:09:04,018 --> 00:09:07,618
+Below we analyze one successful run from it.
+
+68
+00:09:07,618 --> 00:09:12,218
+The first dozen or so turns are the account identification phase.
+
+69
+00:09:12,218 --> 00:09:29,293
+The Agent looks up customer C1001 by phone number, then queries the data usage of all three lines L1001, L1002, and L1003 one by one, and finally circles back to ask which number the user is actually using in France.
+
+70
+00:09:29,293 --> 00:09:33,205
+In message 17 it reaches an incorrect conclusion:
+
+71
+00:09:33,205 --> 00:09:41,468
+Agent (17): The number 555-123-2002 is not among your active lines.
+
+72
+00:09:41,468 --> 00:09:47,468
+The closest match is 555-123-2001…
+
+73
+00:09:47,468 --> 00:09:52,280
+That conclusion rests on a query of line L1001 alone.
+
+74
+00:09:52,280 --> 00:09:59,780
+After the user insists the number is correct, the Agent goes on to query L1002 and finally matches it.
+
+75
+00:09:59,780 --> 00:10:02,855
+The pivotal moment comes at message 30:
+
+76
+00:10:02,855 --> 00:10:09,968
+User (30) → calls check_network_status(), check_status_bar(
+
+77
+00:10:09,968 --> 00:10:20,218
+Tool returns (31): Airplane Mode: ON | Cellular Connection: no_service | Mobile Data Enabled: Yes | Data Roaming Enabled: No
+
+78
+00:10:20,218 --> 00:10:26,755
+User (33): I see my phone is currently in Airplane Mode, which is why there is no signal.
+
+79
+00:10:26,755 --> 00:10:30,805
+Mobile data is enabled, but data roaming is off.
+
+80
+00:10:30,805 --> 00:10:34,043
+Should I turn off Airplane Mode and try again?
+
+81
+00:10:34,043 --> 00:10:38,343
+The party issuing the tool call is the user, not the Agent.
+
+82
+00:10:38,343 --> 00:10:54,005
+This is the dual-control mechanism: the simulated user owns an independent tool set of its own, including check_status_bar, toggle_airplane_mode, reseat_sim_card, and run_speed_test.
+
+83
+00:10:54,005 --> 00:11:17,768
+The remaining troubleshooting goes smoothly: the Agent asks the user to turn off airplane mode and turn on roaming, the user performs both actions (35, 37), and the status bar switches to full-bar 5G; the Agent asks for a speed test, which returns 275 Mbps rated Excellent (46), and the user confirms the issue is resolved.
+
+84
+00:11:17,768 --> 00:11:22,993
+Both env_assertions pass and reward = 1.0.
+
+85
+00:11:22,993 --> 00:11:28,030
+This full-marks trajectory also contains a problem the verifier never caught.
+
+86
+00:11:28,030 --> 00:11:42,743
+The opening paragraph of the telecom Agent policy states "You should only make one tool call at a time," yet in message 4 the Agent issued get_customer_by_phone and get_customer_by_name in a single turn.
+
+87
+00:11:42,743 --> 00:11:50,343
+The verifier did not mark this as an error, because this task's reward_basis considers only the final state.
+
+88
+00:11:50,343 --> 00:12:00,893
+This is not an oversight in τ²-bench but the inherent price of a binary reward: it trades process granularity for a single number that is comparable across models.
+
+89
+00:12:00,893 --> 00:12:10,530
+Production evaluation systems, however, usually need more: not only a verdict on whether the outcome is right, but an indication of where the problem lies.
+
+90
+00:12:10,530 --> 00:12:13,930
+The failed task is equally worth analyzing.
+
+91
+00:12:13,930 --> 00:12:26,880
+The user's number is 555-123-2002, yet the Agent settled on line L1001 and kept reasoning from its 3.2/5 GB usage figure.
+
+92
+00:12:26,880 --> 00:12:48,143
+Along the way, get_details_by_id(L1001) explicitly returned 555-123-2001 as that line's number; the Agent read the result but did not revise its judgment, then spent dozens of messages on unrelated diagnostics and finally escalated to a human agent.
+
+93
+00:12:48,143 --> 00:13:06,430
+It did in fact complete half the task — it guided the user to turn off data saver mode, and that user-side action genuinely occurred and was verified by the environment — but the wrong line selection meant the required 2 GB mobile data top-up was never completed, and all three final-state assertions failed.
+
+94
+00:13:06,430 --> 00:13:19,380
+This failure pattern closely resembles the AndroidWorld case discussed later in "Failure Attribution": the evidence needed to correct its earlier conclusion was already in the context, but the Agent failed to revisit that conclusion.
+
+95
+00:13:19,540 --> 00:13:31,102
+This one task already poses every question an evaluation set has to answer: what counts as success, where tasks come from, who verifies, and how a score turns into a decision.
+
+96
+00:13:31,052 --> 00:13:34,090
+The following sections take them in turn.
+
+97
+00:13:34,090 --> 00:13:37,777
+Evaluation Metrics: Defining Success.
+
+98
+00:13:37,777 --> 00:13:43,002
+The evaluation result in the previous section was four of five tasks passed.
+
+99
+00:13:43,002 --> 00:13:48,202
+The number 0.8 by itself says nothing about whether the system is usable.
+
+100
+00:13:48,202 --> 00:14:01,727
+If it belongs to a refund customer service Agent, it means one user in five does not get the refund they are owed; if it belongs to a security Agent used to hunt for vulnerabilities, hitting four out of five is quite respectable.
+
+101
+00:14:01,727 --> 00:14:06,727
+The difference lies in how high a success rate the business scenario demands.
+
+102
+00:14:06,727 --> 00:14:11,065
+Technical Wonders: Capability Ceilings with Pass@k.
+
+103
+00:14:11,065 --> 00:14:16,327
+Many current models and Agents are still in what can be called the technical wonder phase.
+
+104
+00:14:16,327 --> 00:14:26,965
+The wonder is a capability ceiling demonstrated under many attempts, a generous time budget, and human selection: one success is enough to prove that the thing is possible in principle.
+
+105
+00:14:26,965 --> 00:14:39,440
+That is exactly the logic of Pass@k — run the same task k times and count it as passed if at least one run passes; when the output is a continuous score, take the best run and call it Best@k.
+
+106
+00:14:39,440 --> 00:15:00,740
+Anthropic's discussion of long-running Agents illustrates this kind of ceiling: letting an Agent work autonomously for a week and write a C compiler from scratch; having it explore until it finds a counterexample to an important mathematical conjecture; or having it review open-source software over and over until it surfaces a serious security hole that has been sitting there for decades.
+
+107
+00:15:00,892 --> 00:15:13,542
+For engineering and research exploration of this kind, what gets demonstrated is usually not "right every time" but a single breakthrough trajectory that finally appears once the exploration budget is stretched far enough.
+
+108
+00:15:13,492 --> 00:15:24,567
+For scientific discovery, vulnerability hunting, and open-ended creative work, that ceiling is valuable in itself: a human can pick the best of k candidate trajectories.
+
+109
+00:15:24,567 --> 00:15:30,917
+Beyond the foundation-model labs, many application companies use the technical-wonder strategy too.
+
+110
+00:15:30,917 --> 00:15:46,067
+Manus drew wide attention because it handed people a virtual computer, letting an audience with no intuition for Agents discover that AI can operate a computer the way a person does — working for half an hour or an hour and completing a complex task step by step.
+
+111
+00:15:46,067 --> 00:15:51,454
+OpenClaw gave many people their first sense that an Agent could feel like a live colleague.
+
+112
+00:15:51,454 --> 00:16:07,054
+Users assign it work through an instant-messaging app much as they would a real person; it can reach every file on the computer and every online service, it reports back or asks for more information when it reaches a certain point, and it can even wake itself up to check and handle email.
+
+113
+00:16:07,054 --> 00:16:14,104
+Early Manus and OpenClaw did not have high success rates on complex tasks, and their token costs were steep.
+
+114
+00:16:14,104 --> 00:16:24,192
+But because these Agent frameworks are general-purpose, complex tasks tend to have a high Pass@k when paired with the strongest models, which is a high technical ceiling.
+
+115
+00:16:24,192 --> 00:16:30,942
+Those technical wonders were shared widely on social networks, and that was the key to these products' success.
+
+116
+00:16:30,942 --> 00:16:35,092
+Business Reliability: Focus on Pass^k.
+
+117
+00:16:35,092 --> 00:16:41,304
+Real businesses usually care about the opposite: not a single mistake across repeated attempts.
+
+118
+00:16:41,304 --> 00:16:56,417
+We call this target Pass^k (read as Pass consecutive k): run the same task k times in a row, require every run to pass, and trigger none of the automatic-failure criteria, such as safety or compliance violations or hallucinations.
+
+119
+00:16:56,417 --> 00:17:02,717
+It answers "can the Agent deliver reliably" rather than "can it occasionally work a miracle".
+
+120
+00:17:02,717 --> 00:17:10,054
+If the runs are independent and the single-run success rate is p, the relationship between the two metrics is straightforward:
+
+121
+00:17:10,054 --> 00:17:17,517
+\mathrm{Pass@k}=1-(1-p)^k,\qquad
+
+122
+00:17:17,517 --> 00:17:23,042
+\mathrm{Pass}^{k}=p^k.
+
+123
+00:17:23,042 --> 00:17:39,029
+At p=0.6 and k=5, for instance, Pass@5 =1-0.4^5\approx99.0\% — it looks as though at least one run almost always succeeds.
+
+124
+00:17:39,029 --> 00:17:50,242
+But Pass^5 =0.6^5\approx7.8\%, which says that getting five in a row without a slip is still hard.
+
+125
+00:17:50,242 --> 00:18:02,517
+The first number is the right way to measure a capability ceiling during exploration; only the second comes close to the reliability that payments, refunds, permission changes, and production deployments demand.
+
+126
+00:18:02,517 --> 00:18:12,504
+An evaluation report must state exactly what the k attempts are: k independent samples of the same task, or k consecutive tasks on a production pipeline.
+
+127
+00:18:12,504 --> 00:18:24,367
+For operations with side effects you cannot simply "retry until it works"; sample in a sandbox or a rollback-capable environment instead, and record every failure in the reliability metric.
+
+128
+00:18:24,367 --> 00:18:26,879
+The Evaluation Environment.
+
+129
+00:18:26,879 --> 00:18:31,254
+Once the metric is settled, the next question is where to test.
+
+130
+00:18:31,254 --> 00:18:40,329
+An evaluation environment is an apparatus that can be run repeatedly: given the same initial state, the same Agent should produce comparable results.
+
+131
+00:18:40,329 --> 00:18:42,542
+The Five Components.
+
+132
+00:18:42,542 --> 00:18:45,954
+Return to the telecom task dissected above.
+
+133
+00:18:45,954 --> 00:18:52,292
+Taking it as the reference, everything a repeatable evaluation environment requires is already present.
+
+134
+00:18:52,292 --> 00:19:05,629
+Dataset is the task file itself: the initial state, the ticket for the Agent, the behavioral spec for the simulator, and the acceptance criteria are packaged into a single record, and one record is one test case.
+
+135
+00:19:05,629 --> 00:19:20,142
+Environment State is the mutable information during task execution: customers, lines, plans, and bills in the database, plus airplane mode, roaming, the data saver switch, and the remaining data allowance on the device side.
+
+136
+00:19:20,142 --> 00:19:25,604
+It must be resettable, and initialization_actions is the reset script.
+
+137
+00:19:25,604 --> 00:19:33,254
+Realism requires state changes to follow business logic; controllability requires that every run start from the same point.
+
+138
+00:19:33,412 --> 00:19:36,049
+Tools belong to two sides.
+
+139
+00:19:35,999 --> 00:19:47,774
+The Agent can call carrier-side operations such as looking up a customer, checking usage, topping up mobile data, and transferring to a human agent; the user can operate the switches on the device.
+
+140
+00:19:47,774 --> 00:19:55,637
+Both tool sets are atomic operations — there is no high-level abstraction such as "solve the user's connectivity problem.
+
+141
+00:19:55,637 --> 00:20:04,762
+Too high a level of abstraction reduces the evaluation to a test of a single function call, with the planning and reasoning absorbed into the tool itself.
+
+142
+00:20:04,762 --> 00:20:12,774
+Rubric is the four layers of checks in evaluation_criteria, plus the aggregation rule in reward_basis.
+
+143
+00:20:12,774 --> 00:20:18,374
+Interaction Protocol specifies the order of interaction and the termination conditions.
+
+144
+00:20:18,374 --> 00:20:36,137
+Here the normal termination signal is the simulated user emitting ###STOP###; there is also a turn limit, and the simulated user may end the conversation on its own once its patience runs out — poor communication efficiency counts as a failure in itself.
+
+145
+00:20:36,137 --> 00:20:41,374
+Remove any one of the five and the evaluation no longer forms a repeatable loop.
+
+146
+00:20:41,374 --> 00:20:46,637
+The same five serve as the reference frame when we examine other benchmarks below.
+
+147
+00:20:46,637 --> 00:20:51,312
+Human-Computer Interaction and Tool-Calling Evaluation Environments.
+
+148
+00:20:51,312 --> 00:20:59,124
+Tasks like telecom must have a counterpart to interact with, so the user simulation among the five components is indispensable.
+
+149
+00:20:59,124 --> 00:21:18,974
+Another large class of tasks has no conversational counterpart at all: in code generation, data analysis, and mathematical problem solving, the Agent interacts only with tools from start to finish, correctness is decided by whether execution verification passes, and neither human annotation nor model judgment is required.
+
+150
+00:21:18,974 --> 00:21:38,037
+Such environments dispense with the user simulator; the other four components remain but take simpler forms — the environment state is a file system or a database, the rubric is a piece of test code, and the interaction protocol degenerates into "keep calling tools until an answer is produced or the turn budget is exhausted.
+
+151
+00:21:38,037 --> 00:21:48,012
+The Verifiers framework stratifies these environments along two dimensions: whether the task needs to maintain state across turns, and whether it needs isolation.
+
+152
+00:21:48,012 --> 00:22:09,987
+SingleTurnEnv suits asking a math question and verifying the answer directly; ToolEnv suits searching several web pages, synthesizing an answer, and then verifying the final result; StatefulToolEnv suits modifying a database record and then verifying the state change; SandboxEnv suits running code in a sandbox and then checking the output files.
+
+153
+00:22:09,987 --> 00:22:19,812
+Table 7-1 summarizes these four environment types, making it easy to choose based on task state, tool calling, and isolation requirements.
+
+154
+00:22:19,812 --> 00:22:24,462
+Table 7-1 Comparison of Verifiers Environment Types
+
+155
+00:22:24,462 --> 00:22:35,487
+Environment Type: SingleTurnEnv; State Persistence: None; Tool Calls: None; Typical Use Case: Single-turn Q&A, math problems.
+
+156
+00:22:35,487 --> 00:22:45,999
+Environment Type: ToolEnv; State Persistence: None; Tool Calls: Multi-turn; Typical Use Case: Search + information synthesis.
+
+157
+00:22:45,999 --> 00:22:56,737
+Environment Type: StatefulToolEnv; State Persistence: Yes; Tool Calls: Multi-turn; Typical Use Case: Modifying database records.
+
+158
+00:22:56,737 --> 00:23:08,149
+Environment Type: SandboxEnv; State Persistence: Yes + isolated; Tool Calls: Multi-turn; Typical Use Case: Code execution and testing.
+
+159
+00:23:08,149 --> 00:23:20,312
+The framework supports parallel sampling and trajectory caching; the complete trajectory of every evaluation (observations, actions, rewards) is saved for later analysis and replay.
+
+160
+00:23:20,312 --> 00:23:31,537
+In addition, a tool's effect depends on the current state, so on failure it should return a clear error message rather than a bare failure flag, allowing the Agent to adjust its strategy accordingly.
+
+161
+00:23:31,537 --> 00:23:45,537
+Tool-calling evaluation examines the correctness of observable state changes, while human-computer interaction evaluation examines the soundness of the communication strategy — the former verifies action, the latter verifies guidance.
+
+162
+00:23:45,537 --> 00:23:50,299
+Figure 7-2 contrasts the structure of the two environment types.
+
+163
+00:23:50,299 --> 00:23:57,512
+As illustrated in Figure 7-2: Tool-Calling and Human-Computer Interaction Evaluation Environments.
+
+164
+00:23:57,512 --> 00:24:00,524
+Design of the Evaluation Dataset.
+
+165
+00:24:00,676 --> 00:24:05,338
+The evaluation environment is the stage and the dataset is the script.
+
+166
+00:24:05,288 --> 00:24:17,438
+The same five components, applied to a different class of task, may be filled in entirely differently: where the tasks come from, how deeply the verifier can check, and how memorization is prevented.
+
+167
+00:24:17,438 --> 00:24:27,438
+This section starts from the design practice of several public benchmarks and ends with a more practical question — where the tasks in a self-built evaluation set should come from.
+
+168
+00:24:27,438 --> 00:24:31,176
+A Cross-Benchmark Comparison of Design Choices.
+
+169
+00:24:31,176 --> 00:24:44,051
+The presence or absence of an interactive counterpart, distinguished in the previous section, is only the first-order difference at the environment level; the divergences at the dataset level reveal the design trade-offs more clearly.
+
+170
+00:24:44,051 --> 00:24:49,526
+Table 7-2 places several frequently cited benchmarks side by side.
+
+171
+00:24:49,526 --> 00:24:54,551
+Table 7-2 Key Design Choices of Several Agent Benchmarks
+
+172
+00:24:54,551 --> 00:25:15,588
+Benchmark: τ²-bench; Capability Tested: Human-computer interaction and tool calling in customer service; Task Source: Hand-written + combinatorial generation; Environment Played By: User simulator + business database; Verifier: Four layers of checks aggregated to binary by reward_basis.
+
+173
+00:25:15,588 --> 00:25:39,676
+Benchmark: SWE-bench Verified; Capability Tested: Software development, coding; Task Source: Real GitHub issues, manually screened; Environment Played By: Code repository + test suite; Verifier: FAIL\_TO\_PASS / PASS\_TO\_PASS dual verification.
+
+174
+00:25:39,676 --> 00:25:55,713
+Benchmark: AndroidWorld; Capability Tested: Operating the Android phone GUI; Task Source: Parameterized template instantiation; Environment Played By: Real Android emulator; Verifier: Final UI state assertions.
+
+175
+00:25:55,713 --> 00:26:13,163
+Benchmark: OSWorld; Capability Tested: Operating the Linux desktop GUI; Task Source: Started from a preconfigured intermediate state; Environment Played By: Real virtual machine; Verifier: 134 independent evaluation functions.
+
+176
+00:26:13,163 --> 00:26:28,126
+Benchmark: Terminal-Bench; Capability Tested: Operating the Linux terminal, coding; Task Source: Hand-written; Environment Played By: Docker container; Verifier: File system checks + real execution.
+
+177
+00:26:28,126 --> 00:26:43,963
+Benchmark: GAIA; Capability Tested: General-purpose AI assistant gathering information; Task Source: Hand-written + proprietary attachments; Environment Played By: The open internet; Verifier: Exact string matching.
+
+178
+00:26:43,963 --> 00:26:45,776
+Verifiers.
+
+179
+00:26:45,776 --> 00:26:53,038
+An Agent can easily write an expansive report claiming the task is fully complete when in fact nothing of the sort happened.
+
+180
+00:26:53,038 --> 00:27:00,588
+An evaluation framework must verify facts that a machine can check independently, not the Agent's own account of itself.
+
+181
+00:27:00,588 --> 00:27:07,476
+SWE-bench Verified decomposes "the fix is complete" into two independent propositions.
+
+182
+00:27:07,476 --> 00:27:17,126
+One set is FAIL\_TO\_PASS: failing before the fix and passing after it, proving the problem really was solved.
+
+183
+00:27:17,126 --> 00:27:26,438
+The other is PASS\_TO\_PASS: passing both before and after, proving no new defect was introduced.
+
+184
+00:27:26,438 --> 00:27:35,851
+Check only the first and an Agent can slip through by deleting or rewriting the assertions that stand in its way; check only the second and you have checked nothing at all.
+
+185
+00:27:35,851 --> 00:27:42,638
+Only checking both makes "fixed" and "did not break anything" two separately provable conclusions.
+
+186
+00:27:42,638 --> 00:27:50,451
+It additionally confirms the stability of the tests themselves, excluding flaky tests that sometimes pass and sometimes fail.
+
+187
+00:27:50,451 --> 00:27:56,126
+OSWorld's verifier can detect cases of superficial completion but substantive error.
+
+188
+00:27:56,126 --> 00:28:09,126
+It is equipped with 134 independent evaluation functions and full operating system access, able to inspect file system structure, process state, network connections, and application internals.
+
+189
+00:28:09,126 --> 00:28:29,488
+In a database task, the evaluation script not only confirms that the report file exists but also connects to the database to verify that the SQL actually executed; in a browser task it analyzes the DOM tree, inspects cookies and localStorage, and sends verification requests to the backend to confirm that the form really took effect.
+
+190
+00:28:29,644 --> 00:28:46,019
+Terminal-Bench's task build-linux-kernel-qemu requires building Linux kernel 6.9 from source, adding a custom printk in start_kernel, generating an initramfs, and running it under QEMU; success is defined as the custom message appearing in the boot log.
+
+191
+00:28:45,969 --> 00:28:51,544
+The Agent cannot fabricate the output — it has to complete the whole process for real.
+
+192
+00:28:51,544 --> 00:28:54,706
+Difficulty Stratification of Tasks.
+
+193
+00:28:54,706 --> 00:28:59,469
+An evaluation task set needs tasks at different difficulty levels.
+
+194
+00:28:59,469 --> 00:29:04,481
+That way the set does not go stale quickly as model capability improves.
+
+195
+00:29:04,481 --> 00:29:31,394
+The full GAIA set of 466 questions is divided into three difficulty levels: Level 1 requires only one or two tools (humans 93.9%, GPT-4 30.3%), Level 2 requires multi-step reasoning (91.8% versus 9.7%), and Level 3 requires complex composition (87.3% versus 0%).
+
+196
+00:29:31,394 --> 00:29:36,819
+This stratification does more than label difficulty; it has diagnostic value.
+
+197
+00:29:36,819 --> 00:29:50,394
+A Level 1 failure points to basic tool use, Level 2 to multi-step planning and information integration, and Level 3 to long-sequence reasoning and complexity management, and the three imply different directions for improvement.
+
+198
+00:29:50,394 --> 00:30:05,519
+Terminal-Bench spans everything from simple MLflow model registration, to medium-difficulty 7-Zip password cracking, to difficult multi-component integration of a Git server and a web server, up to the hardest FEAL differential cryptanalysis.
+
+199
+00:30:05,519 --> 00:30:20,031
+τ²-bench additionally designs trap tasks, in which the user claims "customer service has already approved the cancellation" when it does not in fact comply with policy, testing whether the Agent holds its judgment under pressure and misdirection.
+
+200
+00:30:20,031 --> 00:30:22,669
+Preventing Data Contamination.
+
+201
+00:30:22,669 --> 00:30:27,794
+GAIA makes its answers impossible to retrieve directly from the internet.
+
+202
+00:30:27,794 --> 00:30:49,919
+Its tasks are conceptually simple with open paths — for example, starting from NASA's Astronomy Picture of the Day for a given date, identifying the astronaut in the image, finding the astronaut group they belonged to, computing which member of that group spent the least time in space, and formatting the output strictly as "last name; semicolon-separated; thousands separators.
+
+203
+00:30:49,919 --> 00:30:55,556
+The answer is highly specific, and correctness is decided by exact string matching.
+
+204
+00:30:55,556 --> 00:31:13,694
+Leakage prevention rests on two things: first, the question can only be answered by combining several information sources, so no single web page gives the answer directly; second, some tasks come with specially produced attachments (PDFs, audio, and images that do not exist on the internet).
+
+205
+00:31:13,852 --> 00:31:18,614
+AndroidWorld derives a large number of instances from a single template.
+
+206
+00:31:18,564 --> 00:31:32,502
+Its tasks are not static text but dynamically instantiable templates such as "change the phone number of contact [CONTACT_NAME] to [NEW_PHONE]," with parameter values generated randomly for each evaluation.
+
+207
+00:31:32,502 --> 00:31:49,664
+This yields three benefits: parameters differ each time, so replaying a fixed action sequence is useless; a single template can generate a nearly unlimited number of instances; and fixing some parameters while varying others allows the effect of a specific factor to be measured precisely.
+
+208
+00:31:49,664 --> 00:31:54,014
+Terminal-Bench embeds a canary identifier in the task statement.
+
+209
+00:31:54,014 --> 00:32:02,389
+Every task carries a canary GUID; if a model can output content containing that GUID, the benchmark data has entered the training set.
+
+210
+00:32:02,389 --> 00:32:06,552
+It does not prevent leakage, but it makes leakage detectable.
+
+211
+00:32:06,552 --> 00:32:09,877
+Quality Control and Long-Term Maintenance.
+
+212
+00:32:09,877 --> 00:32:13,752
+Building a high-quality evaluation set is very hard.
+
+213
+00:32:13,752 --> 00:32:22,502
+The present form of most of the benchmarks above is the result of round after round of repair once the first version was put to use and its problems surfaced.
+
+214
+00:32:22,502 --> 00:32:29,714
+From τ-bench to τ²-bench, for instance, there are five places where the design was reworked.
+
+215
+00:32:29,714 --> 00:32:34,664
+First, task instructions were too vague, letting the answer be guessed.
+
+216
+00:32:34,664 --> 00:32:45,427
+The first version's task instructions were written broadly, so the model did not need to genuinely clarify the requirement — guessing a plausible workflow from common sense was enough to pass.
+
+217
+00:32:45,427 --> 00:32:57,302
+τ²-bench split the script into two fields, known_info and task_instructions: the former delimits what the user knows, the latter prescribes how it is disclosed.
+
+218
+00:32:57,302 --> 00:33:02,889
+What the user does not know, the Agent cannot guess and can obtain only by querying.
+
+219
+00:33:02,889 --> 00:33:08,702
+Second, success conditions were not precise enough, causing verification errors.
+
+220
+00:33:08,702 --> 00:33:13,589
+A condition such as "the network is back" has no checkable boundary.
+
+221
+00:33:13,589 --> 00:33:23,277
+τ²-bench changed it to "the issue counts as resolved only when the speed test returns excellent; poor, fair, and good are all rejected.
+
+222
+00:33:23,277 --> 00:33:29,452
+This change targets perfunctory fixes, which suppress the symptom without addressing the root cause.
+
+223
+00:33:29,452 --> 00:33:33,552
+Third, the user simulator behaved too mechanically.
+
+224
+00:33:33,552 --> 00:33:37,977
+The first version's simulated user only responded passively.
+
+225
+00:33:37,977 --> 00:33:50,064
+τ²-bench added emotion (showing displeasure after the first failed fix), a patience limit (ending the conversation when communication efficiency is too low), and the grounding requirement.
+
+226
+00:33:50,064 --> 00:33:55,464
+Together these make the simulator approximate a real user while remaining reproducible.
+
+227
+00:33:55,464 --> 00:34:01,264
+Fourth, the user participates not only in the conversation but also in the operation.
+
+228
+00:34:01,264 --> 00:34:05,364
+The telecom domain introduced a dual-control environment.
+
+229
+00:34:05,364 --> 00:34:16,439
+In earlier evaluations only the Agent could change the environment, whereas in technical support scenarios a substantial share of the actions ought to be performed by the user on their own device.
+
+230
+00:34:16,439 --> 00:34:30,139
+Dual control also adds a dimension to verification: after the user changes the state, the Agent must call a tool again to learn the result, so verification now covers whether the Agent actually read the outcome of the user's actions.
+
+231
+00:34:30,139 --> 00:34:34,189
+Fifth, task instances are generated dynamically.
+
+232
+00:34:34,189 --> 00:34:46,577
+τ²-bench's concrete instances (user names, phone numbers, fault combinations) can be generated in bulk from parameters, which improves both coverage and resistance to leakage.
+
+233
+00:34:46,577 --> 00:34:53,464
+SWE-bench Verified: 71% of the original tasks were eliminated before release.
+
+234
+00:34:53,464 --> 00:35:17,289
+OpenAI randomly sampled 1,699 of the original 2,294 tasks for human evaluation, recruiting 93 developers proficient in Python to check each one: whether the problem description was clear, whether the test cases covered edge conditions, whether the tests were stable, whether the reference patch introduced new errors, and whether the difficulty was reasonable.
+
+235
+00:35:17,289 --> 00:35:20,252
+In the end only 500 passed.
+
+236
+00:35:20,252 --> 00:35:28,202
+The high elimination rate buys a better signal-to-noise ratio, and evaluation cost drops by roughly 80% as well.
+
+237
+00:35:28,202 --> 00:35:41,139
+Complex Agent tasks routinely take minutes to hours, and running a full evaluation dataset with a frontier model often costs thousands of dollars in tokens, so reducing evaluation cost matters a great deal.
+
+238
+00:35:41,308 --> 00:35:46,908
+OSWorld: more than 300 issues surfaced in the 15 months after release.
+
+239
+00:35:46,858 --> 00:36:12,783
+Released in April 2024, it quickly became an important benchmark for multimodal Agent evaluation, and widespread use then exposed four categories of problems: environment issues (anti-scraping measures, CAPTCHAs, dynamic content changes), task description issues (ambiguous phrasing), verification logic issues (too strict or too lenient), and initial state issues (incomplete configuration).
+
+240
+00:36:12,783 --> 00:36:41,620
+A team of about ten people from the University of Hong Kong worked closely with MoonShot AI, OpenAI, ByteDance Seed TARS, Anthropic, Simular, and others for two months on a systematic repair: environment issues were resolved by locking versions and keeping offline backups, description issues by rewriting ambiguous phrasing, verification issues by manually establishing correct baselines and adjusting conditions, and initial state issues by adding completeness checks.
+
+241
+00:36:41,620 --> 00:36:48,720
+Experiment 7-2 introductory difficulty, one star: : Manually Execute Benchmark Tasks
+
+242
+00:36:48,720 --> 00:37:02,970
+Select tasks from GAIA, AndroidWorld, SWE-Bench Verified, Terminal-Bench, and OSWorld-Verified and complete them by hand; one easy, one medium, and one difficult task per dataset is recommended.
+
+243
+00:37:02,970 --> 00:37:06,833
+The "difficult" level is challenging for humans too.
+
+244
+00:37:06,833 --> 00:37:09,933
+Afterwards, answer two questions.
+
+245
+00:37:09,933 --> 00:37:17,333
+Does the task description admit more than one reasonable interpretation, and if so, which one does the verifier accept?
+
+246
+00:37:17,333 --> 00:37:24,008
+If you tried to slip through without doing the work, what would the cheapest path be, and could the verifier stop it?
+
+247
+00:37:24,008 --> 00:37:27,095
+Three Sources of an Evaluation Set.
+
+248
+00:37:27,095 --> 00:37:33,520
+A common view holds that public benchmarks serve model ranking and have limited bearing on real business.
+
+249
+00:37:33,520 --> 00:37:42,120
+It is true that public benchmark scores are hard to translate directly into product decisions, but their design techniques transfer perfectly well.
+
+250
+00:37:42,120 --> 00:37:55,108
+Verification depth, parameterized generation, leakage prevention, and quality maintenance — the topics discussed above — are precisely the places a self-built evaluation set is most likely to neglect.
+
+251
+00:37:55,108 --> 00:37:59,420
+An evaluation set in production usually has three sources.
+
+252
+00:37:59,420 --> 00:38:07,308
+Public benchmarks are used for coarse model screening and for borrowing design techniques, and generally not for product decisions.
+
+253
+00:38:07,308 --> 00:38:17,045
+Their task distribution does not match that of your business; gaining two percentage points on GAIA bears no necessary relation to your refund success rate.
+
+254
+00:38:17,045 --> 00:38:26,758
+An in-house evaluation dataset for business tasks covers the real task distribution and can serve as the basis for model selection and Harness design decisions.
+
+255
+00:38:26,758 --> 00:38:38,208
+τ²-bench, for example, can serve as the skeleton for any evaluation system that needs a simulated user; you only have to substitute your own domain data and tool set.
+
+256
+00:38:38,208 --> 00:38:52,783
+Production trajectory feedback comes from real failures in the field: cases where the user explicitly corrected the Agent, where the user gave a thumbs-down, and where a subsequent state check, rule-based verifier, or LLM review found a problem.
+
+257
+00:38:52,783 --> 00:38:57,358
+After failure attribution, these settle into regression cases.
+
+258
+00:38:57,358 --> 00:39:04,995
+The concrete method is described later in "Failure Attribution" and "End-to-End and Trajectory-Prefix Regression Tasks.
+
+259
+00:39:04,995 --> 00:39:12,245
+This source is the most expensive and also the most accurate, because it comes directly from what users actually encountered.
+
+260
+00:39:12,245 --> 00:39:24,533
+In the early stage there are usually only public benchmarks and a small hand-written business set; once the system has been running in production for a while, cases fed back from production trajectories become the main body.
+
+261
+00:39:24,533 --> 00:39:27,345
+Automated Evaluation Methods.
+
+262
+00:39:27,345 --> 00:39:34,770
+The benchmarks discussed in the preceding sections have one thing in common: their verifiers are almost all deterministic.
+
+263
+00:39:34,770 --> 00:39:48,633
+SWE-bench runs a test suite, AndroidWorld asserts the final UI state, GAIA does exact string matching, and τ²-bench's four layers of checks are likewise executed entirely in code.
+
+264
+00:39:48,633 --> 00:40:02,470
+There are good reasons for this choice: deterministic verification adds no model overhead, results are fully reproducible, it can be folded into continuous integration like a unit test, and it makes ranking across models straightforward.
+
+265
+00:40:02,620 --> 00:40:08,995
+The price is that it can only judge whether the final outcome is right; it cannot give the reason for an error.
+
+266
+00:40:08,945 --> 00:40:21,445
+The failed τ²-bench task above scored 0, and that 0 says nothing about whether the Agent went wrong at line selection or skipped the mobile data top-up step, still less about what to change next.
+
+267
+00:40:21,445 --> 00:40:31,457
+For a public benchmark used for ranking, this is not a defect; for a production system that needs continuous improvement, it is exactly the information most needed.
+
+268
+00:40:31,457 --> 00:40:38,920
+Production scenarios face a second difficulty: many judgments simply cannot be written as assertions that code can check.
+
+269
+00:40:38,920 --> 00:40:54,307
+Whether a complaint response is appropriately worded, whether a research report omits a critical piece of information, whether a memory retrieval got a relationship between people wrong — none of these has a unique final state to query, nor can they be decided by keyword matching.
+
+270
+00:40:54,307 --> 00:41:08,532
+Moving from public benchmarks to evaluation in production therefore requires the mode of verification to shift rightward along a spectrum whose horizontal axis is the degree to which a task is mechanically verifiable, as shown in Figure 7-4.
+
+271
+00:41:08,532 --> 00:41:16,720
+As illustrated in Figure 7-4: A Spectrum of Verification Modes, from Deterministic Verification to Model Judgment.
+
+272
+00:41:16,720 --> 00:41:33,507
+The two instruments on the right of the spectrum consequently become the mainstay of production evaluation: a Rubric that breaks the vague question of "how good is it" into several separately scorable dimensions, and LLM-as-a-Judge that produces the score where no deterministic criterion exists.
+
+273
+00:41:33,507 --> 00:41:46,245
+Only together can they turn a blanket failure rate back into concrete, fixable problems; combined with failure attribution in the second half of this section, they form the complete evaluation loop for a production Agent.
+
+274
+00:41:46,245 --> 00:41:50,520
+It should be said that moving rightward does not mean abandoning the left.
+
+275
+00:41:50,520 --> 00:42:00,545
+Every check that can be written as a programmatic assertion should stay an assertion, and LLM judgment should be reserved for the dimensions that genuinely cannot be decided mechanically.
+
+276
+00:42:00,545 --> 00:42:07,982
+Deterministic checks are cheaper and more stable, and they are far better suited to running as regression tests over the long term.
+
+277
+00:42:07,982 --> 00:42:12,245
+LLM-as-a-Judge: The Core of Automated Evaluation.
+
+278
+00:42:12,245 --> 00:42:17,532
+As illustrated in Figure 7-5: LLM-as-a-Judge Pipeline.
+
+279
+00:42:17,532 --> 00:42:20,320
+Why is LLM-as-a-Judge needed?
+
+280
+00:42:20,320 --> 00:42:33,857
+For open-ended tasks (e.g., generating reports, handling customer complaints, creative content), there are no standard answers for automatic comparison, and human evaluation is costly and difficult to scale.
+
+281
+00:42:33,857 --> 00:42:44,657
+LLM-as-a-Judge balances the scalability of automation with human expert judgment by having a language model evaluate outputs against expert-defined scoring criteria (a Rubric).
+
+282
+00:42:44,657 --> 00:42:53,357
+The method has known limitations, though: the judge model carries its own biases, and repeated judgments of the same input can vary.
+
+283
+00:42:53,357 --> 00:43:07,320
+The most typical is length bias, a tendency to score longer, more detailed responses higher even when they are no more correct — much as a human sitting an exam will pad out an answer they do not know, hoping to stumble onto a point or two.
+
+284
+00:43:07,320 --> 00:43:29,945
+Three defenses are common: penalize verbosity explicitly in the Rubric and cap response length per task type; in pairwise comparisons, bring the two candidates to similar lengths before judging; and regularly audit the correlation between scores and response length — if high scores almost always go to long responses, the judge has been swayed by length and the Rubric needs revision.
+
+285
+00:43:29,945 --> 00:43:35,957
+To address these challenges systematically, Rubric design must follow the principles below:
+
+286
+00:43:35,957 --> 00:43:40,507
+Rubric (Scoring Criteria): The Basis for LLM Judgment.
+
+287
+00:43:40,507 --> 00:43:45,345
+Four Rubric Principles (Scale AI, "Rubrics as Rewards"
+
+288
+00:43:45,345 --> 00:43:53,407
+1) Based on Expert Guidance—A Rubric must reflect domain knowledge, capturing the core facts and reasoning steps.
+
+289
+00:43:53,407 --> 00:44:05,220
+A Rubric for medical Q&A, for instance, needs diagnostic criteria and the medical errors that must be avoided; one without expert grounding can only capture surface features like fluency.
+
+290
+00:44:05,380 --> 00:44:13,942
+2) Comprehensive Coverage—A Rubric should cover factual accuracy, logical coherence, completeness, and safety.
+
+291
+00:44:13,892 --> 00:44:25,355
+It should not only define positive standards but also explicitly identify Pitfalls—i.e., high-risk common errors, such as recommending unverified therapies in medical advice.
+
+292
+00:44:25,355 --> 00:44:33,880
+3) Standardized Importance Weighting—Classify criteria as Essential, Important, Optional, or Pitfall items.
+
+293
+00:44:33,880 --> 00:44:50,267
+The scheme supports a Veto mechanism: for example, in a customer service scenario, hallucination (fabricating false information) is a typical veto dimension—regardless of how well other dimensions perform, if false information appears, it must be vetoed.
+
+294
+00:44:50,267 --> 00:44:54,455
+This also helps prevent reward hacking through keyword stuffing.
+
+295
+00:44:54,455 --> 00:45:03,705
+4) Self-Contained Evaluation—Each evaluation criterion can be assessed independently and does not rely on the evaluator's domain knowledge.
+
+296
+00:45:03,705 --> 00:45:16,905
+Abstract standards like "the response demonstrates deep understanding" should be avoided, replaced by verifiable standards like "cites at least two authoritative theories and accurately explains how they support the conclusion.
+
+297
+00:45:16,905 --> 00:45:27,005
+The key practice: define objectively verifiable scoring levels for each dimension, with concrete examples and edge cases to resolve ambiguous situations.
+
+298
+00:45:27,005 --> 00:45:41,255
+Actively guard against Reward Hacking—the Agent finding a "shortcut" to high scores without actually completing the task—by explicitly penalizing hallucination, sycophancy, keyword stuffing, and dodging hard questions.
+
+299
+00:45:41,255 --> 00:45:52,492
+A Rubric is an iterative product: trial use reveals disagreements among evaluators, and the Rubric gradually evolves through this feedback from abstract principles into a detailed casebook.
+
+300
+00:45:52,492 --> 00:45:58,967
+Here is a complete Rubric that follows the four principles, using a user memory Agent as the example.
+
+301
+00:45:58,967 --> 00:46:02,667
+Test question: "Who is my daughter's pediatrician?
+
+302
+00:46:02,667 --> 00:46:13,667
+The answer requires linking information across two conversations: the first conversation mentions "my daughter's name is Lily," the second mentions "took Lily to see Dr. Chen").
+
+303
+00:46:13,667 --> 00:46:18,405
+Refer to the companion repository for the complete code implementation.
+
+304
+00:46:18,405 --> 00:46:20,567
+Good Rubric vs.
+
+305
+00:46:20,567 --> 00:46:34,417
+Bad Rubric: Each scoring level above specifies verifiable, concrete behavior ("Correctly answers Dr. Chen") rather than descriptions that cannot be judged objectively, like "demonstrates a deep understanding of memory.
+
+306
+00:46:34,417 --> 00:46:43,792
+The veto item sets the bottom line: even if every other dimension scores full marks, a single instance of hallucination results in an automatic zero.
+
+307
+00:46:43,948 --> 00:46:47,698
+Give the judge both the Rubric and the Agent's response.
+
+308
+00:46:47,648 --> 00:46:50,960
+It will score each dimension and explain why.
+
+309
+00:46:50,960 --> 00:47:06,548
+Once results from dozens of cases are grouped by dimension and the low-scoring traces are replayed, a vague drop in success rate becomes a concrete diagnosis: retrieval missed a fact, the model linked the wrong people or events, or it added an unsupported claim.
+
+310
+00:47:06,548 --> 00:47:12,235
+A useful Rubric tells the team not only how the system scored, but where to look next.
+
+311
+00:47:12,235 --> 00:47:21,160
+The following takes user memory as a concrete case, showing how to bring this general method down to an executable evaluation set and verifier.
+
+312
+00:47:21,160 --> 00:47:29,185
+Experiment 7-3 intermediate difficulty, two stars: : Building a Rubric-Based User Memory Evaluation System
+
+313
+00:47:29,185 --> 00:47:36,898
+Prerequisites: Must complete the Chapter 3 User Memory Experiment (chapter3/user-memory-evaluation).
+
+314
+00:47:36,898 --> 00:47:50,848
+This experiment requires modifying the chapter3/user-memory-evaluation framework from Chapter 3, upgrading the current simple LLM-as-a-Judge scoring mechanism to a structured, multi-dimensional Rubric evaluation system.
+
+315
+00:47:50,848 --> 00:48:00,848
+The existing system uses a single LLM call to return a pass/fail result plus evaluation reasoning, lacking structured diagnostic capabilities.
+
+316
+00:48:00,848 --> 00:48:06,810
+Design a unified multi-dimensional Rubric framework applicable to all three task levels.
+
+317
+00:48:06,810 --> 00:48:36,698
+Evaluation dimensions include: Factual Correctness (precision: of all the information given, how much is correct—verifies that numbers/dates/names are consistent with the stored memory); Information Completeness (recall: of all the information that should be given, how much is mentioned—verifies that all relevant information is provided with no key content omitted); Reasoning Correctness (checks whether the relationships between pieces of information and implicit logic are correctly understood)
+
+318
+00:48:36,698 --> 00:48:49,310
+Reasoning Proactiveness (evaluates whether suggestions or risk warnings beyond a direct answer are provided when appropriate); Hallucination Detection (ensures no information not present in memory is fabricated).
+
+319
+00:48:49,310 --> 00:48:58,010
+Four-level scoring (Excellent/Good/Passable/Fail), with specific judgment criteria for each level rather than abstract descriptions.
+
+320
+00:48:58,010 --> 00:49:01,335
+The hallucination dimension is a veto item.
+
+321
+00:49:01,335 --> 00:49:05,273
+Provide examples and boundary cases for each dimension.
+
+322
+00:49:05,273 --> 00:49:13,898
+Experiment 7-4 intermediate difficulty, two stars: : Comparative Evaluation of Advanced JSON Cards vs. RAG
+
+323
+00:49:13,898 --> 00:49:24,735
+Prerequisites: Must complete the Chapter 3 User Memory and RAG experiments (chapter3/user-memory, chapter3/agentic-rag-for-user-memory).
+
+324
+00:49:24,735 --> 00:49:33,135
+Objective: Fairly compare the advantages and boundaries of structured memory versus unstructured retrieval on the same evaluation set.
+
+325
+00:49:33,135 --> 00:49:57,923
+Reuse the two Chapter 3 projects and compare three configurations on the 60 test cases from chapter3/user-memory-evaluation—Pure Advanced JSON Cards (structured cards kept in context, with no retrieval needed), Pure RAG (conversation chunks embedded in a vector store, retrieval required), Hybrid System (core facts resident + original conversations retrieved on demand).
+
+326
+00:49:57,923 --> 00:50:13,010
+Acceptance Criteria: Record success rate, average steps, number of tool calls, latency, and cost across three complexity levels (basic recall / multi-session disambiguation / cross-session hidden associations).
+
+327
+00:50:13,010 --> 00:50:22,610
+Clearly describe the failure boundaries for each approach—what structured memory misses, what retrieval misses, and whether the hybrid truly achieves synergy.
+
+328
+00:50:22,610 --> 00:50:32,948
+This is an end-to-end regression layer: it checks that the complete task still works, but cannot by itself show whether the Agent correctly scopes a memory once it has been supplied.
+
+329
+00:50:32,948 --> 00:50:38,323
+Configuration details and test cases are available in the companion repository.
+
+330
+00:50:38,323 --> 00:50:46,260
+The companion experiment ran all three systems on the same 60 questions and retained 180 real API trajectories.
+
+331
+00:50:46,260 --> 00:50:51,373
+Table 7-3 reports both the rates and the underlying success counts.
+
+332
+00:50:51,373 --> 00:50:56,248
+Table 7-3 Success Rate by Memory System and Task Level
+
+333
+00:50:56,248 --> 00:51:12,523
+System: Advanced JSON Cards; Basic Recall: 95%; Multi-Session Disambiguation: 60%; Hidden Cross-Session Links: 50%; Overall: 68.3% (41/60).
+
+334
+00:51:12,676 --> 00:51:27,513
+System: RAG; Basic Recall: 90%; Multi-Session Disambiguation: 40%; Hidden Cross-Session Links: 15%; Overall: 48.3% (29/60).
+
+335
+00:51:27,463 --> 00:51:41,826
+System: Hybrid; Basic Recall: 80%; Multi-Session Disambiguation: 70%; Hidden Cross-Session Links: 50%; Overall: 66.7% (40/60).
+
+336
+00:51:41,826 --> 00:51:45,788
+Most notably, the hybrid did not win by default.
+
+337
+00:51:45,788 --> 00:51:58,338
+It did on 3 questions what neither single approach managed, yet fell short of the better single approach on 8 others; compared with the best single approach on each question, its average success rate was in fact lower.
+
+338
+00:51:58,338 --> 00:52:08,288
+Pure RAG was not far from structured cards on basic-recall questions, but on cross-session association questions its success rate dropped to 15%.
+
+339
+00:52:08,288 --> 00:52:18,951
+Another easily overlooked figure: across 180 judgments, the hallucination veto fired 28 times—evidence of how much a single veto item matters.
+
+340
+00:52:18,951 --> 00:52:22,751
+The Same-Family Model Problem and Multi-Source Judging.
+
+341
+00:52:22,751 --> 00:52:31,101
+When the Agent and the judging model come from the same family, the Agent may learn to exploit the judging model's preferences and blind spots.
+
+342
+00:52:31,101 --> 00:52:39,076
+This is precisely what Goodhart's Law states: when a metric becomes an optimization target, it ceases to be a good metric.
+
+343
+00:52:39,076 --> 00:52:48,988
+The more an Agent is trained or tuned on a particular scoring system, the more it tends to exploit loopholes in that system rather than genuinely improving its capabilities.
+
+344
+00:52:48,988 --> 00:52:58,951
+More insidiously, the Agent will gradually learn to avoid the types of errors that the judging model is not good at detecting, making the scoring system appear perfectly fine.
+
+345
+00:52:58,951 --> 00:53:10,063
+The mitigation is multi-source heterogeneous judging—independent judges drawn from different model families (if the Agent runs on Claude, judge with GPT-5 and Gemini).
+
+346
+00:53:10,063 --> 00:53:16,626
+Different families' biases are often orthogonal, so the Agent can rarely fool all the judges at once.
+
+347
+00:53:16,626 --> 00:53:24,026
+Use the same Rubric so everyone judges the same target, and aggregate by weighted averaging or consistency checks.
+
+348
+00:53:24,026 --> 00:53:32,213
+In deployment, a single model can handle rapid evaluation, with periodic quality audits run against the full multi-source setup.
+
+349
+00:53:32,213 --> 00:53:47,176
+Multi-source judging addresses the question of which models should serve as judges; the next question is which modalities should be evaluated—extending LLM-as-a-Judge from text to speech, images, and video is another axis of evaluation coverage.
+
+350
+00:53:47,176 --> 00:53:50,088
+Multimodal LLM-as-a-Judge.
+
+351
+00:53:50,088 --> 00:53:56,651
+Multimodal judging extends LLM-as-a-Judge to the domains of speech, images, and video.
+
+352
+00:53:56,651 --> 00:53:59,576
+Four common directions are as follows.
+
+353
+00:53:59,576 --> 00:54:08,988
+TTS Evaluation (TTS stands for Text-to-Speech): Assesses accuracy, naturalness, voice consistency, and emotional expression.
+
+354
+00:54:08,988 --> 00:54:16,263
+These dimensions can capture prosodic issues that traditional WER (Word Error Rate) struggles to detect.
+
+355
+00:54:16,263 --> 00:54:32,288
+ASR Evaluation (ASR stands for Automatic Speech Recognition): Performs semantic impact assessment—misrecognizing "today's weather" is harmless, but misrecognizing "transfer one thousand" as "ten thousand" could have serious consequences.
+
+356
+00:54:32,288 --> 00:54:41,138
+UI Evaluation: Uses a Proposer-Reviewer mechanism to check for issues like text overflow, color contrast, and button placement.
+
+357
+00:54:41,138 --> 00:54:54,626
+Here, the proposer-reviewer is used as an evaluation method, differing from its use as a generation system component in Chapter 5, but the core mechanism is the same—one model generates, another independently reviews.
+
+358
+00:54:54,626 --> 00:55:02,701
+Video Editing Evaluation: Verifies the correctness of clip start/end points and effect application through keyframes.
+
+359
+00:55:02,701 --> 00:55:11,426
+Experiment 7-5 intermediate difficulty, two stars: : Building a Fully Automated TTS Quality Evaluation Pipeline
+
+360
+00:55:11,426 --> 00:55:20,501
+This experiment requires designing and implementing a complete multimodal LLM-as-a-Judge TTS quality evaluation system from scratch.
+
+361
+00:55:20,668 --> 00:55:52,018
+Design a multi-dimensional TTS Rubric: The Accuracy dimension verifies whether all text is correctly read (no omissions/misreadings/additions); the Naturalness dimension assesses whether the speech sounds natural rather than robotic, has no unnatural pauses, and uses natural prosody; the Emotional Expression dimension checks whether the tone matches the text's emotional tone (rising intonation for questions, emphasis for exclamations, slower pace and lower pitch for sad content); the Voice
+
+362
+00:55:52,018 --> 00:56:03,280
+Consistency dimension evaluates speaker similarity when a reference voice is available (the multimodal model simultaneously receives the reference voice and the synthesized voice for comparison).
+
+363
+00:56:03,280 --> 00:56:22,243
+Build a diverse test corpus: varying lengths (single sentence → long paragraph), genres (news/story/dialogue), emotions (neutral/excited/sad), and special challenges (numbers/proper nouns/polyphonic characters/dialectal vocabulary).
+
+364
+00:56:22,243 --> 00:56:37,905
+Connect the TTS module to mainstream services (OpenAI, ElevenLabs, Fish Audio, Minimax, Doubao), then send the synthesized audio, source text, reference audio, and Rubric to an audio-capable multimodal judge.
+
+365
+00:56:37,905 --> 00:56:44,330
+Record the judge model and hashes of both candidate and reference audio so that every score can be audited.
+
+366
+00:56:44,330 --> 00:56:48,705
+The companion repository preserves a small direct-listening run.
+
+367
+00:56:48,705 --> 00:57:01,418
+OpenAI and Fish Audio each generated four clips covering numbers, polyphonic Chinese characters, long-form text, and excited delivery; Voxtral completed all eight four-dimensional judgments.
+
+368
+00:57:01,418 --> 00:57:08,543
+Both systems averaged 5.00 for accuracy and 4.00 for naturalness.
+
+369
+00:57:08,543 --> 00:57:20,418
+Fish Audio scored 4.00/3.00 for emotion and voice consistency, while OpenAI scored 3.75/2.75.
+
+370
+00:57:20,418 --> 00:57:27,655
+Splitting the Rubric into dimensions therefore exposed differences that a simple "was it read correctly?" check would miss.
+
+371
+00:57:27,655 --> 00:57:31,118
+Those scores do not establish a provider winner.
+
+372
+00:57:31,118 --> 00:57:40,293
+There were only four clips per provider, and the fixed reference clip came from Fish S1, which naturally favors Fish Audio on voice similarity.
+
+373
+00:57:40,293 --> 00:57:47,043
+A general TTS comparison should remove that dimension or give every candidate an appropriate target speaker.
+
+374
+00:57:47,043 --> 00:57:55,330
+A voice-cloning comparison should ask every system to imitate the same speaker and calibrate the model judge against blinded human listening.
+
+375
+00:57:55,330 --> 00:58:02,430
+Choosing the reference answer, image, or audio is part of evaluation design, not neutral setup work.
+
+376
+00:58:02,430 --> 00:58:07,768
+Handwritten Rubrics are a fast way to establish diagnostic dimensions like these.
+
+377
+00:58:07,768 --> 00:58:16,480
+At larger scale, a specialized generative reward model can automate the judging; Chapter 8 covers how such reward models are trained.
+
+378
+00:58:16,480 --> 00:58:27,380
+The score a judge model gives says only whether the outcome was good or bad; to turn that outcome into a fixable problem, you still have to locate the step at which the failure actually began.
+
+379
+00:58:27,380 --> 00:58:31,805
+Failure Attribution: Locate the First Error in a Trajectory.
+
+380
+00:58:31,805 --> 00:58:36,580
+End-to-end evaluation often says only "pass" or "fail".
+
+381
+00:58:36,580 --> 00:58:51,205
+To make results drive fixes, perform failure attribution for every failed trajectory: record the main error class, the first step at which unacceptable behavior appeared, the relevant tool call or model output, and evidence that can be audited.
+
+382
+00:58:51,205 --> 00:58:57,693
+Attribute the first error that sent the task off course; later errors are often just the chain reaction.
+
+383
+00:58:57,693 --> 00:59:13,730
+Problematic production cases usually surface through three signals: an explicit user correction ("do not do that"), a downvote or other negative feedback, or a later state check, rule verifier, or LLM judge showing that the Agent did something it should not have done.
+
+384
+00:59:13,730 --> 00:59:19,343
+Building a failure-attribution system requires careful human review of these trajectories.
+
+385
+00:59:19,343 --> 00:59:28,568
+LLMs can assist, but cannot replace that review, because failure attribution often reveals product problems, not just technical bugs.
+
+386
+00:59:28,568 --> 00:59:37,468
+As the product matures, the taxonomy can grow into several top-level classes, each with sub-classes, until it holds hundreds of entries.
+
+387
+00:59:37,468 --> 00:59:44,280
+Those classes and their attribution recipes then become the prompt or the Skill for an attribution-annotation Agent.
+
+388
+00:59:44,280 --> 00:59:49,018
+For a Coding Agent, a workable initial taxonomy looks like this.
+
+389
+00:59:49,180 --> 01:00:18,992
+Error class: Requirement understanding and ambiguity; Typical symptom: What got built is not what the user asked for: a condition in the requirement is dropped, or the scope is read too broadly or too narrowly; when the repository holds two config files with the same name, one is simply picked, with no note and no question; How to locate the first error: Use an LLM to compare the original requirement against what the Agent actually did (the action sequence), item by item; find the first
+
+390
+01:00:18,992 --> 01:00:24,630
+divergence in the outcome, then trace back to the tool call or the reply that caused it.
+
+391
+01:00:24,630 --> 01:00:52,942
+Error class: Missing process or convention; Typical symptom: Committing without running unit tests; editing code before writing a plan; pulling in an external dependency when the repository already has an internal equivalent; bypassing an established architectural convention; How to locate the first error: Find the first action that violates the development-process convention — the first git commit, the first file write — and check whether it had read the source of that convention beforehand.
+
+392
+01:00:52,942 --> 01:01:15,792
+Error class: Tool-call errors; Typical symptom: Repeated failed edits to the same file; malformed JSON/schema or arguments; special characters breaking transcription, escaping, or writing; How to locate the first error: Record the first failed edit or tool call together with the original request and the error return; repeated failures are downstream symptoms.
+
+393
+01:01:15,792 --> 01:01:40,330
+Error class: Hacking the verification environment; Typical symptom: Editing an assertion, adding a skip, mocking out the logic under test; claiming "the tests pass" without ever running them; How to locate the first error: Take the first message that modifies a test or the verification logic; then cross-check the completion claim against the commands actually executed in the trajectory to confirm whether it really ran.
+
+394
+01:01:40,330 --> 01:02:03,167
+Error class: Incomplete edit; Typical symptom: The function signature changed and three call sites were updated, but a fourth — a dynamic call, a binding in another language, a schema — was missed; How to locate the first error: Take the set difference between the blast radius the Agent claimed and the real one, pick the first omission, and look back at the keywords it searched with.
+
+395
+01:02:03,167 --> 01:02:29,830
+Error class: Wrong information reported to the user; Typical symptom: Tool calls and environment state are all correct, but what the user is told is not: a wrong amount, status, or time; partial completion described as full completion; a required disclosure omitted; How to locate the first error: Align every factual claim in the reply against the tool return values and take the first claim that cannot be traced or that contradicts a return.
+
+396
+01:02:29,830 --> 01:02:50,180
+Error class: Non-functional regression; Typical symptom: A public API or schema changed with no database migration script; a validation deleted so that a check would pass; How to locate the first error: Take the first message that made the change and see whether it recognised that it was touching a public interface or a structure that needs migration.
+
+397
+01:02:50,180 --> 01:03:09,092
+Error class: Abnormal model termination; Typical symptom: Output truncated mid-stream, stopping for no reason, timing out, or ending without the closing action; How to locate the first error: Locate the first abnormal termination and separate model stop, Harness timeout, and tool-service failure.
+
+398
+01:03:09,092 --> 01:03:28,905
+Error class: Stopping the task too early; Typical symptom: Only part of a multi-goal task is done; declaring something impossible without exhausting the reasonable options; How to locate the first error: Locate the first decision that dropped a goal or abandoned exploration, and record it separately from the final verification failure.
+
+399
+01:03:29,068 --> 01:03:39,843
+An attribution-annotation Agent can use an LLM to run root-cause analysis over production trajectories at scale, but it must not emit a single sentence of "reason for failure".
+
+400
+01:03:39,793 --> 01:03:54,580
+The attribution record has to be structured — JSON or YAML, citing specific step numbers, tool names, and observed evidence; it must also separate root cause from consequence, judge recoverability, and give a confidence.
+
+401
+01:03:54,580 --> 01:04:10,518
+For example, edit_file returns an old_string mismatch and the Agent then retries three times without writing the file: the primary cause is the file-edit and tool-call error, and the three retries are consequences, not three independent root causes.
+
+402
+01:04:10,518 --> 01:04:19,843
+When several classes appear at once, pick the primary one by the rule "earliest, and explains the failures that follow", and keep the rest as secondary.
+
+403
+01:04:19,843 --> 01:04:38,793
+At least three classes in the table above can be pre-filtered by rules before an LLM is asked to localize the first error: cross-checking the completion claim against the commands actually executed, whether the diff touches test assertions and skip markers, and whether the diff changes a public API or schema with no migration file.
+
+404
+01:04:38,793 --> 01:04:46,268
+Rules first, LLM second, is both cheaper and more accurate than feeding every trajectory to an LLM.
+
+405
+01:04:46,268 --> 01:05:00,668
+When storing an attribution record, keep more than the LLM's output: save the task goal, the environment state, the Agent version, the toolset version, and the complete Agent trajectory, so that the case can be turned into a regression test.
+
+406
+01:05:00,668 --> 01:05:04,218
+The three classes below are worth a closer look.
+
+407
+01:05:04,218 --> 01:05:07,843
+The "Right Actions, Wrong Report" Problem.
+
+408
+01:05:07,843 --> 01:05:17,455
+Right actions, wrong report" is the category most often hidden by an overall pass rate, because most evaluations assert only on environment state.
+
+409
+01:05:17,455 --> 01:05:35,443
+τ²-bench scores it separately: of the 704 published baseline runs whose task carries a communication requirement, 240 failed, 162 of those failed the communication check, and 80—a third of all failures—had correct environment state and a wrong report.
+
+410
+01:05:35,443 --> 01:05:39,143
+The companion repository holds a matching case.
+
+411
+01:05:39,143 --> 01:06:04,168
+Asked to enter the expenses from expenses.jpg into a bookkeeping app, the Agent spent 32 steps granting permissions, searching, opening the image, filling in each row and saving, with no step returning an error, then declared the task complete; the validator reported that the row it should have written—Dress, ¥436.35—was absent, bearing no relation to the four it entered.
+
+412
+01:06:04,168 --> 01:06:21,680
+Step 8 of its own reasoning reads "I cannot actually see the content/details of the expenses in the image": it already knew the data was missing, neither stopped nor reported it, and by step 11 four invented expenses had appeared in its notes, which every later input faithfully entered.
+
+413
+01:06:21,680 --> 01:06:27,418
+The first error is step 8, and that step neither raised an error nor was a tool call.
+
+414
+01:06:27,418 --> 01:06:45,543
+Its root cause is also easy to misfile: T3A is a text-only Agent whose observation space holds only the element tree and no image pixels, so the cause is not "the model cannot do OCR" but a missing observation channel plus the absence of a legal "information unavailable" exit.
+
+415
+01:06:45,543 --> 01:06:54,280
+File it as a model-capability problem and the next move is to swap models or train OCR; the real fix is to add the channel and the exit.
+
+416
+01:06:54,280 --> 01:07:01,830
+Experiment 7-6 intermediate difficulty, two stars: : Failure Attribution on AndroidWorld Traces
+
+417
+01:07:01,830 --> 01:07:10,143
+This experiment practices the attribution method of this section on real traces, with no emulator and no model API required.
+
+418
+01:07:10,143 --> 01:07:27,705
+The material is the saved T3A run in chapter7/android-world: t3a.md holds the step-by-step Action/Reason/Summary for every task, and t3a_failed.md collects more than fifty failed traces, each ending with the validator's objective verdict.
+
+419
+01:07:27,705 --> 01:07:30,868
+Step 1: Stratified sampling.
+
+420
+01:07:30,868 --> 01:07:39,893
+Stratify the sample and draw at least ten silent failures from t3a_failed.md — traces with no tool error anywhere.
+
+421
+01:07:39,893 --> 01:07:49,243
+No tool return may have failed; the Agent either declared completion or ran out of steps; and only the closing validator verdict marks the task failed.
+
+422
+01:07:49,396 --> 01:07:52,571
+Step 2: Locate the first error.
+
+423
+01:07:52,521 --> 01:07:59,808
+For each trace, record the step number of the first error and whether that step is a tool call or an assistant message.
+
+424
+01:07:59,808 --> 01:08:23,871
+Silent failures need two techniques: fact-anchor comparison, which walks the Agent's statements against the tool return values and takes the first divergence; and trajectory-prefix bisection, which cuts the trajectory at step k and hands the truncated trajectory to a human reviewer to continue the task — if the task is still recoverable, the error lies after k. Searching for error keywords is no substitute.
+
+425
+01:08:23,871 --> 01:08:27,208
+Step 3: Write structured records.
+
+426
+01:08:27,208 --> 01:08:40,046
+Emit one JSON or YAML record per trace with the task name, first-error step, error category, responsible party, supporting quotations, and a separation of primary cause from consequence.
+
+427
+01:08:40,046 --> 01:08:43,783
+Step 4: Compare with the existing notes.
+
+428
+01:08:43,783 --> 01:08:50,821
+Check your results against t3a_failed_analysis.md and record every disagreement.
+
+429
+01:08:50,821 --> 01:09:07,108
+Pay particular attention to root-cause assignment: those notes originally recorded the image-transcription failure as "the vision model lacks OCR," yet T3A's observation space contains no image pixels at all, so the real root cause is a missing observation channel.
+
+430
+01:09:07,108 --> 01:09:10,783
+An existing attribution note is not an answer key.
+
+431
+01:09:10,783 --> 01:09:14,621
+Step 5: Convert to regression tasks.
+
+432
+01:09:14,621 --> 01:09:27,133
+Take three traces whose first error is an assistant message, cut each trajectory prefix just before that error, and write the acceptable-action set and the forbidden actions to form trajectory-prefix regression tasks.
+
+433
+01:09:27,133 --> 01:09:30,546
+Scope-Sensitive Document Formatting Errors.
+
+434
+01:09:30,546 --> 01:09:36,808
+When a user says "the quotes are wrong", that cannot be turned into a global character replacement.
+
+435
+01:09:36,808 --> 01:09:43,721
+At minimum you must distinguish ASCII straight quotes (", '), Chinese curly quotes (“”, ‘’) and Markdown backticks (`  `).
+
+436
+01:09:43,721 --> 01:09:54,383
+The same character plays a different syntactic role in Chinese prose, quoted English source, inline code, code blocks, code comments, JSON and paths.
+
+437
+01:09:54,383 --> 01:10:10,346
+Evaluation data should first parse the document into scoped spans—for example ZH_PROSE, EN_PROSE, QUOTED_SOURCE, INLINE_CODE, CODE_BLOCK, CODE_COMMENT and JSON_OR_SCHEMA.
+
+438
+01:10:10,346 --> 01:10:18,358
+Each span records the set of permitted transformations, the characters that must be protected, and the validator result after editing.
+
+439
+01:10:18,358 --> 01:10:22,796
+The three cases below cannot be handled by one replacement rule:
+
+440
+01:10:22,796 --> 01:10:27,533
+Refer to the companion repository for the complete code implementation.
+
+441
+01:10:27,533 --> 01:10:42,308
+Trajectory-prefix regression should require the model to make the minimal edit, and check at the same time Chinese document style, the preservation rate of quoted English source, code and JSON syntax, and the edit distance over non-target text.
+
+442
+01:10:42,308 --> 01:10:52,083
+When the rules cannot determine the scope, keeping the original text and asking for clarification should count as a permitted action, not a guessed edit that happens to pass.
+
+443
+01:10:52,083 --> 01:10:58,196
+Exact-Copy Errors: From old_string Mismatch to Layer-by-Layer Localization.
+
+444
+01:10:58,196 --> 01:11:04,433
+An old_string failure cannot be attributed simply to "the model copied it wrong" either.
+
+445
+01:11:04,433 --> 01:11:15,183
+For the same string, store the raw byte hash, the Unicode code point sequence and the tokenizer token ID sequence, then look for the first divergence along this chain:
+
+446
+01:11:15,183 --> 01:11:21,533
+Code statement: original file bytes → tool return → Harness serialization → model context
+
+447
+01:11:21,533 --> 01:11:27,271
+model token output → decoded string → JSON/tool-call parsing → tool matching.
+
+448
+01:11:27,271 --> 01:11:43,746
+A minimal set of evaluation probes covers direct restatement, extraction from a long context, placement into tool arguments, selection among similar strings, and spaces, newlines, backslashes, Unicode combining characters and low-frequency tokens.
+
+449
+01:11:43,746 --> 01:11:53,408
+The metrics are byte-exact match, code-point-exact match, token-exact match, the position of the first divergence, and the real tool success rate.
+
+450
+01:11:53,408 --> 01:12:09,646
+If the model is correct on the direct probe but the tool call still fails, fix the tokenizer, the serialization, the Harness or the tool protocol; only when the first divergence appears in the model's own output should the case be turned into the copying training data of Chapter 8.
+
+451
+01:12:09,646 --> 01:12:13,571
+End-to-End and Trajectory-Prefix Regression Tasks.
+
+452
+01:12:13,732 --> 01:12:19,432
+Once the first error is known, turn the repair target into a repeatable regression task.
+
+453
+01:12:19,382 --> 01:12:28,994
+End-to-end regression starts from the initial state and user request, runs the whole workflow, and checks final state, required output, and safety.
+
+454
+01:12:28,994 --> 01:12:41,382
+A trajectory-prefix regression task freezes the context, conversation, tool returns, and environment state just before the first error, then tests only the next one or few observable actions.
+
+455
+01:12:41,382 --> 01:12:48,757
+It is cheaper and isolates one decision boundary, so it is especially important for high-reliability production Agents.
+
+456
+01:12:48,757 --> 01:12:59,969
+End-to-end regression tasks start from the initial state and the user request, let the Agent complete the whole task, and check the final state, the required output, and the safety conditions.
+
+457
+01:12:59,969 --> 01:13:05,882
+They come closest to the production result, but make it hard to tell at which step the failure occurred.
+
+458
+01:13:05,882 --> 01:13:13,569
+As a rule, end-to-end regression tasks verify that the Agent's capability in each domain still meets expectations.
+
+459
+01:13:13,569 --> 01:13:22,132
+The standard benchmarks described in this chapter — OSWorld, AndroidWorld, tau-bench — are all end-to-end regression tasks.
+
+460
+01:13:22,132 --> 01:13:34,819
+Trajectory-prefix regression tasks freeze the existing context, dialogue, tool returns, and environment state, and ask the Agent only to think and take the next observable action or few actions.
+
+461
+01:13:34,819 --> 01:13:39,269
+They cost less and isolate a single policy or tool problem.
+
+462
+01:13:39,269 --> 01:13:54,019
+For a production Agent that needs high reliability, building the trajectory-prefix regression set often matters more than the end-to-end one — and it requires the developer to patiently build the failure taxonomy and attribution system described in the previous section.
+
+463
+01:13:54,019 --> 01:14:11,507
+The answer to a trajectory-prefix regression task should be defined as an acceptable action set rather than a single canonical action or answer: it may require "read the repository rules first," "ask the user first," or "refuse the dangerous operation," while also listing the prohibited actions.
+
+464
+01:14:11,668 --> 01:14:20,118
+Once failure attribution is done, an evaluation dataset of both end-to-end and trajectory-prefix regression tasks can be constructed.
+
+465
+01:14:20,068 --> 01:14:48,330
+For a Coding Agent: a missing process should yield an end-to-end regression task carrying a plan document and test acceptance conditions; a tool-call error should have its failing prefix truncated and edited into a boundary task that tests whether the model can fix the format, escape special characters, or switch to a suitable tool; abnormal termination should add recovery scenarios for truncation, timeout, and tool failure; completion and logic errors should add multi-goal checklists,
+
+466
+01:14:48,330 --> 01:15:17,505
+reminders of remaining work, and the "not yet proven impossible" boundary; requirement-understanding and ambiguity cases should freeze tasks with several reasonable readings into prefixes and put "clarify first" in the acceptable-action set; symptom-fix and faked-verification cases should add two hard constraints to acceptance — "test assertions may not be modified" and "a completion claim must carry the output of a command that really ran"; and information-reporting cases should assert on the
+
+467
+01:15:17,505 --> 01:15:21,993
+content of the reply itself, not only on the environment state.
+
+468
+01:15:21,993 --> 01:15:29,018
+The evaluation dataset is the foundation for the post-training of Chapter 8 and the self-evolution of Chapter 9.
+
+469
+01:15:29,018 --> 01:15:37,780
+Experiment 7-7 intermediate difficulty, two stars: : Trajectory-Prefix Boundary Evaluation with Multiple Encodings
+
+470
+01:15:37,780 --> 01:15:49,843
+This experiment supplies the Agent with known user memory, the current instruction, a trajectory prefix, tool returns, and environment state, then asks for only the next observable action.
+
+471
+01:15:49,843 --> 01:16:03,030
+It covers production bad cases such as scope conflicts, stale preferences overriding current instructions, low-confidence inferences, confirmation before high-risk deletion, and preview before external publication.
+
+472
+01:16:03,030 --> 01:16:15,580
+The same cases are encoded as JSON Cards, Markdown, and Python-like memory; deterministic checks score the allowed decision category, safety, required evidence, and forbidden actions.
+
+473
+01:16:15,580 --> 01:16:26,330
+With GPT-5.6-sol through OpenRouter, all 33 cells (11 cases × 3 encodings) completed without API errors.
+
+474
+01:16:26,330 --> 01:16:36,080
+Each encoding passed 6/11 cases, but their failure locations differed, showing that changing the representation alone does not repair application policy.
+
+475
+01:16:36,080 --> 01:16:42,318
+In practical model selection, we often face the question: "Which is better, A or B?
+
+476
+01:16:42,318 --> 01:16:48,168
+Pairwise comparison provides an evaluation method that does not rely on absolute scores.
+
+477
+01:16:48,168 --> 01:16:51,318
+Pairwise Comparison and Model Ranking.
+
+478
+01:16:51,318 --> 01:16:57,505
+As illustrated in Figure 7-6: Elo Rating and Pairwise Comparison Ranking.
+
+479
+01:16:57,505 --> 01:17:11,368
+Elo Rating (a ranking system originally designed for chess) quantifies the relative ability of models through a large number of pairwise matchups: the larger the rating difference, the higher the expected win rate for the stronger model.
+
+480
+01:17:11,368 --> 01:17:22,218
+For example, if Model A has a rating of 1200 and Model B has a rating of 1000, the Elo system would predict A's win rate to be approximately 76%.
+
+481
+01:17:22,218 --> 01:17:32,518
+If B unexpectedly wins, B gains more points and A loses more—an upset triggers a larger correction, which is what lets rankings converge quickly on true ability.
+
+482
+01:17:32,518 --> 01:17:44,543
+The statistical foundation is the Bradley-Terry model: each model is abstracted as a latent "strength score," and the probability of one beating another in a matchup is determined by the difference between their scores.
+
+483
+01:17:44,543 --> 01:17:49,768
+Elo is the engineering implementation of this model in online-update form.
+
+484
+01:17:49,768 --> 01:18:00,418
+Chatbot Arena uses anonymous random matchups—users blindly choose the better response without knowing the model's identity, and rankings are derived from millions of votes.
+
+485
+01:18:00,418 --> 01:18:09,280
+The advantage is that no "absolute standard" needs defining; all that is required is human judgment on "which is better, A or B.
+
+486
+01:18:09,280 --> 01:18:13,830
+The limitation: rankings depend on what users happen to ask.
+
+487
+01:18:13,830 --> 01:18:22,680
+If a flood of users ask programming questions, models strong at programming rank higher—which may say little about their level on other tasks.
+
+488
+01:18:22,852 --> 01:18:41,139
+When pairwise judging is performed by an LLM rather than human voting, one must also guard against Position Bias—the judging model systematically favors the candidate appearing in a certain position (usually the first), and the judgment may remain unchanged even if the content of the two candidates is completely swapped.
+
+489
+01:18:41,089 --> 01:18:58,214
+The standard mitigation method is to evaluate each pair twice with swapped order: once with A first, once with B first, and average the two results; a stricter approach is to only count cases where the two judgments are consistent, and treat inconsistencies as ties or send them for human review.
+
+490
+01:18:58,214 --> 01:19:07,902
+Chatbot Arena's approach is essentially the same—randomizing the display positions of the two responses so that position bias cancels out over a large sample.
+
+491
+01:19:07,902 --> 01:19:15,814
+Experiment 7-8 intermediate difficulty, two stars: : Building a Model Leaderboard from Pairwise Comparison Data
+
+492
+01:19:15,814 --> 01:19:27,927
+This experiment aims to deeply understand how the Bradley-Terry model extracts relative ability scores from a large number of pairwise comparisons by implementing an Elo rating calculation system from scratch.
+
+493
+01:19:27,927 --> 01:19:35,202
+Use the real open-source voting dataset from Chatbot Arena (containing millions of anonymous user blind votes).
+
+494
+01:19:35,202 --> 01:19:42,339
+Implement the Elo rating iterative update algorithm: Initialize all models with a rating of 1000.
+
+495
+01:19:42,339 --> 01:19:45,927
+Process voting records in chronological order.
+
+496
+01:19:45,927 --> 01:20:07,727
+For each matchup, calculate the expected win rate based on the current rating difference between the two models, compare the actual result with the expectation, and adjust ratings by a fixed learning rate—the winner gains points, the loser loses points, with the adjustment magnitude proportional to the deviation from the expectation (an upset loss results in a larger rating change).
+
+497
+01:20:07,727 --> 01:20:13,702
+Sort models in descending order by final rating and calculate the pairwise win rate matrix.
+
+498
+01:20:13,702 --> 01:20:18,939
+Compare with the official leaderboard to verify that the rankings are generally consistent.
+
+499
+01:20:18,939 --> 01:20:38,839
+Exact point-for-point alignment is not required: the official Chatbot Arena uses Bradley-Terry maximum likelihood estimation (solving all matchups simultaneously, independent of voting order), while this implementation uses online incremental Elo updates (results are affected by the learning rate K-factor and processing order).
+
+500
+01:20:38,839 --> 01:20:46,252
+The two algorithms should yield consistent overall rankings, but the specific scores will not be precisely identical.
+
+501
+01:20:46,252 --> 01:20:58,302
+The second part of the experiment creates a historical ranking evolution animation: Slice the voting data by time (weekly or monthly) and calculate Elo rating snapshots for each time point.
+
+502
+01:20:58,302 --> 01:21:09,139
+Use D3.js to implement a bar chart race animation (horizontal bar length = rating, vertical position = ranking, smoothly changing over time).
+
+503
+01:21:09,139 --> 01:21:19,714
+By observing the animation, identify technology breakthrough moments (a model's rating suddenly surges), competitive landscape evolution, and model lifecycles.
+
+504
+01:21:19,714 --> 01:21:22,627
+Evaluation-Driven Model Selection.
+
+505
+01:21:22,627 --> 01:21:32,902
+Model selection is not simply about "choosing the strongest model"; it involves making evaluation-driven trade-offs across multiple dimensions based on the application scenario.
+
+506
+01:21:32,902 --> 01:21:35,439
+Key Dimensions for Selection.
+
+507
+01:21:35,439 --> 01:21:45,139
+Throughput and Latency are two families of metrics that are easily confused; untangling them takes only one fact—LLM inference runs in two stages.
+
+508
+01:21:45,139 --> 01:21:54,814
+Prefill reads the entire context at once and determines the Time To First Token (TTFT): the delay between the user pressing Enter and the first character appearing.
+
+509
+01:21:54,814 --> 01:22:00,102
+The longer the context, the slower the prefill and the higher the TTFT.
+
+510
+01:22:00,102 --> 01:22:15,439
+Decode then generates the response token by token, setting the generation speed (tokens/second)—which also dictates thinking time: at 50 tokens/s, a model producing 2000 thinking tokens spends 40 seconds just thinking.
+
+511
+01:22:15,439 --> 01:22:20,914
+Around these two stages, the main throughput and latency metrics are as follows:
+
+512
+01:22:20,914 --> 01:22:27,927
+Input Throughput / Output Throughput: Correspond to the speed of Prefill and Decode, respectively.
+
+513
+01:22:27,927 --> 01:22:34,727
+TTFT: Equals queuing time plus Prefill time; it is the user-perceived "responsiveness.
+
+514
+01:22:34,876 --> 01:22:53,488
+Thinking Latency: The number of thinking tokens generated can vary severalfold across models, and thinking length is not necessarily positively correlated with task effectiveness—measure each model's thinking token usage and the corresponding benefit on your own workload, rather than inferring from public leaderboards alone.
+
+515
+01:22:53,438 --> 01:22:59,826
+p95 Tail Latency: The latency that 95% of requests will not exceed.
+
+516
+01:22:59,826 --> 01:23:11,263
+It is a better indicator of real user experience than the average, which can be pulled down by a large number of fast requests, masking severe slowdowns experienced by a minority of users.
+
+517
+01:23:11,263 --> 01:23:16,013
+Cost: Pricing for input/output/cache tokens.
+
+518
+01:23:16,013 --> 01:23:24,951
+Cost should not be evaluated in isolation—a cheap model with a low success rate may actually incur higher costs due to frequent retries.
+
+519
+01:23:24,951 --> 01:23:30,038
+The average cost per task and the cost-performance ratio need to be calculated.
+
+520
+01:23:30,038 --> 01:23:40,638
+Performance: The precise definitions of Pass@1, Pass^k, Pass@k, and Best@k are given earlier in the "Evaluation Metrics System.
+
+521
+01:23:40,638 --> 01:24:09,726
+Here, we only discuss how to choose in the context of model selection—for daily scenarios, focus on Pass@1 (single-attempt average success rate); for critical operations, prioritize Pass^k, focusing on the stability of "never making a mistake"; for exploratory tasks, prioritize Pass@k or Best@k, looking at the upper bound of capability given enough opportunities; for open-ended tasks, use multi-dimensional Rubric scoring.
+
+522
+01:24:09,726 --> 01:24:23,138
+Rate Limits and Reliability: RPM (Requests Per Minute) / TPM (Tokens Per Minute) limits affect concurrency capabilities, and some APIs dynamically adjust quotas during peak hours.
+
+523
+01:24:23,138 --> 01:24:34,276
+In terms of robustness, pay attention to out-of-distribution data, adversarial inputs, and long-running stability (whether issues like mode collapse or attention drift occur).
+
+524
+01:24:34,276 --> 01:24:42,663
+Budget–capability curves: A single score at a fixed budget is not enough to determine whether an Agent can handle long-horizon work.
+
+525
+01:24:42,663 --> 01:24:51,126
+In addition to success rate, report how performance changes with wall-clock time, tokens, tool calls, or compute budget.
+
+526
+01:24:51,126 --> 01:25:11,526
+RE-Bench makes the problem concrete: with a total budget of two hours per environment, the best Agent scored about four times as high as human experts; humans, however, benefited more from additional time, narrowly surpassed the best Agent at eight hours, and scored about twice as high when multiple attempts were given 32 total hours.
+
+527
+01:25:11,526 --> 01:25:17,338
+Short-budget leadership therefore cannot be extrapolated directly to long-running capability.
+
+528
+01:25:17,338 --> 01:25:22,938
+Model selection should compare several budget points close to the duration of the real workload.
+
+529
+01:25:22,938 --> 01:25:39,538
+In practice you can mix models: lightweight models on simple requests to cut costs, powerful models on complex tasks to protect quality; or specialist models on particular sub-tasks (image understanding, code generation), collaborating through sub-agent mechanisms.
+
+530
+01:25:39,538 --> 01:26:04,688
+Any such heterogeneous combination must itself be validated by evaluation, to confirm the overall benefit outweighs the added system complexity (for example, treating questions like "which is larger, 9.9 or 9.11?" or "I want to wash the car; the car wash is 50 meters from home—should I walk or drive?" as simple ones and handing them to a lightweight model, leading to wrong decisions).
+
+531
+01:26:04,688 --> 01:26:08,738
+Model Behavior: When to Stop Reading and Start Editing.
+
+532
+01:26:08,738 --> 01:26:15,626
+Model selection compares not only whether a model can finish a task, but also how it behaves by default.
+
+533
+01:26:15,626 --> 01:26:20,538
+One readily observable difference in Coding Agents is the action threshold.
+
+534
+01:26:20,538 --> 01:26:29,576
+Given the same coding task, some models explore the repository broadly and confirm the architecture, callers, and tests before editing.
+
+535
+01:26:29,576 --> 01:26:36,101
+Others localize from less evidence, edit early, and use test feedback to complete their understanding.
+
+536
+01:26:36,101 --> 01:26:43,863
+The former assigns a higher cost to premature edits; the latter assigns a higher opportunity cost to reading one more file.
+
+537
+01:26:44,020 --> 01:26:51,270
+This tendency in an Agent has two sources: the system prompt in the harness, and the model's behavioral policy.
+
+538
+01:26:51,220 --> 01:27:07,082
+Post-training is a key source of that behavioral policy: SFT trajectories demonstrate "how much to read before acting," process rewards reward or penalize particular tool paths, and outcome rewards reinforce the entire policy that ended in success.
+
+539
+01:27:07,082 --> 01:27:13,320
+Over time, what the model learns is not only how to write code, but also engineering habits.
+
+540
+01:27:13,320 --> 01:27:21,595
+Experiment 7-9 intermediate difficulty, two stars: : Measuring Model Action Thresholds in a Fixed Coding Harness
+
+541
+01:27:21,595 --> 01:27:33,045
+Objective: Isolate the model factor, quantify how Coding models trade off continued information gathering against starting to edit, and evaluate path efficiency together with outcome quality.
+
+542
+01:27:33,045 --> 01:27:39,145
+Method: Run chapter6/model-action-threshold/experiment.py.
+
+543
+01:27:39,145 --> 01:27:53,495
+By default it calls GPT-5.6-sol and Claude Sonnet 5 through the same OpenRouter OpenAI-compatible endpoint while fixing the system prompt, tool schemas, task repositories, test commands, and turn limit.
+
+544
+01:27:53,495 --> 01:27:59,870
+The neutral prompt specifies neither a minimum number of files to read nor a requirement to edit quickly.
+
+545
+01:27:59,870 --> 01:28:05,470
+Repeat each of the three task categories at least three times and alternate model order.
+
+546
+01:28:05,470 --> 01:28:19,320
+Record tool calls, files read, searches, and wall-clock time before the first edit, along with first-tested-patch acceptance, post-test rework, final success, changed files, and token usage.
+
+547
+01:28:19,320 --> 01:28:26,332
+Causal interpretation: The neutral campaign asks whether behavior changes with the model inside one harness.
+
+548
+01:28:26,332 --> 01:28:35,582
+To measure the harness as a modifier, run a separate campaign with --policy explore-first; do not mix the two policies in one model comparison.
+
+549
+01:28:35,582 --> 01:28:46,120
+Behavior that changes with a model swap and persists for the same model across harnesses is stronger evidence of a model effect; the reverse is stronger evidence of a harness effect.
+
+550
+01:28:46,120 --> 01:29:09,020
+Acceptance criteria: All offline unit tests pass; every task fixture is first confirmed to fail its tests; the formal result contains every model × task × trial cell, zero API errors, an independent final test, and auditable trajectories; and manifest.json verifies the hashes of the configuration, observations, and summary.
+
+551
+01:29:09,020 --> 01:29:14,045
+The project directory includes one complete 18/18-cell run.
+
+552
+01:29:14,045 --> 01:29:22,582
+Readers should rerun it on the model versions and real workloads they care about rather than treating these miniature-repository numbers as a permanent leaderboard.
+
+553
+01:29:22,582 --> 01:29:25,582
+Cost Analysis of Agent Systems.
+
+554
+01:29:25,582 --> 01:29:39,432
+The previous section listed cost among the key selection dimensions, but Agent costs are far more complex than simple token pricing—multi-turn reasoning, tool calls, and context accumulation make costs grow non-linearly.
+
+555
+01:29:39,432 --> 01:29:46,795
+Systematic cost analysis is an indispensable part of the evaluation system and a prerequisite for production deployment.
+
+556
+01:29:46,795 --> 01:29:48,995
+Components of Cost.
+
+557
+01:29:48,995 --> 01:29:53,520
+The cost of an Agent system can be decomposed into three levels:
+
+558
+01:29:53,668 --> 01:30:00,905
+Model inference cost is the most direct component, determined by the consumption of input tokens and output tokens.
+
+559
+01:30:00,855 --> 01:30:06,693
+However, in Agent scenarios, there are two often-overlooked amplifying factors.
+
+560
+01:30:06,693 --> 01:30:18,580
+The first is the context accumulation effect: each time an Agent calls an LLM, it sends all previous conversation history and tool outputs together (so the model can understand the context).
+
+561
+01:30:18,580 --> 01:30:43,255
+Without effectively utilizing KV Cache (i.e., caching already processed context to avoid redundant computation), the cost grows very quickly—Round 1 sends 1000 tokens, Round 2 sends 2000 tokens, Round 3 sends 3000 tokens, totaling 1000+2000+3000=6000 instead of 3×1000=3000.
+
+562
+01:30:43,255 --> 01:30:46,355
+The more rounds, the larger the gap.
+
+563
+01:30:46,355 --> 01:30:53,118
+The second is thinking token cost: models that support thinking generate a large number of thinking tokens.
+
+564
+01:30:53,118 --> 01:30:57,718
+Although these tokens are not displayed to the user, they are still billed.
+
+565
+01:30:57,718 --> 01:31:15,568
+Tool call cost includes external API fees (search engines charge per query, database queries consume computing resources), sandbox resources for code execution, and an easily overlooked indirect cost: the token cost incurred when tool outputs are injected into the context.
+
+566
+01:31:15,568 --> 01:31:25,668
+The content returned from a single web search might occupy 2000-5000 tokens, and it will be repeatedly billed as input in every subsequent round of inference.
+
+567
+01:31:25,668 --> 01:31:38,205
+Infrastructure cost covers operational overhead for vector databases (used for RAG retrieval), message queues, relational databases, and logging and tracing storage (for observability).
+
+568
+01:31:38,205 --> 01:31:54,618
+To see where these costs actually come from, the companion experiment used a fixed eight-turn refund workflow: query the order, logistics, refund policy, and knowledge base, then perform risk checks, issue the refund, notify the user, and close the case.
+
+569
+01:31:54,618 --> 01:32:05,443
+Real gpt-4o-mini calls were run under all four combinations of two switches: stable versus unstable prefixes, and full versus compressed history.
+
+570
+01:32:05,443 --> 01:32:09,043
+The business workflow was identical in every arm.
+
+571
+01:32:09,043 --> 01:32:14,030
+Table 7-4 uses the recorded token counts and prices from that run.
+
+572
+01:32:14,030 --> 01:32:18,443
+Table 7-4 Measured Cost of the Eight-Turn Agent Workflow
+
+573
+01:32:18,443 --> 01:32:33,818
+Configuration: No cache, no compression; Input Tokens: 20,700; Cached Tokens: 0; Total Cost: 0.003776 dollars; Savings vs. Baseline: —.
+
+574
+01:32:33,818 --> 01:32:52,655
+Configuration: Stable prefix only; Input Tokens: 20,386; Cached Tokens: 13,568; Total Cost: 0.002707 dollars; Savings vs. Baseline: 28.3%.
+
+575
+01:32:52,655 --> 01:33:10,093
+Configuration: History compression only; Input Tokens: 16,177; Cached Tokens: 0; Total Cost: 0.003115 dollars; Savings vs. Baseline: 17.5%.
+
+576
+01:33:10,093 --> 01:33:28,080
+Configuration: Stable prefix + compression; Input Tokens: 16,035; Cached Tokens: 6,144; Total Cost: 0.002643 dollars; Savings vs. Baseline: 30.0%.
+
+577
+01:33:28,080 --> 01:33:36,718
+In the baseline, input grew from 1,113 tokens on the first turn to 3,668 on the last.
+
+578
+01:33:36,718 --> 01:33:45,080
+Tool results were repeatedly carried into later requests, accounting for 9,544 input tokens across the run.
+
+579
+01:33:45,080 --> 01:33:53,268
+With both optimizations enabled, that figure fell to 5,248 and total cost dropped by 30%.
+
+580
+01:33:53,268 --> 01:33:55,718
+The gains were not additive.
+
+581
+01:33:55,718 --> 01:34:07,730
+A stable prefix alone saved 28.3%, and compression alone saved 17.5%, yet together they saved 30%, not 45.8%.
+
+582
+01:34:07,730 --> 01:34:12,705
+Compressing history also shortened the prefix available for cache reuse.
+
+583
+01:34:12,705 --> 01:34:20,205
+When context optimizations are combined, measure the complete workflow; never add their isolated savings together.
+
+584
+01:34:20,205 --> 01:34:25,793
+A different model, price schedule, or task length will change the 30% figure.
+
+585
+01:34:25,793 --> 01:34:30,518
+The reusable result is the four-arm method, not the percentage itself.
+
+586
+01:34:30,518 --> 01:34:33,405
+Cost Optimization Strategies.
+
+587
+01:34:33,405 --> 01:34:49,655
+The first input-side levers to test are KV Cache Reuse (keep the prefix stable), Context Compression (shorten old trajectories and verbose tool results), and Tiered Model Routing (send simple requests to lightweight models and difficult reasoning to stronger ones).
+
+588
+01:34:49,655 --> 01:34:52,743
+Chapter 2 covered the implementations.
+
+589
+01:34:52,743 --> 01:35:02,043
+Here the operational point is that each lever should have its own switch, so the team can measure both its isolated effect and what happens when it is combined with others.
+
+590
+01:35:02,043 --> 01:35:07,018
+Two further methods matter specifically to evaluation and operations.
+
+591
+01:35:07,180 --> 01:35:22,067
+Asynchronous Batch Processing accumulates non-real-time tasks for batch processing, leveraging batch pricing discounts from API providers; in self-deployment scenarios, it also improves GPU utilization during off-peak hours.
+
+592
+01:35:22,017 --> 01:35:24,967
+Cost Monitoring and Budget Control.
+
+593
+01:35:24,967 --> 01:35:36,242
+In a production environment, a real-time cost monitoring system should be established: track token consumption and API costs by task type, model, user, etc.
+
+594
+01:35:36,242 --> 01:35:47,942
+Also, set a cost cap for each task—automatically terminate the Agent when it falls into a loop or explores too deeply, preventing a single task from incurring abnormally high costs.
+
+595
+01:35:47,942 --> 01:35:55,380
+Experiment 7-10 introductory difficulty, one star: : End-to-End Cost Analysis of Agent Tasks
+
+596
+01:35:55,380 --> 01:36:03,555
+Experiment Goal: Reproduce the eight-turn cost breakdown above, then test the same optimization levers on your own workload.
+
+597
+01:36:03,555 --> 01:36:11,155
+Technical Approach: Reproduce the fixed companion task first, then select several representative tasks of your own.
+
+598
+01:36:11,155 --> 01:36:22,780
+Use LangSmith or a self-built tracing system to record input/output and thinking tokens, tool-call counts and return sizes, and end-to-end latency for every LLM call.
+
+599
+01:36:22,780 --> 01:36:31,230
+Calculate average cost, p50/p95/p99, and the cost breakdown for each task type.
+
+600
+01:36:31,230 --> 01:36:36,830
+Acceptance Criteria: Generate a cost report and identify the main drivers.
+
+601
+01:36:36,830 --> 01:36:42,905
+Run all four switch combinations, measuring each optimization alone and both together.
+
+602
+01:36:42,905 --> 01:36:49,605
+Rerun the experiment after changing models rather than carrying forward the saved trace's percentage savings.
+
+603
+01:36:49,605 --> 01:36:52,930
+Evaluation-Driven Continuous Iteration.
+
+604
+01:36:52,930 --> 01:36:59,517
+Model selection is not a one-time decision but a continuous process, adjusted as models evolve.
+
+605
+01:36:59,517 --> 01:37:09,455
+The chapter opened with the claim that an evaluation system lets you keep pace with model evolution; a concrete model-switching case shows how that plays out in a real decision.
+
+606
+01:37:09,455 --> 01:37:16,255
+Suppose your Agent system is currently built on Claude, excelling in tool calling and complex orchestration.
+
+607
+01:37:16,255 --> 01:37:24,430
+One day, Gemini releases a new model, and public benchmarks show it surpasses Claude on several metrics at a lower price.
+
+608
+01:37:24,430 --> 01:37:32,917
+At this point, your question is not "Is Gemini better than Claude?" but "On my specific tasks, is Gemini better than Claude?
+
+609
+01:37:32,917 --> 01:37:34,642
+How much better?
+
+610
+01:37:34,642 --> 01:37:36,967
+What is the switching cost?
+
+611
+01:37:36,967 --> 01:37:49,092
+A team with a solid evaluation system can answer this in hours: run the new model on its own evaluation dataset and compare task success rate, tool call accuracy, latency, and cost.
+
+612
+01:37:49,092 --> 01:38:00,542
+You might find the new model really is better and cheaper on simple tasks—but in the core scenarios involving complex multi-round tool orchestration, its success rate drops by 5%.
+
+613
+01:38:00,542 --> 01:38:20,442
+Once you confirm the difference exceeds the estimated sampling noise (see "Statistical Significance of Evaluation Results" below), your decision becomes a differentiated strategy—migrate simple tasks to the new model to cut costs, keep the original model on complex tasks to protect quality—rather than a blind wholesale switch.
+
+614
+01:38:20,442 --> 01:38:26,792
+Decisions this granular and data-driven are only possible with an evaluation system built in advance.
+
+615
+01:38:26,792 --> 01:38:34,392
+Experiment 7-11 intermediate difficulty, two stars: : Multi-Dimensional Model Performance Benchmarking
+
+616
+01:38:34,392 --> 01:38:43,342
+Conduct a comprehensive benchmark of mainstream LLMs and different API providers to build a multi-dimensional model selection decision database.
+
+617
+01:38:43,342 --> 01:38:55,805
+Select test scope: Closed-source SOTA models like GPT series, Claude series, Gemini series, Doubao series, and open-source models like Qwen, Kimi, DeepSeek.
+
+618
+01:38:55,805 --> 01:39:08,580
+Test the same model with different API providers (e.g., DeepSeek official vs. Siliconflow) to verify results from third-party performance monitoring platforms (e.g., Artificial Analysis).
+
+619
+01:39:08,580 --> 01:39:25,405
+Design standardized test workloads: Input throughput tests use fixed-length contexts (8K/32K/128K tokens), output throughput tests request fixed-length responses (512/2048 tokens).
+
+620
+01:39:25,405 --> 01:39:31,405
+Latency tests include TTFT (Time to First Token) and end-to-end latency.
+
+621
+01:39:31,405 --> 01:39:36,880
+For models supporting thinking, separately measure thinking length and thinking latency.
+
+622
+01:39:36,880 --> 01:39:50,242
+For each configuration, make at least 100 requests and calculate the standard deviation, p50, p95, and p99; high latency variance indicates an unstable user experience.
+
+623
+01:39:50,404 --> 01:39:59,854
+Evaluate API availability and stability: Probe once per hour for a week, recording success rate, error types, and failure duration.
+
+624
+01:39:59,804 --> 01:40:06,666
+Calculate failure rate, MTTR (Mean Time to Recovery), and longest continuous uptime.
+
+625
+01:40:06,666 --> 01:40:16,054
+Test the actual thresholds of rate limits—gradually increase concurrency to find the throttling point, recording RPM/TPM limits.
+
+626
+01:40:16,054 --> 01:40:30,154
+Calculate comprehensive cost: Collect pricing information (unit prices for input/output/cache tokens), consider the impact of KV Cache, and calculate the average cost for typical multi-round Agent tasks.
+
+627
+01:40:30,154 --> 01:40:38,354
+Experiment 7-12 intermediate difficulty, two stars: : End-to-End Selection Evaluation of User Memory Systems
+
+628
+01:40:38,354 --> 01:40:45,316
+Prerequisites: Must complete the contextual retrieval or agentic RAG experiment from Chapter 3.
+
+629
+01:40:45,316 --> 01:40:59,204
+Goal: Perform an end-to-end model-selection evaluation of a user-memory retrieval Agent, examining how the embedding model, reranker, and Agent's main model jointly affect retrieval quality, latency, and cost.
+
+630
+01:40:59,204 --> 01:41:09,829
+Reuse chapter3/contextual-retrieval-for-user-memory or chapter3/agentic-rag-for-user-memory, and compare the configurations on 60 test cases.
+
+631
+01:41:09,829 --> 01:41:35,054
+Acceptance: Evaluate each of the three selection points in turn—embedding model (BGE-M3 / OpenAI / Doubao, etc., record top-5 retrieval accuracy, latency, cost), reranker (include a "no reranker" baseline, quantify its marginal value), and main model (compare success rate and tool usage efficiency under the same retrieval configuration).
+
+632
+01:41:35,054 --> 01:41:45,716
+The key is to identify synergies among the components: a stronger embedding might make the reranker redundant, and a stronger main model might compensate for retrieval shortcomings.
+
+633
+01:41:45,716 --> 01:41:52,416
+Selection is a systemic trade-off, not simply a matter of choosing the strongest component in isolation.
+
+634
+01:41:52,416 --> 01:41:56,391
+Configuration details are in the companion repository.
+
+635
+01:41:56,391 --> 01:42:00,229
+Statistical Significance of Evaluation Results.
+
+636
+01:42:00,229 --> 01:42:07,891
+The evaluation set is finite and model outputs are stochastic, so a score difference may be nothing but sampling noise.
+
+637
+01:42:07,891 --> 01:42:14,379
+If you measure a success rate p over n cases, the standard error can be roughly estimated as:
+
+638
+01:42:14,379 --> 01:42:23,604
+\mathrm{SE}(p)\approx\sqrt{\frac{p(1-p)}{n}
+
+639
+01:42:23,604 --> 01:42:40,891
+For example, with 100 cases and a 70% success rate, the 95% confidence interval is about 70\%\pm9 percentage points; "the new model gets 73% versus the old model's 70%" is not enough to justify switching.
+
+640
+01:42:40,891 --> 01:42:55,654
+When comparing two configurations on the same batch of tasks, prefer paired analysis: record per task which one wins, and judge the difference with McNemar's test or a paired bootstrap, rather than subtracting two independent success rates.
+
+641
+01:42:55,654 --> 01:43:08,729
+Because each Agent run may also differ, it is best to run each configuration with several random seeds (say 3–5) and report the mean along with the spread; a single run is only good for screening a direction.
+
+642
+01:43:08,729 --> 01:43:21,329
+If the expected gain is only 2–3 percentage points and the evaluation set has only a few dozen tasks, enlarge the sample first—the standard error shrinks as 1/\sqrt{n}.
+
+643
+01:43:21,329 --> 01:43:26,066
+Refer to the companion repository for the complete code implementation.
+
+644
+01:43:26,066 --> 01:43:34,316
+Pairing means that both groups share the same tasks and random conditions, not that you draw two separate samples and compare their averages.
+
+645
+01:43:34,316 --> 01:43:44,879
+When validating several hypotheses in parallel, also account for multiple comparisons: tighten the significance threshold, or re-run positive results independently.
+
+646
+01:43:44,879 --> 01:43:57,116
+The practical criterion is simple: a score gap is worth acting on—switching models or shipping a change—only if it exceeds the noise, holds up under paired analysis, and can be reproduced.
+
+647
+01:43:57,116 --> 01:43:59,304
+Agent Observability.
+
+648
+01:43:59,304 --> 01:44:07,441
+Evaluation-driven decisions (whether for model selection or continuous iteration) rely on high-quality operational data.
+
+649
+01:44:07,441 --> 01:44:17,416
+Below, we first introduce how to systematically collect this data (observability), and then discuss how to translate evaluation results into system improvements.
+
+650
+01:44:17,416 --> 01:44:23,079
+As illustrated in Figure 7-7: Observability Technology Stack.
+
+651
+01:44:23,236 --> 01:44:40,961
+Observability is a concept borrowed from distributed systems: you cannot open the system and watch it work; you infer what is happening from the logs, metrics, and traces it emits—the way a doctor, unable to see inside a patient, diagnoses from temperature, blood pressure, and imaging.
+
+652
+01:44:40,911 --> 01:44:54,798
+Agent systems make this harder still: the same input can produce different outputs, multi-round reasoning and tool calls make execution paths extremely complex, and the model's "thinking" is completely opaque from outside.
+
+653
+01:44:54,798 --> 01:45:03,811
+The value of observability lies first in problem diagnosis: complete traces allow developers to replay the entire process rather than guessing.
+
+654
+01:45:03,811 --> 01:45:17,186
+Second, it is the foundation for continuous optimization—you can see which tasks require multiple rounds of iteration, which tools have the lowest success rate, and which retrieval queries always return empty results.
+
+655
+01:45:17,186 --> 01:45:27,586
+In cost management, Agent operating costs can differ by one or two orders of magnitude between tasks, and tracing surfaces the abnormally expensive cases.
+
+656
+01:45:27,586 --> 01:45:33,948
+Finally, accumulated trace data underpins later system optimization and model improvement.
+
+657
+01:45:33,948 --> 01:45:57,211
+Agent observability is built on the foundation of traces, whose data structure directly inherits the span tree model from distributed systems: one task execution corresponds to one trace, where each LLM call, each tool call, and each retrieval is a span (an execution unit recording input/output, start/end times, token consumption, and error information).
+
+658
+01:45:57,211 --> 01:46:09,548
+The parent-child relationships between spans form an execution tree—for example, an "Agent Main Loop" span may have several "LLM Call" and "Tool Call" child spans hanging beneath it.
+
+659
+01:46:09,548 --> 01:46:27,173
+Standardized protocols are already available for this layer: OpenTelemetry is the general-purpose distributed tracing standard, while specifications like OpenInference define LLM-specific semantic conventions on top of it (how to record prompts, model parameters, token usage, etc.).
+
+660
+01:46:27,173 --> 01:46:37,798
+The advantage of adopting standard protocols is the decoupling of collection and analysis—the same trace data can be connected to different analysis backends, avoiding vendor lock-in.
+
+661
+01:46:37,798 --> 01:46:51,598
+LangSmith is one of the representative platforms in this domain (similar platforms include Langfuse, Arize Phoenix, etc.), integrating observability, evaluation, and optimization into a closed loop.
+
+662
+01:46:51,598 --> 01:47:03,936
+Each execution creates a trace session, where model calls, tool usage, and knowledge retrieval are recorded as independent execution units, linked by causal relationships to form an execution tree.
+
+663
+01:47:03,936 --> 01:47:11,248
+Each unit records complete input/output, timing information, cost data, and error information.
+
+664
+01:47:11,248 --> 01:47:19,023
+The platform uses asynchronous batch data collection to ensure that tracing itself does not affect the Agent's response latency.
+
+665
+01:47:19,180 --> 01:47:39,505
+The platform also supports A/B testing (routing a portion of user traffic to a new version, automatically comparing metrics, and supporting rapid rollback or gradual scaling), prompt version management (each version is associated with runtime performance data), and collaborative development (team members can share trace data and problem cases).
+
+666
+01:47:39,455 --> 01:47:50,817
+The massive amount of real-world data from production environments is a goldmine for continuous improvement—it can uncover unforeseen scenarios and identify the features most in need of optimization.
+
+667
+01:47:50,817 --> 01:47:56,580
+The most valuable use of observability data is to turn it into evaluation assets.
+
+668
+01:47:56,580 --> 01:48:10,192
+A practical loop: extract failed and suspicious cases from production traces → anonymize them (strip sensitive fields such as user data and keys) → distill them into new test cases and regression tests for the evaluation set.
+
+669
+01:48:10,192 --> 01:48:25,930
+The evaluation set then stops being a one-time, static collection and becomes a living asset that evolves with the product and continues to reflect the real user distribution—the failure patterns exposed in production today become the regression tests guarding the baseline tomorrow.
+
+670
+01:48:25,930 --> 01:48:40,905
+This is precisely the interface between observability and the main theme of this chapter: observability is responsible for "seeing" what happens in the real world, and evaluation is responsible for solidifying those observations into repeatable standards.
+
+671
+01:48:40,905 --> 01:48:49,767
+With a comprehensive evaluation system and dataset in place, the key is to translate evaluation results into tangible system improvements.
+
+672
+01:48:49,767 --> 01:48:53,305
+From Benchmark Reports to System Improvements.
+
+673
+01:48:53,305 --> 01:49:00,167
+The following case comes from a real, deliberately narrow AndroidWorld iteration in the companion repository.
+
+674
+01:49:00,167 --> 01:49:07,330
+It covers four Wi-Fi settings tasks on an API 35 emulator, with one matched run per task.
+
+675
+01:49:07,330 --> 01:49:15,005
+It is not the full 116-task benchmark and does not replace a rerun in the reference API 33 environment.
+
+676
+01:49:15,005 --> 01:49:21,205
+Its value is not an overall score; it is the sequence of decisions from one result to the next.
+
+677
+01:49:21,205 --> 01:49:26,167
+As illustrated in Figure 7-8: Benchmark to Improvement Loop.
+
+678
+01:49:26,167 --> 01:49:38,780
+From the perspective of Harness engineering, this section is essentially about the methodology for iterative Harness optimization—using evaluation data to identify weak points in the Harness (insufficient context?
+
+679
+01:49:38,780 --> 01:49:40,805
+missing constraints?
+
+680
+01:49:40,805 --> 01:49:43,042
+inadequate validation?
+
+681
+01:49:43,042 --> 01:49:52,030
+untimely feedback?), making targeted improvements, and then re-evaluating, forming a closed loop for the Harness's continuous evolution.
+
+682
+01:49:52,030 --> 01:50:02,380
+Before analyzing any benchmark report, note an easily overlooked principle: when Agent performance drops, check the evaluation system first, then the Agent.
+
+683
+01:50:02,380 --> 01:50:15,105
+The common mistake is to start editing Agent code the moment a score falls, ignoring the possibility that the evaluation system broke first—steer by a distorted signal and the correction is wrong from the very first step.
+
+684
+01:50:15,105 --> 01:50:31,167
+Typical evaluation-side failures include: the runtime environment running out of resources and killing processes (which shows up as random failures), bugs in the verifier that mark correct answers as failures, and test cases drifting out of sync with production scenarios.
+
+685
+01:50:31,167 --> 01:50:38,717
+In the headline numbers, all of these look identical to model degradation; only a review of the full traces can tell them apart.
+
+686
+01:50:38,717 --> 01:50:42,980
+Reading a Benchmark Report: The Art of Problem Discovery.
+
+687
+01:50:42,980 --> 01:50:50,305
+The starting report recorded one run on each of 116 tasks and about 88% overall success.
+
+688
+01:50:50,305 --> 01:51:00,480
+The failures were not scattered: three of the four SystemWifiTurn tasks failed, and their traces repeatedly navigated back and forth without confirming the final state.
+
+689
+01:51:00,480 --> 01:51:08,680
+Two explanations fit the evidence: the Agent did not know where to go, or the UI representation it received was incomplete.
+
+690
+01:51:08,836 --> 01:51:14,336
+An 88% headline score hides this small but coherent failure cluster.
+
+691
+01:51:14,286 --> 01:51:23,286
+Raising the step limit would be equally misleading—it could recast "the Agent cannot see the control" as "the Agent needs more persistence.
+
+692
+01:51:23,286 --> 01:51:38,098
+Read reports in the opposite direction: locate clusters by task and capability tag, replay the traces, decide whether the failure arose in observation, reasoning, action, or verification, and only then choose a variable to change.
+
+693
+01:51:38,098 --> 01:51:44,811
+The Wi-Fi slice was used to diagnose the mechanism cheaply, not to estimate system-wide performance.
+
+694
+01:51:44,811 --> 01:51:49,298
+From Data to Hypotheses: Building an Improvement Roadmap.
+
+695
+01:51:49,298 --> 01:51:52,811
+The first round tested the cheapest explanation.
+
+696
+01:51:52,811 --> 01:52:00,761
+H1 assumed a navigation-knowledge gap, so only the treatment received Wi-Fi navigation and final-state-checking instructions.
+
+697
+01:52:00,761 --> 01:52:05,036
+Success did not improve; the prompt was not the bottleneck.
+
+698
+01:52:05,036 --> 01:52:08,836
+The second round asked what the Agent could actually see.
+
+699
+01:52:08,836 --> 01:52:17,111
+H5 replaced the API-35-incompatible accessibility feed with AndroidWorld's supported UIAutomator tree.
+
+700
+01:52:17,111 --> 01:52:21,898
+Success improved, but the full tree caused token use to surge.
+
+701
+01:52:21,898 --> 01:52:33,361
+H5C therefore added no new information: it simply removed invisible, textless, non-actionable container nodes to see whether the same success could be preserved with less noise.
+
+702
+01:52:33,361 --> 01:52:42,873
+Across all three rounds, the model, task parameters, seed, step limit, and emulator stayed fixed, and arm order alternated.
+
+703
+01:52:42,873 --> 01:52:51,336
+This staged design made attribution straightforward: the residual problem or side effect from one round became the sole change in the next.
+
+704
+01:52:51,336 --> 01:52:55,273
+From Results to Decisions: Data-Driven Trade-offs.
+
+705
+01:52:55,273 --> 01:52:59,361
+Table 7-5 summarizes the measured results.
+
+706
+01:52:59,361 --> 01:53:08,423
+With only four tasks per arm, these numbers can decide whether a larger rerun is worthwhile; they cannot estimate success across AndroidWorld.
+
+707
+01:53:08,423 --> 01:53:13,373
+Table 7-5 Three Rounds on the AndroidWorld Wi-Fi Slice
+
+708
+01:53:13,373 --> 01:53:30,698
+Experiment: H1; Only Change: Add navigation instructions; Control → Treatment Success: 25% → 25%; Treatment / Control Tokens: 0.47×; Next Step: No success gain; retain the original prompt.
+
+709
+01:53:30,698 --> 01:53:49,048
+Experiment: H5; Only Change: Accessibility feed → UIAutomator; Control → Treatment Success: 25% → 100%; Treatment / Control Tokens: 2.498×; Next Step: Strong gain but too expensive; continue optimizing.
+
+710
+01:53:49,048 --> 01:54:07,961
+Experiment: H5C; Only Change: Compact the UIAutomator tree; Control → Treatment Success: 100% → 100%; Treatment / Control Tokens: 0.506×; Next Step: Preserve success and halve tokens; advance to a full rerun.
+
+711
+01:54:07,961 --> 01:54:11,461
+The sequence matters more than any one percentage.
+
+712
+01:54:11,461 --> 01:54:20,298
+More detailed instructions cannot restore information the Agent never received; observation failures should be investigated before prompts are expanded.
+
+713
+01:54:20,298 --> 01:54:23,473
+But more input is not always better either.
+
+714
+01:54:23,473 --> 01:54:28,573
+The full element tree fixed visibility while flooding the context with noise.
+
+715
+01:54:28,573 --> 01:54:34,736
+Removing non-semantic nodes preserved four successful runs and cut tokens by roughly half.
+
+716
+01:54:34,736 --> 01:54:43,698
+No model was changed: the Harness's UI representation first determined whether the task could be completed and then whether completing it was economical.
+
+717
+01:54:43,698 --> 01:54:48,461
+Continuous Iteration: From First Improvement to System Evolution.
+
+718
+01:54:48,461 --> 01:54:55,173
+Passing H5C on four tasks only earns it a larger test; it does not authorize deployment.
+
+719
+01:54:55,173 --> 01:55:05,073
+The next gate is a five-seed run over all 116 tasks in the Pixel 6 / API 33 reference environment with the full third-party app set.
+
+720
+01:55:05,073 --> 01:55:13,911
+Success must be non-inferior, token use no more than 75% of the original, and latency no more than 1.5×.
+
+721
+01:55:13,911 --> 01:55:21,161
+Until that run is complete, 4/4 on the slice must not be reported as 100% system-wide success.
+
+722
+01:55:21,161 --> 01:55:29,411
+That is what continuous iteration means in practice: evidence from one round should authorize only the next action that its scope can support.
+
+723
+01:55:29,411 --> 01:55:40,673
+H1 showed that adding more prompt detail would not help; H5 found the right mechanism and revealed a cost problem; H5C fixed that problem and qualified for broader testing.
+
+724
+01:55:40,673 --> 01:55:44,373
+A good benchmark report contains more than a score.
+
+725
+01:55:44,373 --> 01:55:50,473
+It states where the conclusion applies, which guardrails failed, and what must be tested next.
+
+726
+01:55:50,473 --> 01:55:58,123
+Experiment 7-13 advanced difficulty, three stars: : Evaluation and Improvement on AndroidWorld
+
+727
+01:55:58,276 --> 01:56:03,838
+This experiment practices the full path from evaluation report to system improvement.
+
+728
+01:56:03,788 --> 01:56:10,063
+Start with the historical report and three saved paired runs in chapter6/android-world.
+
+729
+01:56:10,063 --> 01:56:12,851
+Step 1: Diagnosis.
+
+730
+01:56:12,851 --> 01:56:21,526
+Cross-analyze the per-task table and the capability tag matrix to map surface-level task failures to deep-seated capability deficiencies.
+
+731
+01:56:21,526 --> 01:56:28,601
+Identify capability tags with lower-than-expected success rates and task areas with concentrated failures.
+
+732
+01:56:28,601 --> 01:56:31,863
+Step 2: Build Hypotheses.
+
+733
+01:56:31,863 --> 01:56:37,813
+Formulate improvement hypotheses following the three-layer framework (surface → mid → deep).
+
+734
+01:56:37,813 --> 01:56:43,701
+Each hypothesis should state the target improvement in success rate and the verification method.
+
+735
+01:56:43,701 --> 01:56:47,076
+Step 3: Phased Experimentation.
+
+736
+01:56:47,076 --> 01:56:53,713
+Reproduce H1, H5, and H5C with one variable changed per round.
+
+737
+01:56:53,713 --> 01:56:58,588
+Record tokens, latency, and regressions as well as success.
+
+738
+01:56:58,588 --> 01:57:02,001
+Step 4: Data-Driven Decision Making.
+
+739
+01:57:02,001 --> 01:57:14,338
+Make deployment decisions based on cost-benefit analysis—not simply adopting all effective improvements, but weighing the scope of application, latency impact, and cost overhead for each improvement.
+
+740
+01:57:14,338 --> 01:57:21,888
+Prioritize low-cost, high-benefit improvements for deployment; restrict high-cost improvements to critical scenarios.
+
+741
+01:57:21,888 --> 01:57:24,663
+Step 5: Iteration.
+
+742
+01:57:24,663 --> 01:57:29,051
+A passing slice experiment advances only to the full rerun.
+
+743
+01:57:29,051 --> 01:57:39,376
+Discuss deployment only after the 116×5 reference-environment run, and preserve environment differences, sample size, and incomplete scope in the report.
+
+744
+01:57:39,376 --> 01:57:46,426
+From External Evaluation to Internal Evaluation: Evaluation Infrastructure for Production-Grade Agents.
+
+745
+01:57:46,426 --> 01:57:56,526
+So far this chapter has evaluated Agent systems from the outside—building an evaluation environment, designing datasets, analyzing benchmark reports.
+
+746
+01:57:56,526 --> 01:58:05,026
+But the best Agent products do more than undergo external evaluation; they build continuous self-evaluation infrastructure into the product.
+
+747
+01:58:05,026 --> 01:58:25,926
+Below, using the open-source general-purpose Agent OpenClaw introduced in Chapter 5 as an example and drawing on public technical analyses of leading Coding Agent products and practitioner insights, we present an internal evaluation system worth emulating: one that systematically embeds the experimental methodology of ML research into product engineering.
+
+748
+01:58:25,926 --> 01:58:30,938
+Ablation Infrastructure: Understanding the True Contribution of Each Feature.
+
+749
+01:58:30,938 --> 01:58:43,101
+ML researchers have long used ablation studies to learn which components of a model actually matter—ablation means "removing" one component at a time and observing how much overall performance drops.
+
+750
+01:58:43,101 --> 01:58:58,726
+OpenClaw brings this methodology into product engineering: a built-in master switch can disable several major features at once (thinking mode, context compression, automatic memory, background tasks, and more), creating a "bare model" baseline.
+
+751
+01:58:58,726 --> 01:59:06,338
+That lets the team answer a key question: does a feature truly improve the user experience, or does it just feel useful?
+
+752
+01:59:06,338 --> 01:59:14,276
+Making ablation a routine engineering practice, rather than a one-time research activity, has several practical implications.
+
+753
+01:59:14,276 --> 01:59:29,388
+First, the ablation switch must be injected very early in the startup path—before any module-level constant captures configuration values—meaning the ablation infrastructure must be designed into the system architecture from the start, not retrofitted later.
+
+754
+01:59:29,388 --> 01:59:41,676
+Second, running ablation experiments regularly (e.g., before each major release) can uncover "feature debt"—features that were once effective but are no longer necessary as models evolve.
+
+755
+01:59:41,676 --> 01:59:53,451
+For any team building a production Agent, the recommended practice is: Every major feature should be independently disableable, and the team should regularly verify the actual contribution of each feature.
+
+756
+01:59:53,451 --> 01:59:58,363
+A/B Testing Methodology: Distinguishing Mechanism from Goal.
+
+757
+01:59:58,363 --> 02:00:13,913
+Mature Agent products conduct rigorous A/B testing on their own behavior (i.e., randomly dividing users into two groups, one using the old version and one using the new version, and comparing actual data from both groups to determine if a change is effective).
+
+758
+02:00:13,913 --> 02:00:19,938
+A well-designed Agent A/B test case illustrates several key methodological principles:
+
+759
+02:00:20,092 --> 02:00:24,004
+Multiple variants, not just a binary comparison.
+
+760
+02:00:23,954 --> 02:00:37,654
+Instead of just comparing "with" and "without," design multiple progressive variants (e.g., when testing different strengths of prompt constraints, set up a control group and three experimental groups with progressively stricter constraints).
+
+761
+02:00:37,654 --> 02:00:43,029
+This design can reveal dose-response relationships and help find the optimal point.
+
+762
+02:00:43,029 --> 02:00:46,842
+Distinguishing mechanism metrics from target metrics.
+
+763
+02:00:46,842 --> 02:00:52,729
+This is the easiest mistake to make—treating what you are changing as the optimization target.
+
+764
+02:00:52,729 --> 02:01:02,929
+For example, if you are testing "shortening the Agent's plan file length," plan length is a mechanism metric (something you directly change), but it is not the target.
+
+765
+02:01:02,929 --> 02:01:06,992
+The real target might be "reducing session-level cost.
+
+766
+02:01:06,992 --> 02:01:16,629
+Shortening the plan file may lower costs, but it could also lead to more edit-check-edit loops due to insufficiently detailed plans, increasing total output.
+
+767
+02:01:16,629 --> 02:01:24,067
+Always ask yourself: Is what I am changing (the mechanism) the same as what I truly care about (the target)?
+
+768
+02:01:24,067 --> 02:01:27,067
+If not, prioritize the target.
+
+769
+02:01:27,067 --> 02:01:29,567
+Setting guardrail metrics.
+
+770
+02:01:29,567 --> 02:01:39,654
+Even if the target metric improves, the experiment should be stopped if user satisfaction declines, the number of operations increases, or the error rate rises.
+
+771
+02:01:39,654 --> 02:01:44,242
+Guardrail metrics are non-negotiable thresholds that must not regress.
+
+772
+02:01:44,242 --> 02:01:47,029
+Recording baseline statistics.
+
+773
+02:01:47,029 --> 02:02:00,954
+Include sample size, distribution percentiles, and correlation analysis (e.g., "rejection rate increases monotonically with plan size") to provide the necessary context for interpreting experimental results.
+
+774
+02:02:00,954 --> 02:02:07,217
+Without a baseline, you cannot determine whether the experimental results are statistically significant.
+
+775
+02:02:07,217 --> 02:02:09,904
+Two-Layer Feature Flag System.
+
+776
+02:02:09,904 --> 02:02:22,829
+Agent products need a Feature Flag infrastructure designed from day one—a feature flag is a remotely controllable switch that determines whether a function is enabled or disabled for users, without requiring code redeployment.
+
+777
+02:02:22,829 --> 02:02:30,392
+It serves three purposes simultaneously: experimentation, gradual rollout, and emergency circuit breaking.
+
+778
+02:02:30,392 --> 02:02:36,617
+Compile-time flags physically remove the relevant code from the build artifact during the build phase.
+
+779
+02:02:36,617 --> 02:02:44,654
+Internal-only features simply do not exist in external builds—even reverse engineering cannot discover the removed functionality.
+
+780
+02:02:44,654 --> 02:02:53,979
+This also provides a clean ablation mechanism: disabling a feature does not skip logic at runtime; the corresponding code is physically absent.
+
+781
+02:02:53,979 --> 02:02:59,879
+Runtime flags have their configuration delivered by the server and cached locally on disk.
+
+782
+02:02:59,879 --> 02:03:08,067
+The design prioritizes reading slightly stale cached configuration over blocking the Agent's startup while waiting for a network request.
+
+783
+02:03:08,067 --> 02:03:16,179
+Specific grouping decisions are made through an experimentation platform (e.g., GrowthBook) for assigning A/B test groups.
+
+784
+02:03:16,179 --> 02:03:25,167
+A key design detail is that each feature's exposure event is logged at most once per session to avoid duplicate records polluting the experimental data.
+
+785
+02:03:25,167 --> 02:03:32,892
+The lesson for Agent developers: feature flags are not debugging tools; they are first-class architectural components.
+
+786
+02:03:32,892 --> 02:03:35,492
+Prompt Sensitivity Assessment.
+
+787
+02:03:35,644 --> 02:03:44,369
+The system prompt is the core "code" of Agent behavior, yet it often lacks the version control and regression testing afforded to regular code.
+
+788
+02:03:44,319 --> 02:03:56,319
+OpenClaw's approach is to provide a dedicated tool that can extract the fully rendered system prompt at a specified Git revision or commit—including the final text after all dynamic conditions are expanded.
+
+789
+02:03:56,319 --> 02:04:01,206
+This allows the team to precisely answer: Which commit changed the prompt?
+
+790
+02:04:01,206 --> 02:04:04,419
+What was the impact on the evaluation set?
+
+791
+02:04:04,419 --> 02:04:26,931
+For any Agent team, the recommended practices are: (1) The system prompt should be deterministically renderable (given the same configuration input, it always produces the same output); (2) Establish a versioned snapshot mechanism for prompts; (3) Every prompt change should run regression tests on the evaluation set—just as code changes require CI.
+
+792
+02:04:26,931 --> 02:04:31,031
+Privacy-Aware Analytics as an Evaluation Foundation.
+
+793
+02:04:31,031 --> 02:04:37,194
+Evaluation relies on good data, but Agent products often handle sensitive user content.
+
+794
+02:04:37,194 --> 02:04:52,369
+OpenClaw resolves this contradiction through a type system: the analytics interface only accepts values wrapped in special types, where the type name itself serves as an audit trail—it explicitly declares "I have verified this is not code or a file path.
+
+795
+02:04:52,369 --> 02:04:59,706
+This design transforms privacy constraints from documented specifications into compile-time enforced type checks.
+
+796
+02:04:59,706 --> 02:05:06,931
+The core principle is: Design privacy constraints into the system from the start; do not bolt them on afterward.
+
+797
+02:05:06,931 --> 02:05:12,644
+If your analytics system cannot safely collect data, you cannot evaluate effectively.
+
+798
+02:05:12,644 --> 02:05:25,069
+Privacy and evaluation are not opposing forces—privacy-aware design forces you to think carefully about what truly needs to be measured*, which in turn fosters more precise evaluation metrics.
+
+799
+02:05:25,069 --> 02:05:29,369
+From External to Internal: A Shift in Evaluation Thinking.
+
+800
+02:05:29,369 --> 02:05:40,131
+The core message of this section is: The previous sections taught you how to evaluate an Agent externally; this section reveals how the best Agent products evaluate themselves internally.
+
+801
+02:05:40,131 --> 02:05:48,431
+External evaluation tells you "how good the Agent is"; internal evaluation infrastructure tells you "which change made it better.
+
+802
+02:05:48,431 --> 02:06:08,044
+Ablation experiments discover which features truly matter, A/B testing quantifies the impact of each change, feature flags provide the infrastructure for experimentation and rollback, prompt sensitivity assessment integrates the system prompt into the CI system, and privacy-aware analytics ensures compliance in data collection.
+
+803
+02:06:08,044 --> 02:06:18,044
+These five components together constitute evaluation-driven product engineering—not evaluating occasionally, but embedding evaluation into every product decision.
+
+804
+02:06:18,044 --> 02:06:22,869
+Simulation Environments: The Bridge from Evaluation to Post-Training.
+
+805
+02:06:22,869 --> 02:06:27,231
+The endpoint of evaluation is not scoring, but improvement.
+
+806
+02:06:27,231 --> 02:06:40,744
+This chapter has already demonstrated two paths for improvement: adjusting the Harness (from Benchmark reports to system improvements) and embedding evaluation into product engineering (internal evaluation infrastructure).
+
+807
+02:06:40,744 --> 02:07:02,194
+The strongest form of improvement is training—when the goal expands from "evaluating existing capabilities" to "cultivating new capabilities," especially through the post-training techniques discussed in Chapter 8, the evaluation environment needs to evolve into a simulation environment: a virtual playground where the Agent can repeatedly practice and be automatically scored.
+
+808
+02:07:02,194 --> 02:07:18,031
+The core differences between simulation environments and evaluation environments are: much higher interaction frequency (millions vs. thousands), the need for randomization (to prevent memorizing specific configurations), and the requirement for immediate feedback.
+
+809
+02:07:18,031 --> 02:07:31,169
+From an application perspective, simulation environments are divided into two categories: digital environments (information processing tasks) and embodied environments (physical world perception and manipulation).
+
+810
+02:07:31,324 --> 02:07:34,349
+Here is how the two ends of the bridge meet.
+
+811
+02:07:34,299 --> 02:07:57,736
+Assets accumulated on the evaluation side convert almost seamlessly into training signals: a well-defined Rubric or validator is essentially a reward function for Reinforcement Learning with Verifiable Rewards (RLVR)—the scoring script becomes the reward script; whether a test passes or a state meets the standard serves both as an evaluation criterion and as a reinforcement learning reward.
+
+812
+02:07:57,736 --> 02:08:02,061
+But training brings demands evaluation never had to worry about.
+
+813
+02:08:02,061 --> 02:08:22,736
+The first is reliable reset semantics: training runs millions of episodes (an episode is one complete interaction round from an initial state to task completion), and each episode must be able to reset the environment to a deterministic, clean initial state; otherwise, the gradient signal will be contaminated by residual states from the previous episode.
+
+814
+02:08:22,736 --> 02:08:40,536
+The second is throughput far exceeding evaluation: a few thousand evaluations are enough to draw conclusions, but training requires feeding the model millions of interactions within an acceptable wall-clock time; the degree of environment parallelism and per-instance overhead directly determine whether training is feasible.
+
+815
+02:08:40,536 --> 02:08:49,349
+These two points—validators turned into reward functions, and training-grade reset and throughput—will be elaborated in Chapter 8.
+
+816
+02:08:49,349 --> 02:08:54,724
+As illustrated in Figure 7-9: Simulation Fidelity Spectrum.
+
+817
+02:08:54,724 --> 02:09:12,799
+On the digital environment side, the AWorld framework builds a controllable MCP server sandbox for GAIA tasks, providing 26 MCP servers covering 126 tool functions, avoiding the bans and uncontrollable side effects of directly accessing real APIs.
+
+818
+02:09:12,799 --> 02:09:16,336
+All tool calls are replayable and auditable.
+
+819
+02:09:16,336 --> 02:09:33,586
+AWorld's distributed architecture reduces the traditional serial execution time from 7695 seconds to 525 seconds (a 14.6x speedup), and the environment's stateless design makes each instance completely independent, supporting efficient parallelism.
+
+820
+02:09:33,586 --> 02:09:46,536
+On the embodied environment side, RoboTwin2 builds dual-arm manipulation tasks based on a physics engine, randomizing object positions, orientations, and appearances to improve generalization.
+
+821
+02:09:46,536 --> 02:09:59,099
+The observation space includes multi-camera visuals and joint states, achieving real-time control through Action Chunking—where the model plans multiple consecutive actions at once (detailed in Chapter 6).
+
+822
+02:09:59,099 --> 02:10:07,674
+OSWorld provides reset capability through virtual machine snapshots, and AndroidWorld focuses on mobile application automation.
+
+823
+02:10:07,674 --> 02:10:26,411
+Whether digital or embodied, simulation environments also require the isolated execution environments and virtual identity mechanisms discussed in Chapter 4 (VM/container isolation, residential proxies, Human-in-the-Loop authentication, shared file systems), which will not be repeated here.
+
+824
+02:10:26,411 --> 02:10:36,061
+Experiment 7-14 intermediate difficulty, two stars: : Configure the Embodied Intelligence Environment for OpenVLA and RoboTwin2
+
+825
+02:10:36,061 --> 02:10:40,186
+Set up a simulation environment for robot manipulation.
+
+826
+02:10:40,186 --> 02:10:56,911
+Read ch7/SimpleVLA-RL and the OpenVLA documentation to understand the architecture of the Vision-Language-Action model (end-to-end integration of a vision encoder, language model, and action decoder, projecting images and text into a shared semantic space).
+
+827
+02:10:56,911 --> 02:11:08,774
+Configure the RoboTwin2 environment, understanding the observation space (three-view RGB + 14-dimensional joint state) and action space (14-dimensional control vector).
+
+828
+02:11:08,774 --> 02:11:15,536
+Study the environment randomization mechanism and spatial constraint logic in move_can_pot`.
+
+829
+02:11:15,536 --> 02:11:25,449
+Evaluate the pretrained model, recording its success rate, completion time, and failure modes, with a focus on the impact of the action chunking mechanism.
+
+830
+02:11:25,449 --> 02:11:32,649
+As illustrated in Figure 7-10: OpenVLA and RoboTwin2 Embodied Intelligence Environment.
+
+831
+02:11:32,649 --> 02:11:36,261
+Fidelity Trade-offs and Domain Randomization.
+
+832
+02:11:36,412 --> 02:11:42,649
+High-fidelity environments support better transfer to the real world but have high computational costs.
+
+833
+02:11:42,599 --> 02:11:53,099
+Another dimension of fidelity is the degree of randomization: moderate randomization improves generalization, while excessive randomization can make tasks too difficult.
+
+834
+02:11:53,099 --> 02:12:11,674
+Domain Randomization is a key technique for narrowing the sim-to-real gap: introducing a wide range of random variations in physical parameters, visual appearance, sensor noise, etc.—just like practicing grasping under various lighting and angles, so you won't fail in the real world just because the light changes.
+
+835
+02:12:11,674 --> 02:12:23,562
+In digital environments, sim-to-real manifests as differences in interface rendering, response times, etc., which can be mitigated by introducing randomization in latency and failures.
+
+836
+02:12:23,562 --> 02:12:25,449
+Chapter Summary.
+
+837
+02:12:25,449 --> 02:12:32,024
+This chapter has revolved around one core question: how do you tell whether an Agent has gotten better or worse?
+
+838
+02:12:32,024 --> 02:13:04,612
+The chain has four stages — first pin down what counts as success (the differing bases of Pass@k, Best@k, and Pass^k), then settle where the tasks come from (public benchmarks, an in-house evaluation dataset for business tasks, and production trajectory feedback), then choose how verification is done (from deterministic verifiers to checklists, Rubric plus LLM judgment, and finally pairwise comparison), and finally turn scores into decisions (statistical significance, failure attribution,
+
+839
+02:13:04,612 --> 02:13:08,012
+regression tasks, and model selection).
+
+840
+02:13:08,012 --> 02:13:11,799
+Every stage affects how much you can trust the conclusion.
+
+841
+02:13:11,799 --> 02:13:23,299
+In terms of the book's larger structure, this chapter builds the evidence segment of Chapter 1's discovery loop: failure attribution determines whether later proposals have anything solid to rest on.
+
+842
+02:13:23,299 --> 02:13:33,212
+Trajectory-prefix boundary evaluation makes a further point: obtaining a piece of information and correctly applying it to the current decision are two different capabilities.
+
+843
+02:13:33,212 --> 02:13:47,049
+End-to-end regression guarantees that basic tasks do not degrade, while the trajectory-prefix boundary set directly checks scope judgment, current-instruction override, clarification, and confirmation before dangerous actions.
+
+844
+02:13:47,049 --> 02:13:50,874
+User memory is just one case of this general method.
+
+845
+02:13:50,874 --> 02:14:01,874
+Evaluation for production-grade Agents is not an occasional exam, but a verification system that continuously generates regression tasks and boundary tasks from real problem cases.
+
+846
+02:14:01,874 --> 02:14:14,137
+Core methodology: Observe → Hypothesize → Experiment → Validate → New Understanding → New Hypothesis, transforming Agent engineering from experience-driven "alchemy" to data-driven scientific engineering.
+
+847
+02:14:14,137 --> 02:14:43,149
+The evaluation system introduced in this chapter forms a complete closed loop: Evaluation Environment provides automated testing infrastructure → Evaluation Dataset defines end-to-end tasks and trajectory-prefix boundaries → Automated Evaluation Methods (deterministic verifiers, LLM-as-a-Judge, and Rubric) score Agent performance and attribute failures → Benchmark and Problem-Case Analysis reveals improvement directions → System Improvements fix issues → Update the evaluation environment and
+
+848
+02:14:43,149 --> 02:14:46,749
+dataset, starting a new iteration cycle.
+
+849
+02:14:46,749 --> 02:14:56,362
+The evaluation system established in this chapter serves not only the optimization of the current system but also provides a critical foundation for the next two chapters.
+
+850
+02:14:56,362 --> 02:15:09,574
+Chapter 8 turns evaluation environments and data into inputs for model post-training; Chapter 9 turns multidimensional evaluation of production trajectories into updates to knowledge, instructions, and procedures.
+
+851
+02:15:09,574 --> 02:15:11,512
+Thought Questions.
+
+852
+02:15:11,512 --> 02:15:19,574
+intermediate difficulty, two stars:  LLM-as-a-Judge uses a language model to evaluate the output of a language model.
+
+853
+02:15:19,574 --> 02:15:31,824
+Does this "self-evaluation" have systematic blind spots—for example, the model might consistently give high scores to a certain style of response, a preference that is inconsistent with human judgment?
+
+854
+02:15:31,824 --> 02:15:35,299
+How can such biases be detected and corrected?
+
+855
+02:15:35,452 --> 02:15:42,564
+advanced difficulty, three stars:  The "leakage-proof" design of evaluation datasets is crucial.
+
+856
+02:15:42,514 --> 02:15:50,664
+However, in the open-source ecosystem, once benchmark data is made public, it is quickly incorporated into training data.
+
+857
+02:15:50,664 --> 02:15:54,189
+Does this "cat-and-mouse game" have an endgame?
+
+858
+02:15:54,189 --> 02:15:59,002
+Design an evaluation method that fundamentally resists data leakage.
+
+859
+02:15:59,002 --> 02:16:13,914
+intermediate difficulty, two stars:  Scale AI's four criteria (expert guidance, comprehensive coverage, standardized importance weighting, self-contained evaluation) aim to eliminate subjectivity in evaluation.
+
+860
+02:16:13,914 --> 02:16:18,989
+However, certain task dimensions (e.g., "Is the answer helpful?
+
+861
+02:16:18,989 --> 02:16:22,777
+Is the tone appropriate?") are inherently subjective.
+
+862
+02:16:22,777 --> 02:16:27,214
+How can reliable Rubrics be designed for these subjective dimensions?
+
+863
+02:16:27,214 --> 02:16:34,377
+intermediate difficulty, two stars:  τ-bench evaluates Agents by simulating real user behavior.
+
+864
+02:16:34,377 --> 02:16:44,827
+But the simulated user itself is an LLM—it might systematically underestimate certain edge cases (e.g., emotionally agitated or unclear users).
+
+865
+02:16:44,827 --> 02:16:49,052
+How can the quality of the simulated user itself be validated?
+
+866
+02:16:49,052 --> 02:17:01,202
+intermediate difficulty, two stars:  Pairwise comparison (Bradley-Terry model) assumes preferences are transitive (if A > B and B > C, then A > C).
+
+867
+02:17:01,202 --> 02:17:05,602
+However, human preferences often violate transitivity.
+
+868
+02:17:05,602 --> 02:17:11,027
+In Agent evaluation, in what scenarios might non-transitive preferences appear?
+
+869
+02:17:11,027 --> 02:17:14,439
+How does this affect the reliability of rankings?
+
+870
+02:17:14,439 --> 02:17:24,639
+intermediate difficulty, two stars:  This chapter distinguishes Pass@k as a ceiling on capability from Pass^k as a measure of business reliability.
+
+871
+02:17:24,639 --> 02:17:36,952
+For an Agent whose single-run success rate is only 60%, how would you combine a task's failure cost, retry cost and side effects to decide which metric to report and how large k should be?
+
+872
+02:17:36,952 --> 02:17:45,702
+intermediate difficulty, two stars:  This chapter proposes the scientific method of "Observe → Hypothesize → Experiment → Validate.
+
+873
+02:17:45,702 --> 02:17:54,864
+In practice, however, the Agent's behavior space is vast, and validating a single hypothesis may require hundreds of evaluation runs.
+
+874
+02:17:54,864 --> 02:18:00,739
+How can the information gained from evaluation be maximized under a limited computational budget?
+
+875
+02:18:00,739 --> 02:18:19,939
+introductory difficulty, one star:  In the AndroidWorld pilot, the full element tree raised success from 25% to 100% but increased token use to 2.498× the control; pruning preserved 100% success while reducing token use to 0.506×.
+
+876
+02:18:19,939 --> 02:18:30,552
+How would you design automatic pruning rules that remove semantically empty UI nodes without discarding information needed for accessibility, state verification, or later actions?
+
+877
+02:18:30,552 --> 02:18:43,714
+intermediate difficulty, two stars:  τ-bench's user simulation employs "progressive information disclosure"—not providing all information at once, but gradually revealing it based on the Agent's questions.
+
+878
+02:18:43,714 --> 02:18:47,302
+How does this design affect evaluation results?
+
+879
+02:18:47,302 --> 02:18:56,064
+If the simulated user's information disclosure strategy differs significantly from real users, are the evaluation conclusions still reliable?
+

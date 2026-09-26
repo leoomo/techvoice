@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Agents in Depth - Afterword: Afterword: Co-Evolution of Two Clouds</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-bg: rgba(56, 189, 248, 0.12);
+      --highlight: #0284c7;
+      --border: #334155;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f8fafc;
+        --card-bg: #ffffff;
+        --text-main: #0f172a;
+        --text-muted: #64748b;
+        --accent: #0284c7;
+        --accent-bg: rgba(2, 132, 199, 0.08);
+        --highlight: #0369a1;
+        --border: #e2e8f0;
+      }
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
+      margin: 0;
+      padding: 0;
+      line-height: 1.7;
+    }
+    .nav-bar {
+      background: rgba(15, 23, 42, 0.9);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 24px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+    .nav-title {
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--accent);
+      margin-right: 10px;
+      flex-shrink: 0;
+    }
+    .nav-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 12px;
+      padding: 4px 9px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      transition: all 0.15s ease;
+      flex-shrink: 0;
+    }
+    .nav-link:hover {
+      color: var(--text-main);
+      border-color: var(--border);
+    }
+    .nav-link.active {
+      background: var(--accent);
+      color: #fff;
+      font-weight: 600;
+    }
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 24px 24px 120px 24px;
+    }
+    header {
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 20px;
+    }
+    h1 {
+      font-size: 26px;
+      font-weight: 700;
+      margin: 0 0 8px 0;
+      letter-spacing: -0.02em;
+    }
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 15px;
+    }
+    .sticky-player {
+      position: sticky;
+      top: 56px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 20px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25);
+      z-index: 100;
+      margin-bottom: 32px;
+      backdrop-filter: blur(12px);
+    }
+    .player-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    audio {
+      flex: 1;
+      min-width: 260px;
+      height: 40px;
+    }
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn:hover {
+      background: var(--accent-bg);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .btn.active {
+      background: var(--accent);
+      color: #ffffff;
+      border-color: var(--accent);
+    }
+    .transcript {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .cue-item {
+      padding: 12px 16px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      border-left: 3px solid transparent;
+      display: flex;
+      gap: 14px;
+      align-items: baseline;
+    }
+    .cue-item:hover {
+      background: var(--accent-bg);
+    }
+    .cue-item.active {
+      background: var(--accent-bg);
+      border-left: 3px solid var(--accent);
+      color: var(--text-main);
+      font-weight: 500;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+    .cue-time {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      flex-shrink: 0;
+      min-width: 50px;
+    }
+    .cue-text {
+      flex: 1;
+      font-size: 16px;
+    }
+    .cue-item.active .cue-time {
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .tip {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+    <div class="nav-bar">
+    <span class="nav-title">🎧 AI Agents Audio</span>
+    <a href="listen.html" class="nav-link ">Introduction</a>
+    <a href="listen_chapter1.html" class="nav-link ">Chapter 1</a>
+    <a href="listen_chapter2.html" class="nav-link ">Chapter 2</a>
+    <a href="listen_chapter3.html" class="nav-link ">Chapter 3</a>
+    <a href="listen_chapter4.html" class="nav-link ">Chapter 4</a>
+    <a href="listen_chapter5.html" class="nav-link ">Chapter 5</a>
+    <a href="listen_chapter6.html" class="nav-link ">Chapter 6</a>
+    <a href="listen_chapter7.html" class="nav-link ">Chapter 7</a>
+    <a href="listen_chapter8.html" class="nav-link ">Chapter 8</a>
+    <a href="listen_chapter9.html" class="nav-link ">Chapter 9</a>
+    <a href="listen_chapter10.html" class="nav-link ">Chapter 10</a>
+    <a href="listen_afterword.html" class="nav-link active">Afterword</a>
+  </div>
+
+  <div class="container">
+    <header>
+      <h1>Afterword: Afterword: Co-Evolution of Two Clouds</h1>
+      <div class="subtitle">AI Agents in Depth • Spoken Audio & Interactive Transcripts • Voice: en-US-ChristopherNeural</div>
+      <div class="tip">💡 <b>How to practice:</b> Click any sentence to jump the audio directly. Use Space to play/pause. Press Left/Right arrows to skip 5 seconds.</div>
+    </header>
+
+    <div class="sticky-player">
+      <div class="player-row">
+        <audio id="audio" controls preload="metadata">
+          <source src="afterword.mp3" type="audio/mpeg">
+          <track default kind="subtitles" src="afterword.vtt" srclang="en" label="English">
+          Your browser does not support the audio element.
+        </audio>
+        <div class="controls">
+          <button class="btn" id="btn-rewind" title="Rewind 5s">⏪ 5s</button>
+          <button class="btn" id="btn-forward" title="Forward 5s">5s ⏩</button>
+          <button class="btn speed-btn" data-speed="0.8">0.8x</button>
+          <button class="btn speed-btn active" data-speed="1.0">1.0x</button>
+          <button class="btn speed-btn" data-speed="1.2">1.2x</button>
+          <button class="btn speed-btn" data-speed="1.5">1.5x</button>
+          <button class="btn active" id="btn-autoscroll">Auto-Scroll: ON</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="transcript" id="transcript">
+      <!-- Cues rendered by JavaScript -->
+    </div>
+  </div>
+
+  <script>
+    const cues = [{"id": 1, "start": 0.1, "end": 5.425, "text": "Afterword: Back to Agent = LLM + Context + Tools ."}, {"id": 2, "start": 5.375, "end": 11.187, "text": "This book opened with a formula: Agent = LLM + Context + Tools."}, {"id": 3, "start": 11.187, "end": 15.15, "text": "All ten chapters unfold within these three words."}, {"id": 4, "start": 15.15, "end": 27.8, "text": "Chapter 1 establishes a three-layer understanding of the formula—the implementation layer, the intuitive layer, and the academic layer—and presents the orchestration spectrum from workflows to autonomous Agents."}, {"id": 5, "start": 27.8, "end": 35.675, "text": "The chapters that follow unfold progressively along the sequence “Building—Evaluation and Evolution—Collaboration."}, {"id": 6, "start": 35.675, "end": 39.175, "text": "Building Agents (Chapters 2–6)."}, {"id": 7, "start": 39.175, "end": 47.637, "text": "Context engineering determines what an Agent sees within a task, while memory and knowledge bases extend information across sessions."}, {"id": 8, "start": 47.637, "end": 62.575, "text": "Tools define what it can do, code generation provides the meta-capability to create new tools and systems, and the interaction chapter pushes the observation and action spaces out of text turn-taking into voice, GUIs, and the physical world."}, {"id": 9, "start": 62.575, "end": 66.862, "text": "Evaluation and Evolution (Chapters 7–9)."}, {"id": 10, "start": 66.862, "end": 82.825, "text": "Evaluation turns performance into trustworthy signals, post-training writes high-dimensional capabilities into model parameters, and continuous evolution transforms production experience into controlled updates to knowledge, instructions, programs, or parameters."}, {"id": 11, "start": 82.825, "end": 85.65, "text": "Collaboration (Chapter 10)."}, {"id": 12, "start": 85.65, "end": 92.637, "text": "Multi-agent collaboration further changes how context, tools, and responsibility are organized."}, {"id": 13, "start": 92.637, "end": 96.087, "text": "These three levels are not independent shelves."}, {"id": 14, "start": 96.087, "end": 116.15, "text": "Chapter 9, in particular, depends on all the foundations established earlier: without trajectories and knowledge systems, experience has nowhere to be stored; without code capability, an Agent cannot modify tools and Harnesses; and without evaluation, the system cannot determine whether a modification is progress or regression."}, {"id": 15, "start": 116.15, "end": 124.925, "text": "Chapter 9 is therefore the convergence point at which the book shifts from “how to build an Agent” to “how to make an Agent improve over the long term."}, {"id": 16, "start": 124.925, "end": 126.762, "text": "Two Clouds ."}, {"id": 17, "start": 126.762, "end": 136.662, "text": "In 1900, Lord Kelvin said two clouds still hung over the clear sky of physics—later, one became relativity and the other quantum mechanics."}, {"id": 18, "start": 136.662, "end": 142.262, "text": "Today the sky over Agents is hardly clear either, and I too see two clouds."}, {"id": 19, "start": 142.262, "end": 148.1, "text": "The first cloud is how Agents can interact with their environment in a streaming, real-time way."}, {"id": 20, "start": 148.1, "end": 160.512, "text": "Today, the vast majority of Agents still operate in a turn-by-turn \"request-response\" mode: you finish a sentence, it thinks through an entire paragraph, and then spits out the result all at once."}, {"id": 21, "start": 160.512, "end": 169.025, "text": "But the real world doesn't stop and wait for it to finish thinking—speech gets interrupted, the scene keeps changing, emails keep arriving."}, {"id": 22, "start": 169.025, "end": 181.012, "text": "A truly \"living\" Agent should be able to listen while thinking and speak while thinking, start planning while you're still mid-sentence, and notice on its own that \"this email needs handling\" even when no one has asked."}, {"id": 23, "start": 181.012, "end": 186.512, "text": "There are two paths toward this real-time capability, often pursued in parallel."}, {"id": 24, "start": 186.512, "end": 201.85, "text": "One is architectural separation of fast and slow—real-time responsiveness and intelligence are nearly orthogonal axes that a single model struggles to span, so a fast frontend model keeps the conversational rhythm while a slow backend model does the deep thinking."}, {"id": 25, "start": 201.85, "end": 213.7, "text": "The other is making inference itself faster—when decode speed is high enough, the turn-by-turn wait becomes so short it nearly disappears, blurring the line between turn-by-turn and \"real-time."}, {"id": 26, "start": 213.7, "end": 238.025, "text": "This path is being rapidly advanced by chips and inference engines: Xiaomi MiMo has pushed a 1T-parameter model past 1000 token/s on a single 8-GPU node, while dedicated solutions that hardcode the entire model into a chip (like the Taalas HC1) push an 8-billion-parameter model to about 17000 token/s with a response time under 100 milliseconds."}, {"id": 27, "start": 238.025, "end": 248.1, "text": "When a model can spit out thousands of words per second, the experiential gap between \"think, then speak\" and \"think while speaking\" is simply erased."}, {"id": 28, "start": 248.26, "end": 257.172, "text": "The second cloud is how Agents can, like humans, keep accumulating experience from the successes and failures of their interactions with the environment."}, {"id": 29, "start": 257.122, "end": 274.972, "text": "Today's models are more like a genius with a superb memory who can't learn anything new: during training they memorize human knowledge down to the last detail, but once on the job they barely grow—after each task, the pitfalls they've stepped in and the tricks they've figured out are mostly discarded along with the context."}, {"id": 30, "start": 274.972, "end": 279.66, "text": "Whether this is a real problem depends on two opposing hypotheses."}, {"id": 31, "start": 279.66, "end": 292.61, "text": "One is the \"Small World Hypothesis\": a sufficiently large model—say, with trillions of parameters—already contains almost all the important general knowledge of the physical world; learning once is enough."}, {"id": 32, "start": 292.61, "end": 315.247, "text": "Those who hold this view (including researchers at OpenAI and Anthropic) would point out that programming is the one domain where AI is strongest today—not because code is somehow special to models, but because programming is humanity's most open field: vast amounts of open-source code sit there, ready to be learned from, while most industries have no public information or data at all."}, {"id": 33, "start": 315.247, "end": 324.935, "text": "So what the frontier labs are really doing is going industry by industry, partnering with each to \"distill\" its professional capability into the same large model."}, {"id": 34, "start": 324.935, "end": 335.847, "text": "According to this view, the bottleneck is neither the model's capacity nor its ability to learn, but whether there's enough data—feed the data in, train once, and the problem is solved."}, {"id": 35, "start": 335.847, "end": 345.097, "text": "But the “Big World Hypothesis” points to a layer that cannot be supplied by “training once”: knowledge specific to a particular user or company."}, {"id": 36, "start": 345.097, "end": 355.56, "text": "A particular company's coding standards and presentation style, along with a particular client's distinctive temperament, are absent from every training corpus and change constantly."}, {"id": 37, "start": 355.56, "end": 366.11, "text": "To fit this “big world” composed of countless specific situations, a model must continue learning after deployment; it cannot arrive from the factory with everything configured."}, {"id": 38, "start": 366.11, "end": 381.035, "text": "This is precisely the direction explored by memory in Chapter 3 and continuous evolution in Chapter 9: should experience be written into knowledge documents, instructions, or programs, or should selected experience be used to update model parameters?"}, {"id": 39, "start": 381.035, "end": 391.785, "text": "More broadly, both “RSI (recursive self-improvement)” and “AI for Science” are pushing Agents toward frontiers where no ready-made answers exist."}, {"id": 40, "start": 391.785, "end": 400.397, "text": "There, an Agent can only learn autonomously from repeated experimental successes and failures rather than turning back to humans for every decision."}, {"id": 41, "start": 400.397, "end": 407.435, "text": "The model's strongest capability will therefore ultimately be not memorization, but learning and adaptation."}, {"id": 42, "start": 407.435, "end": 411.735, "text": "Neither cloud will be blown away by any single model upgrade."}, {"id": 43, "start": 411.735, "end": 422.51, "text": "To understand how they will eventually be dispelled, we first need to see one thing clearly: models and Agents have never been upstream and downstream of each other; they move forward together."}, {"id": 44, "start": 422.51, "end": 425.76, "text": "The Co-Evolution of Models and Agents ."}, {"id": 45, "start": 425.76, "end": 445.11, "text": "Look back at the layers of fallback logic in those harnesses—multi-level context compression, retry logic that trips a circuit breaker only after thousands of failures, permission checks that pessimistically default to \"unsafe\"—and every stretch of seemingly ugly \"spaghetti code\" records a place where the model is still shaky."}, {"id": 46, "start": 445.11, "end": 461.735, "text": "When the next generation of models internalizes these constraints, the corresponding code can be deleted; and the reason models can internalize them is precisely that Agents have already stumbled through those pits on the model's behalf in real business, condensing the lessons into signals for the next round of training."}, {"id": 47, "start": 461.735, "end": 473.097, "text": "Users pose real challenges; the application layer uses harnesses to patch over what the model can't yet do well; those patches in turn become training signals for the model's next iteration."}, {"id": 48, "start": 473.097, "end": 476.11, "text": "This is a self-reinforcing flywheel."}, {"id": 49, "start": 476.26, "end": 482.91, "text": "This flywheel also answers the question left hanging in Chapter 1: will models eventually eat the Harness?"}, {"id": 50, "start": 482.86, "end": 486.822, "text": "This book's view is yes—but not all at once."}, {"id": 51, "start": 486.822, "end": 491.735, "text": "Models will eat it layer by layer, and the process will never be complete."}, {"id": 52, "start": 491.735, "end": 507.51, "text": "Every capability a model stably internalizes lets the corresponding Harness layer be deleted—Chapter 6's interaction model is one such case: behaviors like interruption and interjection that once had to be assembled with an external harness are now built directly into the model."}, {"id": 53, "start": 507.51, "end": 510.497, "text": "But this \"eating\" will never be finished."}, {"id": 54, "start": 510.497, "end": 515.822, "text": "First, training takes months—the model can wait, but the business cannot."}, {"id": 55, "start": 515.822, "end": 525.31, "text": "Second, a model cannot internalize every constraint and preference of real business; there is always a newest boundary that needs external logic as a backstop."}, {"id": 56, "start": 525.31, "end": 533.622, "text": "Third, every generation of models opens a new capability frontier, and the frontier is exactly where the model is least reliable."}, {"id": 57, "start": 533.622, "end": 540.885, "text": "So the Harness will not disappear; it simply keeps migrating, together with the model, toward each new frontier."}, {"id": 58, "start": 540.885, "end": 551.36, "text": "This is also how the Bitter Lesson reads in the Agent era: general methods will win in the end—but every stretch of road inside that \"in the end\" is paved by the Harness."}, {"id": 59, "start": 551.36, "end": 556.21, "text": "And the flywheel spins fastest in the hands of those who hold both ends."}, {"id": 60, "start": 556.21, "end": 564.235, "text": "What Anthropic is doing with Claude Code is exactly this: letting its own model and its own harness feed each other and co-evolve."}, {"id": 61, "start": 564.235, "end": 573.397, "text": "The model knows how the harness will call it; the harness knows where the model's boundaries lie; every change on either end feeds back to the other immediately."}, {"id": 62, "start": 573.397, "end": 583.26, "text": "In one experiment, changing nothing but the harness—same model—lifted task accuracy from 52.8% to 66.5%."}, {"id": 63, "start": 583.26, "end": 592.672, "text": "That shows how much leverage the harness has today, but it is also a reminder: the harness has that much leverage precisely because the model hasn't gotten there yet."}, {"id": 64, "start": 592.672, "end": 605.235, "text": "And for the same reason, this flywheel itself is the deepest moat of this era: the tighter real business, feedback data, and model iteration mesh together, the harder it is for anyone to catch up from the outside."}, {"id": 65, "start": 605.235, "end": 609.66, "text": "What this means for you depends on which end of the flywheel you stand on."}, {"id": 66, "start": 609.66, "end": 618.635, "text": "If you're building models, the moat is to get this flywheel spinning—let feedback from real-world scenarios flow back into training as quickly as possible."}, {"id": 67, "start": 618.635, "end": 634.135, "text": "If you're building applications on top of models, the harness is your sharpest short-term technical lever, but be clear-eyed: each time the model internalizes a layer of constraints, it will—almost in passing—wipe out a batch of advantages built on the harness alone."}, {"id": 68, "start": 634.135, "end": 648.972, "text": "The truly lasting moats at the application layer usually lie outside technology: exclusive data, solid distribution channels, user trust, network effects, and the physical-world scenarios that require humans and Agents to work together."}, {"id": 69, "start": 648.972, "end": 655.547, "text": "The prudent play is to use the harness to buy time, and use that time to build barriers beyond technology."}, {"id": 70, "start": 655.547, "end": 660.16, "text": "So don't fret over whether the framework in your hands will become obsolete."}, {"id": 71, "start": 660.16, "end": 667.147, "text": "Models iterate every few months; specific APIs, products, and leaderboards will all turn over."}, {"id": 72, "start": 667.147, "end": 675.51, "text": "But the three questions—what it sees, what it can do, and how to verify it's doing things right—will not become obsolete."}, {"id": 73, "start": 675.51, "end": 682.635, "text": "They describe not the usage of a particular model, but the fundamental way an intelligent system interacts with the world."}, {"id": 74, "start": 682.635, "end": 693.822, "text": "Master them, and whatever new capability the next generation of models brings, you'll know where it fits in the formula—and you'll see at a glance how far it still is from blowing those two clouds away."}, {"id": 75, "start": 693.988, "end": 700.513, "text": "Agent technology is still evolving at full speed; no single book can keep up with every change."}, {"id": 76, "start": 700.463, "end": 710.413, "text": "But if what this book leaves you with is not the specific usage of some API but the judgment to stay clear-headed amid the waves of technology, then it has fulfilled its mission."}, {"id": 77, "start": 710.413, "end": 716.525, "text": "All of this book's text, illustrations, and companion experiment code are open source."}, {"id": 78, "start": 716.525, "end": 723.638, "text": "You're welcome to visit the repository, run the experiments with your own hands, and submit issues and PRs."}, {"id": 79, "start": 723.638, "end": 732.45, "text": "And the most fascinating thing about Agents is precisely this: they can create new capabilities by writing code, and even improve themselves."}, {"id": 80, "start": 732.45, "end": 737.075, "text": "Having read this far, you already hold the principles of \"creation."}, {"id": 81, "start": 737.075, "end": 739.613, "text": "Now, go create something."}];
+    const audio = document.getElementById("audio");
+    const transcriptEl = document.getElementById("transcript");
+    let autoScroll = true;
+    let activeCueId = null;
+
+    // Render cues
+    cues.forEach(cue => {
+      const div = document.createElement("div");
+      div.className = "cue-item";
+      div.id = `cue-${cue.id}`;
+      
+      const m = Math.floor(cue.start / 60);
+      const s = Math.floor(cue.start % 60);
+      const timeStr = `${m}:${s < 10 ? "0" : ""}${s}`;
+      
+      div.innerHTML = `
+        <span class="cue-time">${timeStr}</span>
+        <span class="cue-text">${cue.text}</span>
+      `;
+      div.addEventListener("click", () => {
+        audio.currentTime = cue.start + 0.05;
+        audio.play();
+      });
+      transcriptEl.appendChild(div);
+    });
+
+    // Time update sync
+    audio.addEventListener("timeupdate", () => {
+      const cur = audio.currentTime;
+      const currentCue = cues.find(c => cur >= c.start && cur <= c.end) || 
+                         cues.find(c => cur >= c.start && cur <= c.start + 15);
+      
+      if (currentCue && currentCue.id !== activeCueId) {
+        if (activeCueId) {
+          const prev = document.getElementById(`cue-${activeCueId}`);
+          if (prev) prev.classList.remove("active");
+        }
+        activeCueId = currentCue.id;
+        const curEl = document.getElementById(`cue-${activeCueId}`);
+        if (curEl) {
+          curEl.classList.add("active");
+          if (autoScroll) {
+            curEl.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }
+      }
+    });
+
+    // Speed controls
+    document.querySelectorAll(".speed-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        document.querySelectorAll(".speed-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        audio.playbackRate = parseFloat(btn.dataset.speed);
+      });
+    });
+
+    // Rewind / Forward
+    document.getElementById("btn-rewind").addEventListener("click", () => {
+      audio.currentTime = Math.max(0, audio.currentTime - 5);
+    });
+    document.getElementById("btn-forward").addEventListener("click", () => {
+      audio.currentTime = Math.min(audio.duration, audio.currentTime + 5);
+    });
+
+    // Auto-Scroll Toggle
+    const autoScrollBtn = document.getElementById("btn-autoscroll");
+    autoScrollBtn.addEventListener("click", () => {
+      autoScroll = !autoScroll;
+      autoScrollBtn.textContent = `Auto-Scroll: ${autoScroll ? "ON" : "OFF"}`;
+      autoScrollBtn.classList.toggle("active", autoScroll);
+    });
+
+    // Spacebar to Play/Pause
+    window.addEventListener("keydown", (e) => {
+      if (e.code === "Space" && e.target === document.body) {
+        e.preventDefault();
+        if (audio.paused) audio.play();
+        else audio.pause();
+      }
+    });
+  </script>
+</body>
+</html>

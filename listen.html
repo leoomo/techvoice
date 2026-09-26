@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Agents in Depth - Introduction (Audio Listening Practice)</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-bg: rgba(56, 189, 248, 0.12);
+      --highlight: #0284c7;
+      --border: #334155;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f8fafc;
+        --card-bg: #ffffff;
+        --text-main: #0f172a;
+        --text-muted: #64748b;
+        --accent: #0284c7;
+        --accent-bg: rgba(2, 132, 199, 0.08);
+        --highlight: #0369a1;
+        --border: #e2e8f0;
+      }
+    }
+    .nav-bar {
+      background: rgba(15, 23, 42, 0.85);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 24px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      z-index: 200;
+    }
+    .nav-title {
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--accent);
+      margin-right: 12px;
+    }
+    .nav-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 13px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      transition: all 0.15s ease;
+    }
+    .nav-link:hover {
+      color: var(--text-main);
+      border-color: var(--border);
+    }
+    .nav-link.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
+      margin: 0;
+      padding: 0;
+      line-height: 1.7;
+    }
+    .container {
+      max-width: 840px;
+      margin: 0 auto;
+      padding: 20px 24px 120px 24px;
+    }
+    header {
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 20px;
+    }
+    h1 {
+      font-size: 26px;
+      font-weight: 700;
+      margin: 0 0 8px 0;
+      letter-spacing: -0.02em;
+    }
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 15px;
+    }
+    .sticky-player {
+      position: sticky;
+      top: 16px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 20px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.25);
+      z-index: 100;
+      margin-bottom: 32px;
+      backdrop-filter: blur(12px);
+    }
+    .player-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    audio {
+      flex: 1;
+      min-width: 260px;
+      height: 40px;
+    }
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn:hover {
+      background: var(--accent-bg);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .btn.active {
+      background: var(--accent);
+      color: #ffffff;
+      border-color: var(--accent);
+    }
+    .transcript {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .cue-item {
+      padding: 12px 16px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      border-left: 3px solid transparent;
+      display: flex;
+      gap: 14px;
+      align-items: baseline;
+    }
+    .cue-item:hover {
+      background: var(--accent-bg);
+    }
+    .cue-item.active {
+      background: var(--accent-bg);
+      border-left: 3px solid var(--accent);
+      color: var(--text-main);
+      font-weight: 500;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+    .cue-time {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      flex-shrink: 0;
+      min-width: 45px;
+    }
+    .cue-text {
+      flex: 1;
+      font-size: 16px;
+    }
+    .cue-item.active .cue-time {
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .tip {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+                                      <div class="nav-bar">
+    <span class="nav-title">🎧 AI Agents Audio</span>
+    <a href="listen.html" class="nav-link active">Introduction</a>
+    <a href="listen_chapter1.html" class="nav-link ">Chapter 1</a>
+    <a href="listen_chapter2.html" class="nav-link ">Chapter 2</a>
+    <a href="listen_chapter3.html" class="nav-link ">Chapter 3</a>
+    <a href="listen_chapter4.html" class="nav-link ">Chapter 4</a>
+    <a href="listen_chapter5.html" class="nav-link ">Chapter 5</a>
+    <a href="listen_chapter6.html" class="nav-link ">Chapter 6</a>
+    <a href="listen_chapter7.html" class="nav-link ">Chapter 7</a>
+    <a href="listen_chapter8.html" class="nav-link ">Chapter 8</a>
+    <a href="listen_chapter9.html" class="nav-link ">Chapter 9</a>
+    <a href="listen_chapter10.html" class="nav-link ">Chapter 10</a>
+    <a href="listen_afterword.html" class="nav-link ">Afterword</a>
+  </div>
+  <div class="container">
+    <header>
+      <h1>AI Agents in Depth · Introduction</h1>
+      <div class="subtitle">English Listening Practice · Narrator: Christopher (Neural, US) · Duration: 26:17</div>
+      <div class="tip">💡 Tip: Click any sentence to instantly jump playback to that moment. Press Space to Play/Pause.</div>
+    </header>
+
+    <div class="sticky-player">
+      <div class="player-row">
+        <audio id="audio" controls preload="auto" src="introduction.mp3">
+          <track id="track" src="introduction.vtt" kind="subtitles" srclang="en" label="English" default>
+        </audio>
+        <div class="controls">
+          <button class="btn" id="btn-rewind" title="Rewind 5s">⏪ 5s</button>
+          <button class="btn" id="btn-forward" title="Forward 5s">⏩ 5s</button>
+          <button class="btn speed-btn" data-speed="0.8">0.8x</button>
+          <button class="btn speed-btn active" data-speed="1.0">1.0x</button>
+          <button class="btn speed-btn" data-speed="1.2">1.2x</button>
+          <button class="btn speed-btn" data-speed="1.5">1.5x</button>
+          <button class="btn" id="btn-autoscroll" class="active">Auto-Scroll: ON</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="transcript" id="transcript"></div>
+  </div>
+
+  <script>
+    const cues = [{"id": 1, "start": 0.1, "end": 1.825, "text": "Introduction ."}, {"id": 2, "start": 1.775, "end": 12.287, "text": "From August to October 2025, I delivered a series of technical lectures at the \"AI Agent Bootcamp\" organized by Turing, the Chinese tech publisher."}, {"id": 3, "start": 12.287, "end": 26.275, "text": "The course centered on a core question: How can we design AI Agents guided by interpretable, verifiable, and reusable engineering principles, rather than relying on intuition, empirical heuristics, and endless trial-and-error?"}, {"id": 4, "start": 26.275, "end": 39.887, "text": "Consequently, the lectures did not stop at getting a working demo; instead, they analyzed why an Agent adopts a particular architecture, along with the capability boundaries and engineering trade-offs behind each design decision."}, {"id": 5, "start": 39.887, "end": 47.762, "text": "This book was systematically organized, expanded, and restructured from the lecture notes and companion experiments of that course."}, {"id": 6, "start": 47.762, "end": 52.9, "text": "The creation of this book was itself an exercise in human-agent collaboration."}, {"id": 7, "start": 52.9, "end": 64.925, "text": "From initial conception to final manuscript, I primarily adopted whisper coding (dictation-based collaboration), working with Pine's voice Agent to organize materials and iterate on the text."}, {"id": 8, "start": 64.925, "end": 73.187, "text": "When preparing lectures, I would first dictate a chapter outline, leaving the Agent to research related work and produce draft materials."}, {"id": 9, "start": 73.187, "end": 82.675, "text": "After each lecture, incorporating feedback from participants, we repeatedly scrutinized and revised arguments, case studies, and experiments."}, {"id": 10, "start": 82.675, "end": 93.25, "text": "Speaking lowered the friction of externalizing thoughts into text and drastically compressed the iterative cycle of \"pose questions → retrieve materials → generate drafts → review and revise."}, {"id": 11, "start": 93.25, "end": 101.325, "text": "Thus, this book not only discusses Agents; it also records a new mode of knowledge production deeply co-created with Agents."}, {"id": 12, "start": 101.325, "end": 114.812, "text": "Since the release of DeepSeek R1 in early 2025, the center of gravity in both AI research and industrial practice has shifted from raw foundation model capabilities to the systematic engineering deployment of Agents."}, {"id": 13, "start": 114.812, "end": 133.8, "text": "On the model side, Agentic Reinforcement Learning has begun to internalize tool-calling and environmental interaction capabilities directly into model parameters, endowing models with stronger general capabilities across domains such as programming (coding), mathematical reasoning, and GUI operation (computer use)."}, {"id": 14, "start": 133.8, "end": 148.212, "text": "On the product side, general-purpose Agents such as Manus, Claude Code, and OpenClaw have reshaped human-computer interaction paradigms, establishing \"code generation + file system\" as a foundational architectural blueprint."}, {"id": 15, "start": 148.212, "end": 159.762, "text": "Re-examining the Agent architectural principles summarized during the course reveals that despite the rapid evolution of models and products, these principles still maintain enduring explanatory power."}, {"id": 16, "start": 159.762, "end": 170.1, "text": "While terms such as Skill, harness, and loop engineering later gained widespread industry adoption, the corresponding engineering practices emerged well beforehand."}, {"id": 17, "start": 170.1, "end": 177.375, "text": "Conceptual terminology represents the distillation of accumulated empirical practice, not its point of departure."}, {"id": 18, "start": 177.375, "end": 181.975, "text": "In other words: practice comes first, naming comes later."}, {"id": 19, "start": 181.975, "end": 188.325, "text": "These principles stem primarily from engineering practice in long-horizon, high-stakes environments."}, {"id": 20, "start": 188.325, "end": 206.187, "text": "As Chief Scientist of Pine AI, I led the development of Pine alongside our team, enabling the Agent to communicate with real humans on behalf of users and handle complex tasks involving tangible financial interests, such as bill negotiations, refund disputes, and subscription cancellations."}, {"id": 21, "start": 206.187, "end": 217.2, "text": "Such tasks typically span extended durations, involve multi-turn negotiations, and carry the risk that an error at any single step could lead to direct monetary loss."}, {"id": 22, "start": 217.2, "end": 226.3, "text": "Rigorous demands for reliability, safety, and auditability compelled us to crystallize the architectural principles emphasized throughout this book."}, {"id": 23, "start": 226.3, "end": 230.362, "text": "The following examples are drawn directly from this practice:"}, {"id": 24, "start": 230.362, "end": 249.625, "text": "Well before the concept of Skills became widespread, we had already adopted dynamic prompt loading to address unbounded prompt bloat, command-line tool execution to solve tool list explosion, and system status bars to provide Agents with awareness of their runtime environment, the user's local time, and operational status."}, {"id": 25, "start": 249.796, "end": 263.958, "text": "Well before the term harness gained popularity, we were already employing mechanisms similar to Claude Code to mitigate unstable tool calls, hallucinations, dangerous or unauthorized operations, and instruction non-compliance."}, {"id": 26, "start": 263.908, "end": 274.208, "text": "Well before loop engineering became an established discipline, we were using what this book terms the proposer-reviewer pattern to prevent models from prematurely declaring tasks complete."}, {"id": 27, "start": 274.208, "end": 278.033, "text": "These methodologies are by no means unique to Pine."}, {"id": 28, "start": 278.033, "end": 285.333, "text": "Many model and Agent engineering teams arrived at similar techniques independently when tackling analogous challenges."}, {"id": 29, "start": 285.333, "end": 291.171, "text": "This convergence demonstrates that they reflect universal constraints inherent to Agent systems."}, {"id": 30, "start": 291.171, "end": 307.046, "text": "Grounded in these insights, I launched the \"AI Agent Bootcamp\" at Turing in 2025 and have continuously taught an AI Agent hands-on course at the University of Chinese Academy of Sciences (UCAS) from 2024 to 2026."}, {"id": 31, "start": 307.046, "end": 317.408, "text": "Releasing this book as open source reflects our aspiration to make this reusable knowledge and empirical experience accessible to a broader community of researchers and practitioners."}, {"id": 32, "start": 317.408, "end": 320.933, "text": "Practice comes first, naming comes later."}, {"id": 33, "start": 320.933, "end": 335.908, "text": "For enterprise Agent development, this means engineering practice cannot continually lag behind conceptual buzz: by the time a term achieves industry consensus, the underlying problem has typically undergone prolonged exploration in frontier systems."}, {"id": 34, "start": 335.908, "end": 342.083, "text": "To identify and resolve these challenges ahead of the curve, I believe two conditions are essential:"}, {"id": 35, "start": 342.083, "end": 350.796, "text": "First, anchor development in authentic business scenarios that push the Agent's capability ceiling, and continually gather real-world feedback."}, {"id": 36, "start": 350.796, "end": 364.096, "text": "In Pine's case, a single task can span hours or even weeks, requiring iterative communication across multiple stakeholders through lengthy phone calls, intricate form filling, and multi-turn email exchanges."}, {"id": 37, "start": 364.096, "end": 372.746, "text": "Throughout this process, critical figures must remain error-free, operations strictly controllable, and user interests firmly protected."}, {"id": 38, "start": 372.746, "end": 386.096, "text": "Scenarios of sufficient complexity relentlessly expose the gap between raw model capabilities and business requirements, compelling teams to engineer harnesses that systematically bridge what models cannot yet accomplish autonomously."}, {"id": 39, "start": 386.096, "end": 395.871, "text": "Conversely, if business demands can be trivially satisfied by the next routine model upgrade, teams will struggle to cultivate enduring architectural principles."}, {"id": 40, "start": 395.871, "end": 400.396, "text": "Second, establish a systematic evaluation methodology."}, {"id": 41, "start": 400.396, "end": 409.558, "text": "Without evaluation, it is impossible to determine whether an observed improvement stems from genuine architectural design or mere stochastic variance."}, {"id": 42, "start": 409.558, "end": 422.221, "text": "Rigorous evaluation transforms Agent iteration from subjective intuition into a measurable, reproducible engineering process—serving as the cornerstone of applying the scientific method to systems development."}, {"id": 43, "start": 422.221, "end": 425.821, "text": "Chapter 7 is dedicated to this methodology."}, {"id": 44, "start": 425.821, "end": 435.783, "text": "Regardless of how underlying models advance or how product form-factors evolve, virtually all successful Agent systems converge on the same architectural patterns."}, {"id": 45, "start": 435.783, "end": 449.758, "text": "This is no coincidence: sound design principles should transcend individual model lifecycles, because they characterize not the usage of any specific model, but the fundamental paradigms through which intelligent systems interact with the world."}, {"id": 46, "start": 449.908, "end": 464.07, "text": "Richard Sutton, Turing Award laureate and father of reinforcement learning, once observed that cosmic evolution has progressed through four grand stages: from dust to stars, from stars to life, and from life to designed entities (agents)."}, {"id": 47, "start": 464.02, "end": 469.845, "text": "Biological evolution is blind: governed by random mutation and natural selection."}, {"id": 48, "start": 469.845, "end": 477.483, "text": "Most organisms do not comprehend their own underlying mechanics, nor can they deliberately design or modify themselves."}, {"id": 49, "start": 477.483, "end": 492.545, "text": "Agents, however, represent a fundamentally new paradigm in cosmic evolution: through code generation, they can achieve bootstrapping and self-directed evolution—akin to a programmer authoring a second programmer, who in turn engineers the next."}, {"id": 50, "start": 492.545, "end": 502.808, "text": "That is, an Agent can comprehend its own operational mechanisms, author entirely new agents aligned with specific goals, and even iteratively enhance itself."}, {"id": 51, "start": 502.808, "end": 508.595, "text": "The mission of this book is to guide you in mastering the architectural principles behind this creation."}, {"id": 52, "start": 508.595, "end": 515.47, "text": "The core formula of this book is just one sentence: Agent = LLM + Context + Tools."}, {"id": 53, "start": 515.47, "end": 518.17, "text": "All three are indispensable."}, {"id": 54, "start": 518.17, "end": 522.57, "text": "More intuitively: Brain + Eyes + Hands and Feet."}, {"id": 55, "start": 522.57, "end": 536.208, "text": "The brain (LLM) is responsible for thinking and decision-making; the eyes (Context) determine what information the Agent can see; and the hands and feet (Tools) determine what actions the Agent can take."}, {"id": 56, "start": 536.208, "end": 551.508, "text": "Strictly speaking, \"eyes\" is an approximate analogy: context encompasses not only environmental information and dialogue history, but also tool definitions—meaning what the Agent \"sees\" also includes \"which hands and feet are available."}, {"id": 57, "start": 551.508, "end": 557.983, "text": "This metaphor is designed to convey the core intuition: context is everything the model can perceive."}, {"id": 58, "start": 557.983, "end": 565.033, "text": "For readers familiar with reinforcement learning, these three can also be mapped into formal RL terminology."}, {"id": 59, "start": 565.033, "end": 574.608, "text": "Specifically, the LLM corresponds to the Policy, Context corresponds to the Observation Space, and Tools correspond to the Action Space."}, {"id": 60, "start": 574.608, "end": 581.27, "text": "These three conceptual frameworks describe the very same entity, merely at different levels of abstraction."}, {"id": 61, "start": 581.27, "end": 583.02, "text": "Book Structure ."}, {"id": 62, "start": 583.02, "end": 589.983, "text": "This book comprises ten chapters structured around two closely interconnected questions (Figure 0-2)."}, {"id": 63, "start": 589.983, "end": 605.545, "text": "Part I, \"How to Build an Agent\" (Chapters 1 through 6), starts from foundational concepts and progressively explores context, user memory and knowledge bases, tools, Coding Agents, and the expansion of observation and action spaces."}, {"id": 64, "start": 605.545, "end": 628.67, "text": "Part II, \"How to Enhance Agent Capabilities\" (Chapters 7 through 10), first establishes measurable empirical feedback via evaluation, and then scales capabilities across three distinct dimensions: model parameters (post-training), monolithic system level (continuous evolution from operational experience), and multi-agent systems (collaborative orchestration)."}, {"id": 65, "start": 628.67, "end": 632.47, "text": "Chapter 1: Getting Started with AI Agents."}, {"id": 66, "start": 632.47, "end": 637.595, "text": "begins with real-world Agent products to build an intuitive grasp of Agents."}, {"id": 67, "start": 637.595, "end": 653.183, "text": "It thoroughly dissects the core formula across three tiers: implementation (LLM + Context + Tools), intuition (Brain + Eyes + Hands and Feet), and formal theory (Policy, Observation Space, and Action Space)."}, {"id": 68, "start": 653.183, "end": 672.345, "text": "Through hands-on experiments, it examines the concrete mechanics of the ReAct loop (\"Think → Act → Observe\") and distinguishes among three adaptation mechanisms operating at different timescales: within-task contextual adaptation, cross-task updates to external artifacts, and parameter updates during training cycles."}, {"id": 69, "start": 672.345, "end": 682.683, "text": "Finally, it surveys orchestration patterns from deterministic workflows to fully autonomous Agents, establishing a unified conceptual foundation for the chapters that follow."}, {"id": 70, "start": 682.852, "end": 686.077, "text": "Chapter 2: Context Engineering."}, {"id": 71, "start": 686.027, "end": 691.764, "text": "is the most critical chapter in the book, systematically unpacking the \"Eyes\" dimension."}, {"id": 72, "start": 691.764, "end": 700.427, "text": "Starting from API message structures and the core Agent loop, it establishes the fundamental premise that \"Context is a list of messages."}, {"id": 73, "start": 700.427, "end": 708.914, "text": "It deeply analyzes the mechanics of KV Cache—the cornerstone of reusing historical computation during LLM inference."}, {"id": 74, "start": 708.914, "end": 726.739, "text": "It then explores Prompt Engineering methodologies including process-oriented design, tool descriptions, and business rule refinement; Prompt Injection attacks and defenses; the on-demand loading mechanism of Agent Skills; Agent status bar techniques; and Context Compression strategies."}, {"id": 75, "start": 726.739, "end": 730.739, "text": "Chapter 3: User Memory and Knowledge Bases."}, {"id": 76, "start": 730.739, "end": 743.014, "text": "extends context management into a persistent cross-session knowledge system, enabling Agents not only to retain the active conversation, but also to accumulate and retrieve knowledge across multiple interactions."}, {"id": 77, "start": 743.014, "end": 767.064, "text": "It examines four progressive implementations of user memory; covers the complete RAG (Retrieval-Augmented Generation) technology stack from text chunking, dense and sparse retrieval, to hybrid search and re-ranking; explores multimodal information extraction and advanced knowledge organization; and investigates Agentic RAG, where the Agent autonomously decides when and how to retrieve information."}, {"id": 78, "start": 767.064, "end": 769.714, "text": "Chapter 4: Tools."}, {"id": 79, "start": 769.714, "end": 777.139, "text": "explores the bridge connecting the Agent with the external world, systematically expanding the \"Hands and Feet\" dimension."}, {"id": 80, "start": 777.139, "end": 800.377, "text": "It introduces the Model Context Protocol (MCP) tool interoperability standard and design principles across five tool categories (Perception, Execution, Collaboration, Event Triggering, and User Communication); discusses implementation pathways for multimodal perception; and places special emphasis on security mechanisms and permission control for execution tools."}, {"id": 81, "start": 800.377, "end": 804.789, "text": "Chapter 5: Coding Agents and General-Purpose Agents."}, {"id": 82, "start": 804.789, "end": 812.252, "text": "proposes that \"Coding Agent + File System\" constitutes the core technical bedrock for general-purpose Agents."}, {"id": 83, "start": 812.252, "end": 831.964, "text": "Using the OpenClaw architecture as an organizing thread, it dissects the workflows and implementation techniques of Coding Agents, while revealing the extensive value of code generation beyond programming—from assisting human reasoning and constructing knowledge bases, to dynamically synthesizing new tools and enabling Agent bootstrapping."}, {"id": 84, "start": 831.964, "end": 837.514, "text": "Chapter 6: Interaction: Expanding the Observation and Action Spaces."}, {"id": 85, "start": 837.514, "end": 848.202, "text": "breaks the turn-taking, request-response paradigm assumed in the first five chapters, expanding the Agent's interactive capabilities across both modal and temporal dimensions."}, {"id": 86, "start": 848.202, "end": 880.614, "text": "Asynchronous, event-driven designs allow the world to proactively wake the Agent (event-triggered tools, user communication tools, virtual identities, and isolated execution sandboxes); voice pushes interaction latencies to the millisecond scale (from cascaded pipelines to end-to-end omnimodal, full-duplex models); Computer Use empowers Agents to operate graphical user interfaces like a human; and embodied manipulation (robotics) projects the action space into the physical world (VLA control"}, {"id": 87, "start": 880.614, "end": 883.202, "text": "and Sim2Real transfer)."}, {"id": 88, "start": 883.202, "end": 893.639, "text": "All four domains share a common set of underlying primitives: wake-up, safepoints, cancellation, preemption, and fast/slow loop separation."}, {"id": 89, "start": 893.639, "end": 896.989, "text": "Chapter 7: Evaluating Agents."}, {"id": 90, "start": 896.989, "end": 901.552, "text": "constructs a rigorous, scientific evaluation methodology."}, {"id": 91, "start": 901.552, "end": 923.964, "text": "It covers evaluation environments (centering on tool calling and human-computer interaction, with simulation environments examined independently at the chapter's conclusion), dataset design principles, LLM-as-a-Judge automated evaluation, evaluation-driven model selection, and the end-to-end closed loop that translates evaluation findings into concrete system enhancements."}, {"id": 92, "start": 924.124, "end": 927.124, "text": "Chapter 8: Model Post-Training."}, {"id": 93, "start": 927.074, "end": 936.336, "text": "thoroughly explores the two primary post-training paradigms: Supervised Fine-Tuning (SFT) and Reinforcement Learning (RL)."}, {"id": 94, "start": 936.336, "end": 951.449, "text": "Structured around two core theses—\"SFT handles memorization, RL drives generalization\" and \"Data and environments trump algorithms\"—it provides an end-to-end panoramic view across pre-training, SFT, and RL."}, {"id": 95, "start": 951.449, "end": 970.374, "text": "Topics include classical RL foundations; reward signal engineering (from binary outcome rewards and process rewards to \"reward outcomes, constrain process\" verified-path penalties); single-turn and multi-turn RL algorithms; and frontier advances in sample efficiency optimization."}, {"id": 96, "start": 970.374, "end": 974.211, "text": "Chapter 9: Continual Evolution of Agents."}, {"id": 97, "start": 974.211, "end": 980.374, "text": "investigates how to convert an Agent's operational experience into capabilities for its next version."}, {"id": 98, "start": 980.374, "end": 1004.086, "text": "It first defines learning signals composed of environmental outcomes, process rules, and LLM Rubrics; then systematically compares four distinct update substrates: knowledge documents, Prompts & Skills, programs & Harnesses, and model parameters; and finally examines candidate validation, canary rollouts, rollback mechanisms, and long-term consolidation."}, {"id": 99, "start": 1004.086, "end": 1007.486, "text": "Chapter 10: Multi-Agent Collaboration."}, {"id": 100, "start": 1007.486, "end": 1015.861, "text": "scales from monolithic agent capabilities to system-level coordination, exploring how multiple Agents divide labor and collaborate."}, {"id": 101, "start": 1015.861, "end": 1038.724, "text": "It presents a systematic classification framework for multi-agent collaboration (Shared vs. Isolated Context × Peer vs. Manager vs. Decentralized topologies), demonstrates collaborative architectural designs through concrete case studies (including a Translation Agent and Phone-Computer Coordination Agents), and explores frontier directions in Agent societies and Agent economies."}, {"id": 102, "start": 1038.724, "end": 1040.786, "text": "How to Read This Book ."}, {"id": 103, "start": 1040.786, "end": 1048.774, "text": "The chapters of this book are relatively self-contained; you can tailor your reading journey based on your specific background and objectives:"}, {"id": 104, "start": 1048.774, "end": 1066.486, "text": "If you are an Agent developer, we recommend reading the book sequentially: Chapters 1 through 6 establish complete methodologies for building Agents, while Chapters 7 through 10 address capability scaling across evaluation, post-training, continual evolution, and multi-agent coordination."}, {"id": 105, "start": 1066.486, "end": 1077.799, "text": "If your time is limited, prioritize Chapter 1 (to establish global architectural intuition) and Chapter 2 (to master the indispensable discipline of Context Engineering)."}, {"id": 106, "start": 1077.799, "end": 1091.724, "text": "Because the low-level mechanics of KV Cache in Chapter 2 are quite technical, you may skim the underlying derivations on first read and focus on the three core takeaways highlighted at the start without impeding comprehension of subsequent sections."}, {"id": 107, "start": 1091.724, "end": 1098.211, "text": "If your primary focus is model training, you can jump directly to Chapter 8 (Model Post-Training)."}, {"id": 108, "start": 1098.211, "end": 1110.374, "text": "Since rigorous evaluation (Chapter 7) is a strict prerequisite for training, we advise reading them in tandem, having first reviewed Chapters 1 and 2 to establish architectural grounding."}, {"id": 109, "start": 1110.374, "end": 1121.561, "text": "Each chapter contains a large number of experiments and thought questions, numbered in the format \"Experiment X-Y\" (where X is the chapter number and Y is the within-chapter index)."}, {"id": 110, "start": 1121.561, "end": 1142.274, "text": "Experiment and thought question titles indicate difficulty via star ratings: One star denotes introductory level, suitable for all readers; ★One star denotes intermediate difficulty, requiring practical engineering experience; ★★One star denotes advanced challenges, typically involving open-ended inquiries or complex systems design."}, {"id": 111, "start": 1142.274, "end": 1149.111, "text": "Most experiments are accompanied by complete, runnable code hosted in our companion open-source repository:"}, {"id": 112, "start": 1149.111, "end": 1154.336, "text": "The companion code is available on GitHub in the ai-agent-book repository."}, {"id": 113, "start": 1154.336, "end": 1157.749, "text": "You can clone the entire codebase using Git:"}, {"id": 114, "start": 1157.749, "end": 1163.874, "text": "For example, you can clone the repository from GitHub or download the complete ZIP archive."}, {"id": 115, "start": 1164.028, "end": 1170.565, "text": "Readers unfamiliar with Git can also navigate to the repository page and click Code → Download ZIP."}, {"id": 116, "start": 1170.515, "end": 1176.465, "text": "Experiment code is organized by chapter in `chapter1/` through `chapter10/`."}, {"id": 117, "start": 1176.465, "end": 1192.34, "text": "To locate \"Experiment X-Y,\" first open the corresponding `chapterX/README.md` (or `README.en.md`), find the project directory by experiment number, and follow the project's own README to install dependencies and run the code."}, {"id": 118, "start": 1192.34, "end": 1203.115, "text": "Certain experiments designated as \"reproduction guides\" rely on external repositories; detailed instructions for accessing them are provided in their respective README files."}, {"id": 119, "start": 1203.115, "end": 1207.165, "text": "I strongly encourage you to run these experiments hands-on."}, {"id": 120, "start": 1207.165, "end": 1216.353, "text": "AI Agent engineering is an intensely empirical discipline; many architectural intuitions can only be genuinely forged through active debugging."}, {"id": 121, "start": 1216.353, "end": 1218.29, "text": "Prerequisites ."}, {"id": 122, "start": 1218.29, "end": 1226.053, "text": "This book is intended for readers with some technical foundation, but does not require expertise in any specialized subfield."}, {"id": 123, "start": 1226.053, "end": 1233.29, "text": "The prerequisites below are categorized into \"Required\" and \"Recommended\" tiers to help you assess your readiness."}, {"id": 124, "start": 1233.29, "end": 1249.29, "text": "A Terminology Note: This book carefully distinguishes two terms that casual usage often conflates: Reasoning denotes the model's step-by-step thinking process during generation (as in reasoning models, chain-of-thought, and reasoning tokens; rendered in Chinese as 思考)."}, {"id": 125, "start": 1249.29, "end": 1259.89, "text": "Inference denotes the model's forward computation at deployment time (as in inference cost, inference serving stack, and inference-time compute; rendered in Chinese as 推理)."}, {"id": 126, "start": 1259.89, "end": 1264.703, "text": "Keeping these two concepts distinct is vital for clean system design."}, {"id": 127, "start": 1264.703, "end": 1268.315, "text": "Required: Foundations for the Entire Book"}, {"id": 128, "start": 1268.315, "end": 1274.103, "text": "Python Programming: Virtually all experiments in this book are implemented in Python."}, {"id": 129, "start": 1274.103, "end": 1280.89, "text": "You should be familiar with basic syntax, standard data structures, and package management (`pip`)."}, {"id": 130, "start": 1280.89, "end": 1287.565, "text": "Mastery is not required, but you should comfortably read and modify Python code of moderate complexity."}, {"id": 131, "start": 1287.565, "end": 1299.928, "text": "Basic Experience with LLMs: You should have hands-on experience with ChatGPT, Claude, or comparable systems, and understand the foundational interaction pattern of \"Prompt → Model Response."}, {"id": 132, "start": 1299.928, "end": 1312.178, "text": "An AI-Assisted Programming Tool: We strongly recommend installing and familiarizing yourself with at least one AI coding assistant (such as Claude Code, Codex, Cursor, or TRAE)."}, {"id": 133, "start": 1312.178, "end": 1319.578, "text": "On one hand, these tools drastically boost experiment productivity given the extensive coding and debugging involved."}, {"id": 134, "start": 1319.578, "end": 1334.515, "text": "On the other hand, these programming assistants are themselves mature Coding Agents: by using them daily, you will intuitively experience core mechanisms explored throughout this book—including the ReAct loop, tool invocation, and context management."}, {"id": 135, "start": 1334.515, "end": 1340.215, "text": "This firsthand exposure provides invaluable intuition for Agent design principles."}, {"id": 136, "start": 1340.215, "end": 1350.715, "text": "General Software Engineering Fundamentals: Familiarity with command-line operations, Git version control, JSON data interchange, and RESTful APIs."}, {"id": 137, "start": 1350.715, "end": 1357.69, "text": "These concepts form the operational bedrock for executing experiments and understanding tool-calling mechanisms."}, {"id": 138, "start": 1357.69, "end": 1361.328, "text": "Recommended: Enhancing Specific Chapters"}, {"id": 139, "start": 1361.328, "end": 1372.253, "text": "Machine Learning Fundamentals (Chapter 8): Familiarity with training vs. inference, loss functions, gradient descent, and overfitting will aid in grasping model post-training."}, {"id": 140, "start": 1372.253, "end": 1393.628, "text": "Elementary Mathematics (Chapters 2–3, 8): An intuitive grasp of linear algebra (e.g., vectors representing direction and magnitude, matrices performing batch transformations) helps demystify embeddings and attention mechanisms; basic probability and statistics illuminate evaluation metrics and expected rewards in reinforcement learning."}, {"id": 141, "start": 1393.628, "end": 1401.14, "text": "Mathematics in this book avoids gratuitous formal derivations, prioritizing physical and geometric intuition."}, {"id": 142, "start": 1401.14, "end": 1415.428, "text": "Web Development Fundamentals (Chapter 6): Understanding HTTP, WebSockets, and client-server architectures will contextualize event-driven asynchronous Agent architectures and real-time voice Agent communication experiments."}, {"id": 143, "start": 1415.596, "end": 1424.883, "text": "Basic Understanding of the Transformer Architecture (Chapters 2, 8): Transformers underpin virtually all contemporary large language models."}, {"id": 144, "start": 1424.833, "end": 1442.558, "text": "For readers seeking a visual, foundational primer, we recommend Illustrating Large Models (《图解大模型》, published in Chinese by Turing), which uses intuitive visual diagrams to explain Transformers, pre-training, and fine-tuning—forming an ideal complement to this book's systems-engineering perspective."}, {"id": 145, "start": 1442.558, "end": 1447.258, "text": "If you find yourself lacking certain prerequisites, do not be deterred."}, {"id": 146, "start": 1447.258, "end": 1456.733, "text": "The core value of this book resides in architectural design principles and engineering methodology, rather than isolated algorithms or transient tricks."}, {"id": 147, "start": 1456.733, "end": 1466.046, "text": "Outside of Chapter 8 on post-training, mathematical and machine learning prerequisites remain minimal, making this book fully approachable as a starting point."}, {"id": 148, "start": 1466.046, "end": 1475.946, "text": "Agent technology continues to evolve at a blistering pace, but sound architectural design principles possess the resilience to transcend technological waves."}, {"id": 149, "start": 1475.946, "end": 1482.771, "text": "Once you master why systems are designed the way they are, you will maintain clear discernment amid industry shifts."}, {"id": 150, "start": 1482.771, "end": 1488.808, "text": "It is my sincere hope that this book serves as your trustworthy guide in engineering AI Agents."}, {"id": 151, "start": 1488.808, "end": 1490.721, "text": "Acknowledgments ."}, {"id": 152, "start": 1490.721, "end": 1502.946, "text": "I would like to express my heartfelt gratitude to Meng Ge and Liu Meiying, editors at Turing, for their meticulous editorial work and their dedication in organizing the Turing \"AI Agent Bootcamp\" course."}, {"id": 153, "start": 1502.946, "end": 1511.558, "text": "I am equally grateful to Professor Liu Junming for offering the hands-on AI Agent course at the University of Chinese Academy of Sciences."}, {"id": 154, "start": 1511.558, "end": 1528.521, "text": "My sincere thanks also go to all participants of the Turing \"AI Agent Bootcamp\" and all students of the UCAS AI Agent course—in the course of lecturing, your thoughtful feedback and probing questions provided tremendous inspiration and sharpened my own understanding of these concepts."}, {"id": 155, "start": 1528.521, "end": 1533.121, "text": "I extend deep appreciation to all my colleagues at Pine AI."}, {"id": 156, "start": 1533.121, "end": 1548.408, "text": "Without an exceptional product like Pine AI and the demanding real-world challenges it posed, achieving such profound practical insights into the Agent domain would have been impossible; in countless brainstorming sessions, my colleagues offered invaluable perspectives."}, {"id": 157, "start": 1548.408, "end": 1554.771, "text": "I am also indebted to many friends across the AI industry (too numerous to name individually)."}, {"id": 158, "start": 1554.771, "end": 1563.333, "text": "Throughout our industry discussions, your candid feedback corrected many of my misconceptions and elevated my comprehension of models and Agents."}, {"id": 159, "start": 1563.333, "end": 1569.733, "text": "Most of all, my deepest gratitude goes to my family, especially my wife, Meng Jiaying."}, {"id": 160, "start": 1569.733, "end": 1576.883, "text": "Her unwavering support enabled me to complete this book, and her keen feedback substantially improved the manuscript."}];
+    const audio = document.getElementById("audio");
+    const transcriptEl = document.getElementById("transcript");
+    let autoScroll = true;
+    let activeCueId = null;
+
+    // Render cues
+    cues.forEach(cue => {
+      const div = document.createElement("div");
+      div.className = "cue-item";
+      div.id = `cue-${cue.id}`;
+      
+      const m = Math.floor(cue.start / 60);
+      const s = Math.floor(cue.start % 60);
+      const timeStr = `${m}:${s < 10 ? "0" : ""}${s}`;
+      
+      div.innerHTML = `
+        <span class="cue-time">${timeStr}</span>
+        <span class="cue-text">${cue.text}</span>
+      `;
+      div.addEventListener("click", () => {
+        audio.currentTime = cue.start + 0.05;
+        audio.play();
+      });
+      transcriptEl.appendChild(div);
+    });
+
+    // Time update sync
+    audio.addEventListener("timeupdate", () => {
+      const cur = audio.currentTime;
+      const currentCue = cues.find(c => cur >= c.start && cur <= c.end) || 
+                         cues.find(c => cur >= c.start && cur <= c.start + 15);
+      
+      if (currentCue && currentCue.id !== activeCueId) {
+        if (activeCueId) {
+          const prev = document.getElementById(`cue-${activeCueId}`);
+          if (prev) prev.classList.remove("active");
+        }
+        activeCueId = currentCue.id;
+        const curEl = document.getElementById(`cue-${activeCueId}`);
+        if (curEl) {
+          curEl.classList.add("active");
+          if (autoScroll) {
+            curEl.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }
+      }
+    });
+
+    // Speed controls
+    document.querySelectorAll(".speed-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        document.querySelectorAll(".speed-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        audio.playbackRate = parseFloat(btn.dataset.speed);
+      });
+    });
+
+    // Rewind / Forward
+    document.getElementById("btn-rewind").addEventListener("click", () => {
+      audio.currentTime = Math.max(0, audio.currentTime - 5);
+    });
+    document.getElementById("btn-forward").addEventListener("click", () => {
+      audio.currentTime = Math.min(audio.duration, audio.currentTime + 5);
+    });
+
+    // Auto-Scroll Toggle
+    const autoScrollBtn = document.getElementById("btn-autoscroll");
+    autoScrollBtn.addEventListener("click", () => {
+      autoScroll = !autoScroll;
+      autoScrollBtn.textContent = `Auto-Scroll: ${autoScroll ? "ON" : "OFF"}`;
+      autoScrollBtn.classList.toggle("active", autoScroll);
+    });
+
+    // Spacebar to Play/Pause
+    window.addEventListener("keydown", (e) => {
+      if (e.code === "Space" && e.target === document.body) {
+        e.preventDefault();
+        if (audio.paused) audio.play();
+        else audio.pause();
+      }
+    });
+  </script>
+</body>
+</html>

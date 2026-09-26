@@ -1,0 +1,2298 @@
+WEBVTT
+
+1
+00:00:00.100 --> 00:00:03.900
+Chapter 1: Getting Started with AI Agents.
+
+2
+00:00:03.850 --> 00:00:14.075
+If you have used Cursor to write code and watched it search your codebase, edit multiple files, and rerun tests until they pass, you have already used an AI Agent.
+
+3
+00:00:14.075 --> 00:00:30.500
+The same is true if you have used Deep Research to investigate a topic through repeated searching and reading, had Manus control a browser to finish online tasks, asked the Doubao phone assistant to book tickets or send messages, or sent Pine AI to negotiate a lower telecom bill.
+
+4
+00:00:30.500 --> 00:00:39.450
+These products take many forms, but they share a common trait: they are no longer passive "you ask, it answers" conversations.
+
+5
+00:00:39.450 --> 00:00:47.375
+They plan their own execution steps, call the tools each task requires, and adjust their strategy as results come in.
+
+6
+00:00:47.375 --> 00:00:51.787
+AI Agents are becoming a new way to interact with computers.
+
+7
+00:00:51.787 --> 00:01:07.725
+This chapter begins with practical examples and works back toward the core components of an AI Agent: readers will experience firsthand what modern Agents can do, understand the architecture behind them, and learn the design patterns and best practices for building Agent systems.
+
+8
+00:01:07.725 --> 00:01:18.850
+Reading Tip: This chapter is the conceptual map for the whole book: a concise tour of the core formula, operating loop, engineering framework, and Agent design patterns.
+
+9
+00:01:18.850 --> 00:01:24.537
+It establishes the shared vocabulary and reference points used throughout later chapters.
+
+10
+00:01:24.537 --> 00:01:29.925
+Do not try to memorize every concept on your first read; aim for the big picture.
+
+11
+00:01:29.925 --> 00:01:37.237
+Each later chapter expands on one aspect introduced here, and you can return to this chapter whenever you need to reorient.
+
+12
+00:01:37.237 --> 00:01:41.637
+Modern Agent = LLM + Context + Tools.
+
+13
+00:01:41.637 --> 00:01:50.987
+At its simplest, a modern agent consists of three components: Agent = LLM (Large Language Model) + Context + Tools.
+
+14
+00:01:50.987 --> 00:02:05.712
+The plus signs here denote a combination of engineering components, not a formal definition from reinforcement learning; more importantly, the formula describes only what lies inside the Agent's boundary and does not include the Environment the Agent interacts with.
+
+15
+00:02:05.712 --> 00:02:09.825
+Each term must be read broadly, but with a clear boundary:
+
+16
+00:02:09.825 --> 00:02:22.262
+The LLM is the Agent's brain: It is more than a set of model parameters; it is the Agent's entire decision-making core—responsible for understanding intent, reasoning, planning, and judgment.
+
+17
+00:02:22.262 --> 00:02:45.312
+Just as the human brain is not merely a collection of neurons but also encompasses thought patterns sculpted through experience, an LLM's capabilities stem from two sources: world knowledge and linguistic proficiency acquired during pre-training, and decision policies solidified through post-training (specific techniques such as supervised fine-tuning and reinforcement learning are detailed in Chapter 8).
+
+18
+00:02:45.312 --> 00:03:02.125
+Context is the Agent's eyes: It is not merely the text fed into the model, but the information representation received and retained by the Agent at each decision point—including observations from the environment, user memory, domain knowledge, internal state, and task progress.
+
+19
+00:03:02.125 --> 00:03:23.575
+Tools are the Agent's hands and feet: Here, "tools" refers to the interfaces the Agent uses to perceive or transform the external world, encompassing tool definitions, calling protocols, and adapters—ranging from predefined tool invocations to dynamic code generation, and from delegating tasks to sub-agents to proactively communicating with users.
+
+20
+00:03:23.575 --> 00:03:28.850
+Put more intuitively: Agent = Brain + Eyes + Hands and Feet.
+
+21
+00:03:28.850 --> 00:03:39.587
+The brain handles reasoning and decisions, the eyes receive observations provided by the environment, and the hands and feet convert decisions into actions that operate upon the environment.
+
+22
+00:03:39.587 --> 00:03:49.462
+From the classical reinforcement-learning and control perspective, the Agent and the Environment are two sides of a closed-loop interaction, not components of one another.
+
+23
+00:03:49.462 --> 00:03:59.787
+The Environment returns an observation, the Agent uses its context to choose the next action, and that action changes the Environment's state, producing the next observation.
+
+24
+00:03:59.787 --> 00:04:08.012
+As illustrated in Figure 1-1: The Agent–Environment interaction loop and the Model–Harness structure inside the Agent.
+
+25
+00:04:08.164 --> 00:04:12.139
+Figure 1-1 shows two levels of abstraction.
+
+26
+00:04:12.089 --> 00:04:24.501
+The outer level is the interaction between the Agent and the Environment: the Environment includes file systems, databases, web pages, users, other Agents, and physical or simulated worlds.
+
+27
+00:04:24.501 --> 00:04:42.789
+The inner level is the Model–Harness structure inside the Agent: the Model makes policy decisions; the Harness is the runtime and governance layer inside the Agent boundary that builds context, exposes tool interfaces, maintains loops and state, and applies permissions, verification, and correction.
+
+28
+00:04:42.789 --> 00:04:50.201
+A Harness can create, isolate, or proxy an environment without containing the Environment's state or transition rules.
+
+29
+00:04:50.201 --> 00:05:04.064
+The engineering formula can therefore be expanded as follows: the LLM is the Model, while Context + Tools form the minimum Harness; production systems add constraints, verification, and correction inside that boundary.
+
+30
+00:05:04.064 --> 00:05:07.314
+The rest of this chapter follows this boundary.
+
+31
+00:05:07.314 --> 00:05:17.214
+These three components can be related to policies and interaction interfaces in RL (reinforcement learning; see Chapter 8), but they do not map one-to-one.
+
+32
+00:05:17.214 --> 00:05:24.139
+Context represents observations and history inside the Agent; it is not the entire observation space.
+
+33
+00:05:24.139 --> 00:05:31.939
+Tools define the observation and action interfaces available to the Agent, while the objects they act on remain in the Environment.
+
+34
+00:05:31.939 --> 00:05:47.376
+Intuition: Brain; Agent Component: LLM; RL Concept: Policy; Role: The decision-making logic that determines "what to do next"—given the current observations, choose the most appropriate action from all available options.
+
+35
+00:05:47.376 --> 00:06:01.276
+Intuition: Eyes; Agent Component: Context construction; RL Concept: Observations and history; Role: Organizes Environment observations and existing history into the information needed for the current decision.
+
+36
+00:06:01.276 --> 00:06:17.851
+Intuition: Hands and Feet; Agent Component: Tool interfaces & adapters; RL Concept: Observation/action interfaces; Role: Defines which observations the Agent can read, which actions it can issue, and the format of those interfaces.
+
+37
+00:06:17.851 --> 00:06:23.001
+Observation and Action Spaces: The Interface Between Model and World.
+
+38
+00:06:23.001 --> 00:06:30.176
+Observation channels and action interfaces together constitute the boundary between the Agent and its external environment.
+
+39
+00:06:30.176 --> 00:06:40.789
+The Harness translates observations returned by the environment into context the model can process, and converts the actions chosen by the model into tool calls against the environment.
+
+40
+00:06:40.789 --> 00:06:54.764
+Information that does not enter context via observation channels effectively does not exist for the model; operations not permitted by action interfaces remain things the model can only recommend in words, even if it knows exactly what should be done.
+
+41
+00:06:54.764 --> 00:07:06.651
+Consequently, once the underlying model is held constant, the primary systems-engineering lever for improving Agent performance is often to redefine or expand its observation and action spaces.
+
+42
+00:07:06.651 --> 00:07:11.776
+In this book's terminology, that means expanding context and tools.
+
+43
+00:07:11.776 --> 00:07:25.614
+Many problems that appear to require a “smarter model” are really interface problems: bring the task-relevant data into context or expose the required operation as a tool, and a previously unsolvable task may become solvable.
+
+44
+00:07:25.614 --> 00:07:29.189
+Manus: merging spaces that had been separate.
+
+45
+00:07:29.189 --> 00:07:37.551
+Before Manus appeared, production Agents mostly followed three distinct tracks: Deep Research, Coding, and Computer Use.
+
+46
+00:07:37.551 --> 00:07:43.664
+Manus was the first widely influential production Agent to bring all three together in one system.
+
+47
+00:07:43.664 --> 00:07:53.164
+Its virtual browser enlarged the observation space, while its file system, code execution, and command execution enlarged the action space.
+
+48
+00:07:53.164 --> 00:07:58.101
+Manus did not become a general Agent merely by swapping in a stronger model.
+
+49
+00:07:58.101 --> 00:08:06.576
+It took the union of three kinds of Agents' observation and action spaces, enabling one Agent to cross the previous product boundaries.
+
+50
+00:08:06.748 --> 00:08:11.385
+OpenClaw: extending the interface into the user's digital life.
+
+51
+00:08:11.335 --> 00:08:14.873
+OpenClaw pushes both spaces outward again.
+
+52
+00:08:14.873 --> 00:08:27.998
+It receives tasks and returns results through messaging channels users already inhabit—WhatsApp, Telegram, Slack, Discord, iMessage, and many others—so the Agent can be reached from almost anywhere.
+
+53
+00:08:27.998 --> 00:08:34.823
+Its local Gateway connects cloud applications such as Google Drive and Notion as well as the local file system.
+
+54
+00:08:34.823 --> 00:08:45.073
+Files scattered across accounts and devices can therefore, with the user's explicit authorization, enter one Agent's observation space and be acted on by its tools.
+
+55
+00:08:45.073 --> 00:08:56.323
+Compared with the original cloud-sandbox-centered form of Manus, where files generally had to be uploaded or a connector separately configured, local-first OpenClaw spans a broader data boundary.
+
+56
+00:08:56.323 --> 00:09:09.323
+Manus later added its own Google Drive connector and desktop access to local files, which only reinforces the point: product evolution often consists precisely of expanding observation and action spaces.
+
+57
+00:09:09.323 --> 00:09:16.985
+Understanding what each component does, and how they fit together, is the foundation for building effective Agent systems.
+
+58
+00:09:16.985 --> 00:09:25.273
+We will begin with the most concrete of the three—tools, the hands and feet—and work inward to the LLM and context.
+
+59
+00:09:25.273 --> 00:09:30.573
+First, here is how different kinds of Agents compare across these three dimensions:
+
+60
+00:09:30.573 --> 00:09:56.048
+Agent Product: Coding Agents (e.g., Cursor); Eyes (Perception): Requirements documents, code snippets read, directory listings, terminal output; Hands and Feet (Action): Open-ended (code search, file read/write, command execution, etc.); Strategy: Incremental development: understand requirements → search relevant code → edit code → test and verify → debug and fix.
+
+61
+00:09:56.048 --> 00:10:20.523
+Agent Product: Search Agents (e.g., Deep Research); Eyes (Perception): Search results, web content, paper abstracts and citations; Hands and Feet (Action): Open-ended (search queries, web reading, summary generation, etc.); Strategy: Iterative deepening: adjust search direction based on existing information, gradually synthesize a complete report.
+
+62
+00:10:20.523 --> 00:10:45.610
+Agent Product: Computer Control Agents (e.g., Browser Use); Eyes (Perception): Computer screen, browser pages, file system; Hands and Feet (Action): Open-ended (clicking, typing, scrolling, screenshots, code execution, etc.); Strategy: Visual perception + operation: observe screen → identify target elements → perform actions → verify results.
+
+63
+00:10:45.610 --> 00:11:07.460
+Agent Product: Phone Assistant Agents (e.g., Doubao); Eyes (Perception): Phone screen, installed apps; Hands and Feet (Action): Open-ended (clicking, swiping, typing, opening apps, etc.); Strategy: Intent understanding + App control: understand user needs → locate target app → perform actions → confirm completion.
+
+64
+00:11:07.460 --> 00:11:34.473
+Agent Product: Personal Task Agents (e.g., Pine AI); Eyes (Perception): Authorized account records, historical bills, service provider materials; Hands and Feet (Action): Open-ended (making calls, sending emails, filling forms, confirming with user); Strategy: Multi-step task execution: gather information → formulate negotiation strategy → contact service provider → negotiate → report results.
+
+65
+00:11:34.473 --> 00:11:51.748
+These systems share three features: an open-ended action space—not picking from a fixed set of buttons but generating arbitrary natural language and code; internal reasoning—planning before acting; and continuous interaction—adjusting strategy based on environmental feedback.
+
+66
+00:11:51.748 --> 00:12:01.548
+These capabilities come precisely from the interplay of the brain, eyes, and hands and feet—that is, LLM, context, and tools.
+
+67
+00:12:01.548 --> 00:12:04.748
+Tools: The Agent's Hands and Feet.
+
+68
+00:12:04.748 --> 00:12:16.323
+Tools are the bridge for an Agent's interaction with the external world: perception tools carry observations from the environment to the Agent, while execution tools carry actions from the Agent to the environment.
+
+69
+00:12:16.323 --> 00:12:24.348
+Without tools, an Agent is limited to paper exercises; with them, it can genuinely perceive or transform the world.
+
+70
+00:12:24.508 --> 00:12:31.858
+To discuss tools systematically, we can sort them into five types by the direction of the Agent's interaction with the world.
+
+71
+00:12:31.808 --> 00:12:38.920
+For now, a few examples of each type will give us the overall picture; later chapters explore them in depth.
+
+72
+00:12:38.920 --> 00:12:52.595
+Perception Tools allow the Agent to access information: search engines provide real-time web data, file systems read local documents, and APIs and databases connect to external services and enterprise core data.
+
+73
+00:12:52.595 --> 00:13:04.895
+Execution Tools allow the Agent to act on external systems: code execution, file operations, system commands, and external API calls turn decisions into concrete actions.
+
+74
+00:13:04.895 --> 00:13:18.045
+Collaboration Tools allow the Agent to divide work with other Agents: delegating specialized tasks to sub-agents, requesting human confirmation at key decision points, or coordinating actions in multi-agent systems.
+
+75
+00:13:18.045 --> 00:13:28.933
+Event Trigger Tools are invoked in a fundamentally different way from the first three categories: the Agent does not call them; they arrive as external inputs that trigger the Agent to begin work.
+
+76
+00:13:28.933 --> 00:13:39.083
+A new email comes in, a scheduled time arrives, or another system fires a Webhook callback; the event activates the Agent and initiates reasoning and action.
+
+77
+00:13:39.083 --> 00:13:47.758
+The Agent never calls these itself, yet they are still a channel through which it interacts with the outside world, so we count them in the broad tool system.
+
+78
+00:13:47.758 --> 00:13:53.145
+User Communication Tools are the channels through which the Agent communicates with the user.
+
+79
+00:13:53.145 --> 00:14:05.995
+Where execution tools change the external world, communication tools carry information—delivering the Agent's progress, or a proactive check-in, by text message, voice call, email, and so on.
+
+80
+00:14:05.995 --> 00:14:11.533
+Chapter 4 covers the full taxonomy and design principles for these five types.
+
+81
+00:14:11.533 --> 00:14:28.270
+The quality of tool design directly determines what an Agent can reliably accomplish: define interfaces vaguely and the model will misuse them; handle errors poorly and a single failed tool can leave the Agent stuck; scope permissions too broadly and one Agent error can become irreversible.
+
+82
+00:14:28.270 --> 00:14:35.708
+As the MCP (Model Context Protocol) standard spreads, integrating tools is becoming easier.
+
+83
+00:14:35.708 --> 00:14:51.795
+Tool Calling (also known as Function Calling) is a core capability of modern LLM Agents: it lets the model invoke external tools in a structured way, transforming the LLM from a pure text generator into an intelligent system that can act through external interfaces.
+
+84
+00:14:51.795 --> 00:14:55.645
+This book uses the term "tool calling" throughout.
+
+85
+00:14:55.645 --> 00:15:18.395
+Tool calling proceeds in four steps: first, the context tells the model which tools are available (names, purposes, parameters); then the model decides on its own whether to call a tool, which tool to call, and with what arguments; next, once the tool has run, its result is appended to the context; finally, the model decides its next move based on that result.
+
+86
+00:15:18.395 --> 00:15:23.183
+This loop is the foundation of ReAct, introduced later in the chapter.
+
+87
+00:15:23.183 --> 00:15:30.170
+For a weather query, the simplified representation of the four-step process at the API level is as follows:
+
+88
+00:15:30.340 --> 00:15:37.215
+Here is the four-step tool invocation process: Step 1, declare tools in the system context.
+
+89
+00:15:37.165 --> 00:15:43.177
+Step 2, the model decides to call a tool and outputs the function name and arguments.
+
+90
+00:15:43.177 --> 00:15:47.602
+Step 3, the Harness executes the tool in the environment.
+
+91
+00:15:47.602 --> 00:15:54.902
+Step 4, the Harness feeds the tool result back into context, and the model synthesizes the final answer.
+
+92
+00:15:54.902 --> 00:16:04.540
+The developer only defines the tools and executes the calls; the model itself decides whether to call, which tool to call, and what arguments to pass.
+
+93
+00:16:04.540 --> 00:16:08.640
+Chapter 2 examines this API structure in detail.
+
+94
+00:16:08.640 --> 00:16:17.577
+When designing tools for an Agent, start with the narrowest capability the task needs, then expand gradually as the task grows more complex.
+
+95
+00:16:17.577 --> 00:16:37.352
+If the task only requires basic arithmetic, a calculator with clearly defined parameters is enough; when it grows to reading spreadsheets, cleaning missing values, computing statistics, and plotting charts, a constrained Python code interpreter is easier to combine and explore with than an ever-growing collection of specialized tools.
+
+96
+00:16:37.352 --> 00:16:56.402
+But generality also increases the risk of errors and expands the attack surface: code must run in an isolated sandbox, with network access disabled by default, no access to files outside the authorized working directory, and limits on execution time, CPU, memory, and output size.
+
+97
+00:16:56.402 --> 00:17:14.415
+Likewise, a single logging tool is suitable for recording one execution; for long-running tasks that take hours or even days, a controlled virtual working directory can preserve plans, intermediate results, execution logs, and final artifacts so the Agent can resume across multiple runs.
+
+98
+00:17:14.415 --> 00:17:26.252
+This directory should also restrict readable and writable paths, storage capacity, and file types, and prevent path traversal instead of exposing the entire host file system to the Agent.
+
+99
+00:17:26.252 --> 00:17:30.727
+General-purpose tools are not always better than specialized ones.
+
+100
+00:17:30.727 --> 00:17:50.627
+High-risk operations or those governed by strict business constraints—such as payments, data deletion, sending email, and production deployment—should still be exposed as dedicated tools with explicit parameters, restricted permissions, and end-to-end auditability, with previews and human confirmation added when necessary.
+
+101
+00:17:50.627 --> 00:18:03.677
+The core principle of tool design is therefore: use general-purpose foundational capabilities for composition and exploration; use specialized tools to constrain high-risk operations and enforce strict business rules.
+
+102
+00:18:03.677 --> 00:18:06.452
+LLM: The Agent's Brain.
+
+103
+00:18:06.452 --> 00:18:11.602
+The Large Language Model (LLM) is the Agent's decision-making core.
+
+104
+00:18:11.602 --> 00:18:22.902
+Given a user request, it first has to infer the real intent (what users say is often not what they actually want), then break a vague or complex task into executable steps.
+
+105
+00:18:22.902 --> 00:18:31.240
+Throughout execution it keeps making decisions: what to do next, whether to call a tool, which one, and with what arguments.
+
+106
+00:18:31.240 --> 00:18:41.302
+This understand–plan–execute capability comes from knowledge accumulated during pre-training, and it is the foundation that workflows and autonomous Agents alike depend on.
+
+107
+00:18:41.302 --> 00:18:49.540
+A distinctive capability of LLM Agents is internal reasoning—before acting, the Agent can plan and reason through the task.
+
+108
+00:18:49.540 --> 00:18:55.427
+This does not change the external environment, yet it markedly improves the actions that follow.
+
+109
+00:18:55.427 --> 00:19:13.615
+This ability comes from pre-training (the initial training on massive amounts of internet text, through which the model learns language patterns and world knowledge): the model draws on reasoning patterns encoded in human knowledge, including mathematical laws, causal relationships, and strategies for decomposing problems.
+
+110
+00:19:13.615 --> 00:19:24.577
+Therefore, unlike traditional reinforcement-learning Agents, today's LLM-based Agents do not explore through blind trial and error; they reason over a structured body of knowledge.
+
+111
+00:19:24.577 --> 00:19:28.940
+Model as Agent: When the Model Itself Becomes the Product.
+
+112
+00:19:29.092 --> 00:19:34.767
+The "Model as Agent" paradigm is the newest direction in AI Agent development.
+
+113
+00:19:34.717 --> 00:19:48.967
+Advanced models internalize tool calling as a native ability through post-training (especially reinforcement learning): when to call a tool, which one, with what arguments—the model decides all of it, with no manual orchestration required.
+
+114
+00:19:48.967 --> 00:19:52.604
+That does not make the framework layer less important.
+
+115
+00:19:52.604 --> 00:19:57.954
+On the contrary: the stronger the model, the more the surrounding Harness matters.
+
+116
+00:19:57.954 --> 00:20:06.804
+The word Harness originally referred to the reins and tack fitted to a horse—not to limit its ability to run, but to direct that power appropriately.
+
+117
+00:20:06.804 --> 00:20:17.767
+In the Agent context, the model is the powerful yet unpredictable horse, while the Harness is the engineering infrastructure that channels its capability into reliable task execution.
+
+118
+00:20:17.767 --> 00:20:27.429
+It includes context management, tool interfaces, safety constraints, and verification and correction mechanisms (see the final section of this chapter).
+
+119
+00:20:27.429 --> 00:20:38.079
+The more decision authority a model has, the greater the impact of a wrong decision—which calls for finer-grained constraint, verification, and correction to keep it reliable.
+
+120
+00:20:38.079 --> 00:20:47.929
+The real advantage of model providers is not "making the framework thinner" but being able to co-optimize the model and its surrounding Harness, iterating continuously.
+
+121
+00:20:47.929 --> 00:20:55.367
+But a deeper question follows: if models keep getting stronger, will today's Harness eventually be absorbed into the model?
+
+122
+00:20:55.367 --> 00:21:02.192
+In “The Bitter Lesson,” Rich Sutton looked back on a pattern repeated throughout seventy years of AI research
+
+123
+00:21:02.192 --> 00:21:07.704
+Agent Learning Mechanisms: From Contextual Adaptation to Persistent Updates.
+
+124
+00:21:07.704 --> 00:21:15.317
+The preceding discussion noted that a model can internalize tool-use policies as native capabilities through reinforcement learning.
+
+125
+00:21:15.317 --> 00:21:19.929
+But changes in an Agent's behavior do not occur only during training.
+
+126
+00:21:19.929 --> 00:21:35.592
+Based on where an update occurs and how long it persists, these changes can be understood as three complementary paths (Figure 1-2): within-task contextual adaptation, cross-task updates to external artifacts, and parameter updates during training cycles.
+
+127
+00:21:35.592 --> 00:21:41.367
+As illustrated in Figure 1-2: Three Levels of Agent Capability Updates.
+
+128
+00:21:41.367 --> 00:21:45.429
+Contextual adaptation occurs within the current task.
+
+129
+00:21:45.429 --> 00:21:56.004
+Once examples, state, and retrieval results enter the context, the model can adjust its behavior immediately, but this does not change the persistent state of the next session.
+
+130
+00:21:56.004 --> 00:22:03.817
+Its advantages are speed and low cost; its limitations arise from the context window and the way information is organized.
+
+131
+00:22:03.817 --> 00:22:08.554
+Chapter 2 explains in detail how this form of adaptation works.
+
+132
+00:22:08.554 --> 00:22:26.017
+For changes to persist across tasks, the system can update external artifacts: facts and experience can be organized into knowledge documents, strategies expressible in language can be written into a Prompt or Skill, and deterministic procedures and constraints can be encoded in programs and Harnesses.
+
+133
+00:22:26.017 --> 00:22:34.542
+These artifacts are auditable and revisable, but the Agent must still access them at execution time through the context or tool interfaces.
+
+134
+00:22:34.542 --> 00:22:45.442
+Chapters 3 through 5 establish the foundations for knowledge and programs, while Chapter 9 discusses how such updates can be generated from evaluated operational trajectories.
+
+135
+00:22:45.442 --> 00:22:59.917
+When the objective is a high-dimensional capability—such as medical-image understanding, natural-language style, or an implicit decision policy—that external rules cannot fully express, model parameters must be updated through post-training.
+
+136
+00:22:59.917 --> 00:23:08.804
+Parameter updates carry higher deployment costs but can produce natural and broad generalization; Chapter 8 presents their methods systematically.
+
+137
+00:23:08.804 --> 00:23:25.854
+The three paths are therefore not mutually exclusive categories but coordinated mechanisms operating at different timescales: context supports immediate adaptation, external artifacts support controlled accumulation, and parameters internalize capabilities that are difficult to express explicitly.
+
+138
+00:23:25.854 --> 00:23:28.767
+Context: The Agent's Eyes.
+
+139
+00:23:28.924 --> 00:23:34.386
+Context is the working set of information available to an Agent at each decision point.
+
+140
+00:23:34.336 --> 00:23:47.399
+Just as a person making a decision needs the right materials on the table—task instructions, reference manuals, earlier correspondence, the latest data—an Agent's context window is the information it can use.
+
+141
+00:23:47.399 --> 00:23:55.386
+From the API's perspective (detailed in Chapter 2), the context of each LLM call consists of five parts:
+
+142
+00:23:55.386 --> 00:24:04.624
+System Prompt: Unlike the prompts users enter during a conversation, the system prompt is written by the developer and stays fixed for the whole conversation.
+
+143
+00:24:04.624 --> 00:24:11.349
+It is the Agent’s “job description”—defining its identity, permissions, and rules of conduct.
+
+144
+00:24:11.349 --> 00:24:16.961
+Careful prompt engineering of the system prompt is how we shape the Agent’s operating behavior.
+
+145
+00:24:16.961 --> 00:24:31.161
+The system prompt also carries user memory that persists across sessions (personalized information such as preferences, past behavior, and background settings; see Chapter 3), plus dynamically injected environmental state.
+
+146
+00:24:31.161 --> 00:24:39.161
+Tool Definitions: Declares the names, functional descriptions, and parameter formats of the tools available to the Agent.
+
+147
+00:24:39.161 --> 00:24:50.986
+Without tool definitions, the Agent cannot recognize or call any tools—though it does not fall silent either—an ablation study (Experiment 1-1) will show what it does instead.
+
+148
+00:24:50.986 --> 00:24:58.836
+Tool definitions, together with the system prompt, form the static prefix that remains unchanged throughout the conversation.
+
+149
+00:24:58.836 --> 00:25:12.836
+This is the foundational pattern; since 2026, production frameworks can also load full tool schemas on demand at the end of the context without breaking the prefix—see the tool definitions section of Chapter 2 and Chapter 4.
+
+150
+00:25:12.836 --> 00:25:16.136
+User Messages: Input from the user.
+
+151
+00:25:16.136 --> 00:25:30.111
+User messages may also contain external knowledge dynamically retrieved via RAG (Retrieval-Augmented Generation, see Chapter 3 for details)—covering information beyond the training data cutoff or private domain knowledge.
+
+152
+00:25:30.111 --> 00:25:47.861
+Assistant Messages: Responses previously generated by the model, which can contain up to three parts—reasoning (the internal chain of thought, maintaining coherence and decision interpretability), content (the response to the user), and tool_calls (the way the Agent takes action).
+
+153
+00:25:47.861 --> 00:26:04.061
+In a specific response, these three parts may not all appear simultaneously: for example, when the Agent decides to call a tool, it usually only has reasoning + tool_calls; when giving a final answer, it usually only has reasoning + content.
+
+154
+00:26:04.061 --> 00:26:09.549
+Tool Results: The output returned after the Agent framework executes a tool.
+
+155
+00:26:09.549 --> 00:26:17.586
+These results are the direct basis for the Agent’s next reasoning step—and what lets it learn from outcomes rather than repeat its mistakes.
+
+156
+00:26:17.586 --> 00:26:31.861
+The first two items (system prompt + tool definitions) form the static prefix; the last three (user messages + assistant messages + tool results) form the dynamic message history that grows with every interaction.
+
+157
+00:26:31.861 --> 00:26:36.999
+Together, these five parts make up the context of each LLM inference.
+
+158
+00:26:36.999 --> 00:26:40.161
+Is every component truly indispensable?
+
+159
+00:26:40.161 --> 00:26:55.399
+The most direct way to find out is an ablation study—the diagnostic method of ruling out causes one at a time: remove component A and see whether the system still works, then component B, and so on, until each component's contribution is clear.
+
+160
+00:26:55.399 --> 00:27:00.711
+Experiment 1-1 applies exactly this method to the five components above.
+
+161
+00:27:00.711 --> 00:27:07.224
+Experiment 1-1 intermediate difficulty, two stars: : The Critical Role of Context
+
+162
+00:27:07.224 --> 00:27:13.274
+We probed how each context component shapes Agent behavior with a systematic ablation study.
+
+163
+00:27:13.274 --> 00:27:26.299
+Of the five components above, four were tested—the system prompt, as the Agent’s basic identity definition, was exempt: without it the Agent has no role awareness at all, and the test would be meaningless.
+
+164
+00:27:26.299 --> 00:27:39.599
+As Figure 1-3 shows, the experiment ran five controlled groups: a complete baseline retaining every component, plus four groups each missing one, to observe each component’s effect on Agent performance.
+
+165
+00:27:39.599 --> 00:27:46.674
+As illustrated in Figure 1-3: Experiment 1-1—Context ablation study design.
+
+166
+00:27:46.828 --> 00:27:53.465
+The experimental results revealed the role of each context component—and that they are not equally important.
+
+167
+00:27:53.415 --> 00:28:02.940
+Tool Definitions (part of the static prefix) are the foundation of the Agent’s action capability; without them, the Agent cannot call any tool.
+
+168
+00:28:02.940 --> 00:28:18.240
+But losing the ability to act does not mean falling silent: the model still returns a neatly formatted, confidently worded answer whose numbers come from parametric memory rather than from observations, laid out exactly like an answer genuinely derived from tool output.
+
+169
+00:28:18.240 --> 00:28:32.128
+Whether it declines outright or fabricates on the spot depends mainly on the model’s own hallucination rate and honesty; a constraint in the prompt such as “do not estimate the rates yourself” lowers the odds of fabrication without eliminating it.
+
+170
+00:28:32.128 --> 00:28:40.865
+Tool Results are key to closed-loop control; without them the Agent executes “blind,” retrying until it exhausts its iteration budget.
+
+171
+00:28:40.865 --> 00:28:54.565
+The reasoning process (the reasoning part of assistant messages) records why a step was taken, while tool results record what happened; when the former can be reconstructed from the latter, dropping it from the history costs almost nothing.
+
+172
+00:28:54.565 --> 00:29:05.203
+Message history (user messages, assistant messages, and tool results from previous rounds) prevents redundant operations and avoids repeating the same mistakes.
+
+173
+00:29:05.203 --> 00:29:13.328
+The experiment's core insight: context determines what the Agent can see, and the Agent can only decide based on what it sees.
+
+174
+00:29:13.328 --> 00:29:30.628
+But the components are not equivalent; the measure is whether the information one carries can be reconstructed from somewhere else—claims like “every component is indispensable” have to be measured rather than assumed, and models move fast enough that the same ablation on a newer model may well reach a different conclusion.
+
+175
+00:29:30.628 --> 00:29:37.678
+One more point matters more in engineering practice: “produced an answer” is not “completed the task.
+
+176
+00:29:37.678 --> 00:29:44.640
+When a context component is missing, the typical failure is not an error exit but an answer that looks flawless.
+
+177
+00:29:44.640 --> 00:29:46.515
+The ReAct Loop.
+
+178
+00:29:46.515 --> 00:29:52.178
+With the three components in hand, a natural question follows: how do they work together?
+
+179
+00:29:52.178 --> 00:29:58.678
+The ReAct loop is the core mechanism that connects LLM, context, and tools into one system.
+
+180
+00:29:58.678 --> 00:30:01.465
+We can examine it step by step.
+
+181
+00:30:01.465 --> 00:30:07.265
+The core pattern by which an Agent executes a task is called ReAct (Reasoning + Acting).
+
+182
+00:30:07.265 --> 00:30:20.628
+The name mentions only reasoning and acting, but the actual loop has three stages: the model first reasons about what to do next, then calls a tool to act, then observes the tool’s result and reasons about the subsequent step.
+
+183
+00:30:20.628 --> 00:30:26.340
+This “reason → act → observe → reason → act → observe” loop repeats until the task is done.
+
+184
+00:30:26.500 --> 00:30:43.375
+Consider a concrete example—aggregating revenue across multiple currencies—to understand an Agent’s trajectory: the message history that accumulates as the Agent works, comprising user messages, assistant messages (with their reasoning and tool calls), and tool results.
+
+185
+00:30:43.325 --> 00:30:56.100
+On every LLM call, the complete context the model receives is the static prefix (system prompt + tool definitions) plus the trajectory (dynamic message history) (Figure 1-4).
+
+186
+00:30:56.100 --> 00:31:01.650
+This shows a key fact: Agent context = static prefix + trajectory.
+
+187
+00:31:01.650 --> 00:31:16.412
+Concretely, the static prefix is the first two of the five components above (system prompt + tool definitions); the trajectory is the last three (user messages + assistant messages + tool results, growing with each interaction).
+
+188
+00:31:16.412 --> 00:31:24.162
+From this complete context the LLM generates its next response, which is then appended to the trajectory for the subsequent call.
+
+189
+00:31:24.162 --> 00:31:31.487
+As illustrated in Figure 1-4: Agent trajectory—ReAct loop for a multi-currency aggregation task.
+
+190
+00:31:31.487 --> 00:31:34.762
+Start with a minimal implementation of the loop.
+
+191
+00:31:34.762 --> 00:31:48.000
+It shows how the components work together: the Model only decides the next step, the Harness assembles the context and validates and executes the tools, and the Environment produces the actual state changes and observations.
+
+192
+00:31:48.000 --> 00:31:56.887
+The rest of this book also uses Python-style pseudocode; the pseudocode is not runnable and does not correspond to any particular SDK.
+
+193
+00:31:56.887 --> 00:32:01.762
+The concrete executable code lives in this book's companion repository.
+
+194
+00:32:01.762 --> 00:32:08.912
+In pseudocode, the interaction loop proceeds as follows: Initialize the trajectory with the user request.
+
+195
+00:32:08.912 --> 00:32:15.487
+In each iteration, construct the context, query the model, and append the decision to the trajectory.
+
+196
+00:32:15.487 --> 00:32:19.012
+If no tool is called, return the answer.
+
+197
+00:32:19.012 --> 00:32:26.112
+Otherwise, execute each tool call, append the observations, and repeat until the task is complete.
+
+198
+00:32:26.112 --> 00:32:29.962
+Here is the structure of a trajectory, in pseudocode:
+
+199
+00:32:29.962 --> 00:32:38.150
+Consider a concrete trajectory: The user asks to calculate total and average revenue across four quarters in different currencies.
+
+200
+00:32:38.150 --> 00:32:44.825
+In the first iteration, the model calls exchange rate tools for Euros, Pounds, and Yen.
+
+201
+00:32:44.825 --> 00:32:49.312
+In the second iteration, the Harness returns the exchange rates.
+
+202
+00:32:49.312 --> 00:33:01.512
+In the third iteration, the model uses Python code to compute the totals in US dollars, obtaining 7.15 million dollars total and 1.79 million dollars average.
+
+203
+00:33:01.512 --> 00:33:05.312
+Finally, the model outputs the verified answer.
+
+204
+00:33:05.312 --> 00:33:15.925
+Note that the system prompt and tool definitions are not shown in the trajectory—they serve as the static prefix and are automatically prepended to the trajectory before each LLM call.
+
+205
+00:33:15.925 --> 00:33:19.762
+In our experiment, this loop was clearly visible.
+
+206
+00:33:19.762 --> 00:33:37.987
+In the first round, the Agent analyzed the task and called three currency conversion tools in parallel; in the second, it fed the conversion results to a code interpreter for the more computationally intensive calculation; in the third, having confirmed all calculations were complete, it produced the final answer.
+
+207
+00:33:37.987 --> 00:33:43.887
+A complex multi-step task was completed in 3 iterations and 4 tool calls.
+
+208
+00:33:43.887 --> 00:33:50.025
+In this most basic design, the context seen by the LLM is continually appended to.
+
+209
+00:33:50.025 --> 00:33:59.687
+Every LLM call receives the complete trajectory, so the model knows which stage of the task it is in, what was tried before, and what the outcome was.
+
+210
+00:33:59.687 --> 00:34:07.737
+Just as people keep reviewing and summarizing while solving a problem, the Agent maintains a global view of the task through its trajectory.
+
+211
+00:34:07.737 --> 00:34:19.937
+And because the trajectory is structured—user messages, assistant messages (reasoning + tool calls), and tool results all separated cleanly—the system is highly interpretable and debuggable.
+
+212
+00:34:19.937 --> 00:34:26.850
+Now that we understand the Agent's operating loop, we examine two experiments to see how different models drive it.
+
+213
+00:34:26.850 --> 00:34:34.012
+Experiment 1-2 introductory difficulty, one star: : Kimi K3 Native Agent Capability
+
+214
+00:34:34.180 --> 00:34:42.242
+This experiment demonstrates the native Agent capability of Kimi K3, an example of the “Model as Agent” paradigm.
+
+215
+00:34:42.192 --> 00:34:49.380
+Kimi K3 is a Mixture of Experts (MoE) model with approximately 2.8 trillion parameters.
+
+216
+00:34:49.380 --> 00:35:02.092
+MoE can be viewed as a team of experts: for each kind of problem, the system activates only the few experts best suited to it rather than the entire model, preserving capability without paying the full efficiency cost.
+
+217
+00:35:02.092 --> 00:35:09.955
+Kimi K3 has a 1 million token context window, native visual understanding, and an always-on “thinking mode.
+
+218
+00:35:09.955 --> 00:35:25.667
+Through reinforcement learning, it has internalized the tool-calling decision policy as a native capability: when to call a tool, which tool to call, and what arguments to pass are all decided by the model, allowing it to carry out tasks such as web searches autonomously.
+
+219
+00:35:25.667 --> 00:35:38.442
+To be precise, what is internalized is the when and how to call decision; the tools themselves, such as web_search and code_runner, still execute server-side as API-level built-in tools.
+
+220
+00:35:38.442 --> 00:35:43.617
+Kimi runs these official tools through a server-side script engine called Formula.
+
+221
+00:35:43.617 --> 00:35:52.567
+The orchestration loop has therefore not disappeared; only the decision-making moved into the model, and where the loop itself runs depends on how you integrate.
+
+222
+00:35:52.567 --> 00:36:18.255
+On the Responses API path of Experiment 1-3, search, code execution and the multi-round orchestration are closed on the server; on the Kimi path of Experiment 1-2, Formula only executes the search itself on the server, while the "call the model → append the tool result → call again" ReAct loop is still driven by client code (see the while loop in chapter1/web-search-agent/agent.py).
+
+223
+00:36:18.255 --> 00:36:29.830
+The key observations are that the model decides when to search and what to search for, showing genuine autonomy; it adjusts strategy as search results arrive and judges whether it has enough information.
+
+224
+00:36:29.830 --> 00:36:38.017
+A common misconception is worth clarifying: reinforcement learning gives the model the decision policy, not the tools themselves.
+
+225
+00:36:38.017 --> 00:36:53.230
+It teaches when to call a tool, which tool to choose, what arguments to pass, whether to continue after receiving a result, and how to chain dozens or hundreds of calls into coherent reasoning; these whether-and-how-to-use judgments are what get written into the model's weights.
+
+226
+00:36:53.230 --> 00:37:08.342
+The tools and their execution are provided by the Agent framework or API built-ins: the implementations of web_search and code_runner, the code sandbox, and the infrastructure that issues calls and returns results all live outside the model.
+
+227
+00:37:08.342 --> 00:37:15.917
+RL optimizes the decision policy; it does not embed a search engine or a code sandbox into the model's weights.
+
+228
+00:37:15.917 --> 00:37:24.080
+Thus, the orchestration loop has not disappeared; it has moved from the client to the server, while decision-making has moved into the model.
+
+229
+00:37:24.080 --> 00:37:28.530
+Harness Engineering: Building Reliable Systems Around the Model.
+
+230
+00:37:28.530 --> 00:37:38.017
+By now you understand how an Agent works at its core: an LLM runs the ReAct loop, guided by context, using tools to complete the task.
+
+231
+00:37:38.017 --> 00:37:44.542
+The experiments above show that the basic mechanism works—and also expose how fragile it is.
+
+232
+00:37:44.542 --> 00:37:52.980
+The model may hallucinate (invent tools or parameters that do not exist), pick the wrong tool, or fail to recover from an error.
+
+233
+00:37:52.980 --> 00:38:01.805
+Between a working demo and a reliable product lies a substantial gap, and those fragilities are exactly what Harness Engineering exists to fix.
+
+234
+00:38:01.805 --> 00:38:09.267
+The first half of this chapter answered what an Agent is; the second half answers how an Agent runs reliably in production.
+
+235
+00:38:09.436 --> 00:38:16.323
+The preceding sections established the core formula: Agent = LLM + Context + Tools.
+
+236
+00:38:16.273 --> 00:38:23.611
+It describes the Agent's internal composition: reasoning engine, working context, and action interfaces.
+
+237
+00:38:23.611 --> 00:38:35.273
+Harness Engineering adds a second, implementation-level view of the same system: treat the LLM as one core component (the Model), and call all the supporting code built around it the Harness.
+
+238
+00:38:35.273 --> 00:38:41.336
+The two views are not rivals; they describe the same system at different levels of abstraction.
+
+239
+00:38:41.336 --> 00:38:51.073
+We switch to the more general word "Model" because the principles of Harness Engineering apply to any model that can reason and call tools, not one particular kind.
+
+240
+00:38:51.073 --> 00:39:06.298
+The core of the Harness is the original formula's "Context + Tools," plus three layers of safeguards: Constrain (what the Agent may and may not do), Verify (whether it did the thing correctly), and Correct (how to recover when it did not).
+
+241
+00:39:06.298 --> 00:39:11.248
+Expanded as an equation, the complete production-grade composition is:
+
+242
+00:39:11.248 --> 00:39:14.161
+Agent = Model + Harness
+
+243
+00:39:14.161 --> 00:39:21.123
+Harness = Context management + Tool interfaces + Constraints + Verification + Correction
+
+244
+00:39:21.123 --> 00:39:23.873
+Agent ↔ Environment
+
+245
+00:39:23.873 --> 00:39:35.336
+A minimal demo needs only a Model and a Harness that can construct context and expose tools; a production system must add constraints, verification, and correction within that same boundary.
+
+246
+00:39:35.336 --> 00:39:48.086
+For example, a refund Agent can place its policy in context, constrain calls with permission and amount rules, verify the result against database state, and retry or fall back after a timeout.
+
+247
+00:39:48.086 --> 00:39:55.573
+Harness engineering studies precisely this runtime and governance code—outside the Model but inside the Agent boundary.
+
+248
+00:39:55.573 --> 00:40:04.598
+More precisely, the Harness is not everything outside the model: it is the runtime and governance layer inside the Agent boundary and outside the Model.
+
+249
+00:40:04.598 --> 00:40:10.198
+It mediates the Model–Environment interaction but does not include the Environment itself.
+
+250
+00:40:10.198 --> 00:40:25.848
+Tool definitions, call adapters, sandbox permissions and reset mechanisms belong to the Harness; files and processes that change inside the sandbox, external databases, web pages, users and the physical world belong to the Environment.
+
+251
+00:40:25.848 --> 00:40:30.036
+Deployment location does not change this conceptual boundary.
+
+252
+00:40:30.036 --> 00:40:37.636
+The core of the Harness is context management and tool interfaces, around which three types of engineering safeguards are built:
+
+253
+00:40:37.636 --> 00:40:44.861
+Component: Context management; Responsibility and design principle: Supplies relevant information.
+
+254
+00:40:44.861 --> 00:41:00.523
+Information sufficiency: Give the Agent enough information to make an informed decision at each step.; Practical examples: System prompts, knowledge bases, Agent status bars, Sidecar bypass queries; See chapters: Chapters 2 & 3.
+
+255
+00:41:00.523 --> 00:41:07.648
+Component: Tool interfaces; Responsibility and design principle: Defines how the model can act.
+
+256
+00:41:07.648 --> 00:41:22.686
+Clear interfaces: Use intuitive tool names, provide parameter examples, and explain each tool's limits.; Practical examples: MCP tools, code interpreter, search tools; See chapters: Chapter 4.
+
+257
+00:41:22.686 --> 00:41:29.823
+Component: Constraints; Responsibility and design principle: Defines what the Agent is allowed to do.
+
+258
+00:41:29.823 --> 00:41:45.173
+Fail-safe defaults: Keep capabilities disabled until explicitly enabled, as with mobile app permissions.; Practical examples: Claude Code requires user authorization before tool execution by default.; See chapters: Chapter 4.
+
+259
+00:41:45.173 --> 00:41:53.473
+Component: Verification; Responsibility and design principle: Checks whether tool execution produced the correct result.
+
+260
+00:41:53.473 --> 00:42:12.236
+Input isolation: Base security checks on structured data, such as fields returned by tools, rather than model-generated text that an attacker could influence through prompt injection.; Practical examples: Linting, type checks, validation of tool results; See chapters: Chapters 5 & 6.
+
+261
+00:42:12.236 --> 00:42:20.323
+Component: Correction; Responsibility and design principle: Recovers from errors or rolls back failed operations.
+
+262
+00:42:20.323 --> 00:42:39.861
+Attempt recovery before presenting a failure to the user—for example, retry a failed tool call instead of showing an incomplete result.; Practical examples: Automatic retries, resuming generation, escalation to a human after repeated failures (a circuit breaker); See chapters: Chapters 2 & 5.
+
+263
+00:42:40.012 --> 00:42:44.424
+The basic model control loop is shown in the following pseudocode:
+
+264
+00:42:44.374 --> 00:42:49.549
+In formal loop pseudocode: The environment provides an initial observation.
+
+265
+00:42:49.549 --> 00:42:56.262
+In a continuous loop, the Harness builds context from the trajectory, and the Model generates actions.
+
+266
+00:42:56.262 --> 00:43:03.449
+The Harness validates and constrains these actions, applies them to the environment, and observes the updated state.
+
+267
+00:43:03.449 --> 00:43:08.512
+If safety checks pass, the loop continues until the goal is achieved.
+
+268
+00:43:08.512 --> 00:43:12.637
+This skeleton deliberately omits implementation details.
+
+269
+00:43:12.637 --> 00:43:21.824
+The complete API message loop appears in Chapter 2; tools and automatic verification are covered in Chapters 4 and 5, respectively.
+
+270
+00:43:21.824 --> 00:43:27.499
+Context and Tools let the Agent complete tasks—understand the task and act on it.
+
+271
+00:43:27.499 --> 00:43:39.387
+Constrain, Verify, and Correct make sure it does so reliably and safely—not as something apart from Context and Tools, but as the engineering that keeps them working reliably in production.
+
+272
+00:43:39.387 --> 00:43:45.274
+Along the maturity curve of Agent products, the emphasis between these two groups shifts.
+
+273
+00:43:45.274 --> 00:43:53.637
+Early Agent frameworks focused on Context and Tools: give the model tools, give it context, and let it complete tasks.
+
+274
+00:43:53.637 --> 00:44:05.174
+Production-grade systems have shifted their center of gravity to Constrain, Verify, and Correct: making sure tool calls are safe, context is managed, and errors are correctable.
+
+275
+00:44:05.174 --> 00:44:07.199
+Take Claude Code.
+
+276
+00:44:07.199 --> 00:44:23.687
+The vast majority of its Harness code does Constrain, Verify, and Correct, not Context and Tools—the tools themselves (file read/write, command execution, search) are only a small part; the safeguards built around them are the true core.
+
+277
+00:44:23.687 --> 00:44:26.174
+These mechanisms include:
+
+278
+00:44:26.174 --> 00:44:31.462
+Process State Management: Tracks which step the Agent is currently executing
+
+279
+00:44:31.462 --> 00:44:37.299
+Multi-Layer Context Compression: Automatically prunes information when there is too much
+
+280
+00:44:37.299 --> 00:44:42.924
+Permission Classification: Controls which operations require user confirmation
+
+281
+00:44:42.924 --> 00:44:51.437
+Circuit Breaker: Automatically stops retrying after repeated errors so one failing operation does not cascade through the whole system
+
+282
+00:44:51.437 --> 00:45:00.374
+Error Recovery Mechanisms: Catches exceptions, rolls back to the last stable state, retries, or hands off to a human
+
+283
+00:45:00.374 --> 00:45:09.224
+The industry is shifting from task completion to reliable task completion, making Harness Engineering the core competitive advantage of Agent systems.
+
+284
+00:45:09.224 --> 00:45:14.874
+From Prompt Engineering to Loop Engineering: The Evolution of Engineering Paradigms.
+
+285
+00:45:14.874 --> 00:45:21.349
+Looking back at the development of AI application engineering, a clear evolutionary arc emerges:
+
+286
+00:45:21.349 --> 00:45:29.574
+Prompt Engineering was the first wave of innovation—improving output quality by refining the natural-language instructions fed to the model.
+
+287
+00:45:29.574 --> 00:45:45.512
+Context Engineering was the second wave—the realization that optimizing the prompt alone is not enough: all the information the model can see (system instructions, tool definitions, conversation history, external knowledge) has to be managed systematically.
+
+288
+00:45:45.512 --> 00:46:02.274
+Harness Engineering was the third wave—it widens the view from "what information the model receives" to "what kind of system the model runs in," taking in all infrastructure outside the model: constraint mechanisms, verification methods, feedback loops, error recovery.
+
+289
+00:46:02.428 --> 00:46:19.328
+Loop Engineering came next, widening the view from a single run to sustained autonomous operation across runs: who discovers the next piece of work, when to verify, and when the task counts as truly done (Chapter 10 develops this alongside multi-agent collaboration systems).
+
+290
+00:46:19.278 --> 00:46:41.690
+In July 2026, the industry began using Graph Engineering for a higher-level orchestration perspective: organizing Agent loops, deterministic programs, and human approvals into an explicit execution graph, where nodes provide capabilities, edges define routing and dependencies, and structured state travels along those edges and is persisted at key boundaries.
+
+291
+00:46:41.690 --> 00:46:53.290
+These five stages are not replacements but nested layers: Prompt Engineering is a subset of Context Engineering, which is a subset of Harness Engineering, which is a subset of Loop Engineering.
+
+292
+00:46:53.290 --> 00:47:02.028
+Loop Engineering is, in turn, a subset of Graph Engineering: a single Agent loop forms one node in the execution graph.
+
+293
+00:47:02.028 --> 00:47:07.378
+Each layer widens the engineer's scope of concern and influence beyond the last.
+
+294
+00:47:07.378 --> 00:47:16.115
+As models converge in capability and stop being the decisive differentiator, competitive advantage shifts to the engineering outside the model.
+
+295
+00:47:16.115 --> 00:47:19.565
+Recent engineering practice supports this view.
+
+296
+00:47:19.565 --> 00:47:38.940
+LangChain's work on Terminal Bench 2.0 (a benchmark evaluating an Agent's ability to complete complex tasks in a terminal environment) is a striking example: their Coding Agent improved from 52.8% to 66.5% (jumping from outside the top 30 to the top 5 on the leaderboard).
+
+297
+00:47:38.940 --> 00:47:49.253
+What changed was not the model but the Harness—having the Agent check its own execution results, detect when it was stuck in a repetitive loop, and refine its reasoning strategy.
+
+298
+00:47:49.253 --> 00:47:52.653
+Core Principles for Building Effective Agents.
+
+299
+00:47:52.653 --> 00:47:58.753
+Based on Anthropic's experience, successful Agent systems follow three core principles.
+
+300
+00:47:58.753 --> 00:48:00.528
+Keep it simple.
+
+301
+00:48:00.528 --> 00:48:05.803
+Start with the simplest solution and add complexity only when truly necessary.
+
+302
+00:48:05.803 --> 00:48:16.753
+Direct API calls are preferable to complex frameworks; clear code is preferable to clever abstraction—every extra layer of abstraction is a new blind spot during debugging.
+
+303
+00:48:16.753 --> 00:48:18.790
+Keep it transparent.
+
+304
+00:48:18.790 --> 00:48:24.715
+Show the Agent's planning steps, execution logs, and decision trajectory clearly.
+
+305
+00:48:24.715 --> 00:48:34.215
+This is not just a debugging convenience; it is a precondition for user trust—an error inside a black box is hard to locate or fix from outside.
+
+306
+00:48:34.215 --> 00:48:39.728
+Design a well-structured tool interface (ACI, Agent-Computer Interface).
+
+307
+00:48:39.728 --> 00:48:50.278
+ACI means designing the interface from the Agent's perspective—easy for the Agent to understand and use—rather than from the programmer's perspective, as in traditional APIs.
+
+308
+00:48:50.278 --> 00:49:05.728
+Tool names and parameters should be intuitive, and wherever misuse is likely the design should make the mistake impossible from the start: a SIM card's notched corner lets it slide into the tray in only one orientation, and a microwave refuses to heat while its door is open.
+
+309
+00:49:05.728 --> 00:49:15.678
+In manufacturing, this approach is known as poka-yoke, or mistake-proofing: designing products and processes to prevent mistakes or make them immediately apparent.
+
+310
+00:49:15.678 --> 00:49:18.828
+It is used in the Toyota Production System.
+
+311
+00:49:18.828 --> 00:49:30.303
+A poorly designed tool can cause even the strongest model to fail repeatedly: the interface is the only channel between model and tool, and a vague interface gets amplified into systemic error.
+
+312
+00:49:30.303 --> 00:49:40.178
+The next three sections address three freestanding but important topics in Harness engineering: model selection, orchestration patterns, and guardrails and safety.
+
+313
+00:49:40.178 --> 00:49:46.515
+None belongs to the five Harness elements proper, but all are unavoidable in engineering practice.
+
+314
+00:49:46.515 --> 00:49:48.603
+How to Choose a Model.
+
+315
+00:49:48.603 --> 00:49:56.215
+Before discussing orchestration patterns, we first need to answer a practical question: what kind of model should drive your Agent?
+
+316
+00:49:56.215 --> 00:50:03.915
+The model is the foundation of the Agent's intelligence, and choosing the right one often matters more than any amount of prompt tuning.
+
+317
+00:50:03.915 --> 00:50:11.865
+Model releases move too quickly for specific version recommendations to stay useful, so this section offers directions instead.
+
+318
+00:50:12.028 --> 00:50:14.253
+Closed-Source Models.
+
+319
+00:50:14.203 --> 00:50:24.903
+The two most commonly used closed-source model providers in current Agent development are OpenAI (GPT/o series) and Anthropic (Claude series).
+
+320
+00:50:24.903 --> 00:50:32.490
+Closed-source models generally lead in capability but are more expensive and constrained by the vendor's API policies.
+
+321
+00:50:32.490 --> 00:50:40.165
+When selecting a model, do not rely only on leaderboards; evaluate it on your own tasks (see Chapter 7).
+
+322
+00:50:40.165 --> 00:50:42.303
+Open-Source Models.
+
+323
+00:50:42.303 --> 00:50:50.678
+At the time of writing, open-source models lag closed-source models by no more than six months, while costing substantially less.
+
+324
+00:50:50.678 --> 00:50:57.953
+If your business scenario does not demand the highest model capability, an open-source model is a pragmatic choice.
+
+325
+00:50:57.953 --> 00:51:09.640
+Open-source models are low-cost, support private deployment, and allow fine-tuning customization, making them suitable for cost-sensitive scenarios or those with data compliance requirements.
+
+326
+00:51:09.640 --> 00:51:16.203
+DeepSeek, Kimi, and GLM are among the stronger Chinese models for Agent capabilities.
+
+327
+00:51:16.203 --> 00:51:23.478
+Note that models differ widely in tool-calling ability, so be sure to test in your specific scenario before committing.
+
+328
+00:51:23.478 --> 00:51:27.953
+Beyond capability, consider the model's policy boundaries.
+
+329
+00:51:27.953 --> 00:51:35.303
+A model may have the technical ability to perform a task without the product that hosts it allowing users to invoke that ability.
+
+330
+00:51:35.303 --> 00:51:50.753
+Vendors draw different policy boundaries around cybersecurity, model distillation, model extraction, private data, and high-risk operations; the same task may also produce different outcomes in a chat product, a Coding Agent, and an API.
+
+331
+00:51:50.753 --> 00:51:56.415
+Model selection therefore cannot compare only accuracy, price, and speed.
+
+332
+00:51:56.415 --> 00:52:06.453
+Test on your real tasks whether the model is willing to proceed, whether the interface exposes the required capability, and whether the service terms permit the intended use.
+
+333
+00:52:06.453 --> 00:52:12.765
+For business-critical tasks, prepare human handoff or another compliant model as a fallback.
+
+334
+00:52:12.765 --> 00:52:16.140
+Most Agents Need a Model that Supports Reasoning.
+
+335
+00:52:16.140 --> 00:52:24.728
+Agents make complex decisions—multi-step reasoning, tool selection—and models without reasoning tend to perform poorly on them.
+
+336
+00:52:24.728 --> 00:52:34.990
+The exceptions are few: a single simple step, or Computer Use GUI operations that amount to clicking a fixed position, where a non-reasoning model may suffice.
+
+337
+00:52:34.990 --> 00:52:41.290
+The moment multi-step reasoning or dynamic decision-making enters, a reasoning model is essential.
+
+338
+00:52:41.290 --> 00:52:45.315
+Consider Output Speed and Multimodal Capabilities.
+
+339
+00:52:45.315 --> 00:52:49.390
+Beyond cost, two dimensions are easy to overlook.
+
+340
+00:52:49.390 --> 00:53:06.278
+One is output token speed: Agents typically run many rounds of inference, and each round must finish before the next can start, so output speed directly determines end-to-end latency—a 20-round Agent task that runs 2 seconds slower per round means an extra 40 seconds of waiting.
+
+341
+00:53:06.278 --> 00:53:17.603
+The other is multimodal support: if your Agent needs to understand images, audio, or video, multimodal capability is a hard requirement, and models differ widely here.
+
+342
+00:53:17.603 --> 00:53:21.815
+Orchestration Patterns: Workflow vs. Autonomous.
+
+343
+00:53:21.815 --> 00:53:37.215
+Orchestration patterns are how the Harness organizes its "context and tools" layer—they determine how context flows between LLM calls, how tools are scheduled, and whether the Agent's execution path is fixed in advance or generated dynamically.
+
+344
+00:53:37.215 --> 00:53:44.278
+Agent orchestration has evolved from simple to complex, and each pattern has suitable use cases and trade-offs.
+
+345
+00:53:44.278 --> 00:53:55.740
+In Anthropic's experience working with dozens of teams building LLM Agents, the most successful implementations rarely use complex frameworks; they use simple, composable patterns.
+
+346
+00:53:55.740 --> 00:54:01.953
+When building an LLM application, follow the principle of progressing from simple to complex.
+
+347
+00:54:01.953 --> 00:54:05.503
+Start by considering a single LLM call.
+
+348
+00:54:05.503 --> 00:54:11.853
+If better prompts and in-context examples can solve the problem, do not introduce an Agent system.
+
+349
+00:54:11.853 --> 00:54:19.578
+When multi-step processing is needed, consider a workflow for scenarios that decompose cleanly into fixed subtasks.
+
+350
+00:54:19.578 --> 00:54:25.853
+Use an autonomous Agent only when dynamic decisions and flexible execution paths are required.
+
+351
+00:54:25.853 --> 00:54:34.103
+Remember that Agent systems typically trade latency and cost for better task performance, so carefully weigh whether that trade is worthwhile.
+
+352
+00:54:34.252 --> 00:54:40.577
+A common counterexample is to begin by building a highly complex workflow or multi-Agent system.
+
+353
+00:54:40.527 --> 00:55:05.239
+For example, when asked to design an Agent that “extracts personal memories from a million chat messages,” some AI models will quickly sketch a seemingly rigorous pipeline: first segment the conversations, then assign extraction, evidence verification, identity resolution, memory curation, and merge-review Agents in sequence, and finally build a fact graph, a coverage ledger, and immutable versions.
+
+354
+00:55:05.239 --> 00:55:12.114
+Each component makes sense in isolation, yet together they form a highly inefficient and unreliable system.
+
+355
+00:55:12.114 --> 00:55:23.189
+Because a complex workflow has a fixed execution topology, each new exception readily leads to another node: the architecture grows increasingly complex while becoming less general.
+
+356
+00:55:23.189 --> 00:55:29.214
+Semantic judgments that the model could have made from context are instead hard-coded into the workflow.
+
+357
+00:55:29.214 --> 00:55:34.702
+Therefore, the importance of the Harness does not mean that a more complex Harness is better.
+
+358
+00:55:34.702 --> 00:55:40.402
+The Manus website summarizes this trade-off as “Less structure, more intelligence.
+
+359
+00:55:40.402 --> 00:55:53.752
+Start by giving a capable Agent a clear goal, the necessary context, and composable tools, and use natural language to tell it how a person would verify evidence, make comparisons, and resolve conflicts.
+
+360
+00:55:53.752 --> 00:56:02.827
+The program should hard-code only boundaries that must always hold, such as permissions, never overwriting source material, and atomic publication.
+
+361
+00:56:02.827 --> 00:56:16.864
+Only when business constraints inherently require it, or evaluations repeatedly expose a stable failure mode, should the corresponding step be promoted into a dedicated verifier, an independent Agent, or a deterministic process.
+
+362
+00:56:16.864 --> 00:56:24.889
+Good structure does not rehearse all of the Agent's thinking for it; it guards the boundaries and returns the decision space within them to the model.
+
+363
+00:56:24.889 --> 00:56:28.564
+Workflow Pattern: Deterministic Orchestration.
+
+364
+00:56:28.564 --> 00:56:34.639
+A workflow is a system that orchestrates LLMs and tools through predefined code paths.
+
+365
+00:56:34.639 --> 00:56:47.239
+Its execution path is deterministic and designed in advance by the developer—the behavior of each step and transition is defined in code; the LLM handles only the understanding and generation inside each node.
+
+366
+00:56:47.239 --> 00:56:52.689
+For example, a flight-booking Agent can use a workflow with four fixed nodes:
+
+367
+00:56:52.689 --> 00:56:59.277
+Verify User Identity—Call the identity verification API to confirm who the user is.
+
+368
+00:56:59.277 --> 00:57:05.039
+Search for Available Flights—Query the flight database based on user requirements.
+
+369
+00:57:05.039 --> 00:57:09.539
+Complete Payment—Call the payment interface to deduct the amount.
+
+370
+00:57:09.539 --> 00:57:15.652
+Confirm Booking—Call the booking API to lock the seat and send a confirmation to the user.
+
+371
+00:57:15.652 --> 00:57:32.752
+An LLM can be used within each node (e.g., using natural language to understand the user's travel needs), but the flow sequence between nodes is fixed by code—the system will not book a seat before payment is completed, nor will it start searching for flights before identity verification.
+
+372
+00:57:32.752 --> 00:57:36.214
+The workflow pattern has two core advantages.
+
+373
+00:57:36.214 --> 00:57:50.064
+First, strict process control: the developer can guarantee that critical steps are never skipped or run out of order—business rules like "no booking before payment" are enforced by code, not left to the LLM's judgment.
+
+374
+00:57:50.064 --> 00:58:03.239
+Second, security: because the execution path is deterministic, prompt injection or a model error can at most affect the processing inside the current node; it cannot make the Agent jump to a branch it should not reach.
+
+375
+00:58:03.239 --> 00:58:06.802
+The attack surface is confined to a single node.
+
+376
+00:58:06.802 --> 00:58:11.052
+The main limitation of a workflow is its lack of flexibility.
+
+377
+00:58:11.052 --> 00:58:28.014
+When an unanticipated event occurs—for example, the user changes the booking during payment, or a flight is canceled and the system needs to recommend an alternative—the fixed path cannot adapt on its own; it can only follow a preset exception branch or hand control back to a human.
+
+378
+00:58:28.180 --> 00:58:32.767
+Take the simplest workflow example: text-to-image generation.
+
+379
+00:58:32.717 --> 00:58:50.530
+The user's need is usually a single plain-language sentence, such as "Draw me a scene of programmers at work after AGI is achieved"; but text-to-image models like Stable Diffusion only accept prompts in a specific style—comma-separated English tags, quality words, negative prompts.
+
+380
+00:58:50.530 --> 00:58:56.242
+So the workflow places two fixed nodes between the user and the image-generation model:
+
+381
+00:58:56.242 --> 00:59:04.592
+Prompt Rewriting—Use an LLM to rewrite the user's natural-language request into the prompt format a text-to-image model expects.
+
+382
+00:59:04.592 --> 00:59:27.967
+For the example above, "programmers at work after AGI is achieved" is a very broad requirement, so the LLM also needs to think carefully (for example, "after AGI is achieved, programmers no longer need to write code, so the image should show a programmer sunbathing on a beach, directing AI employees through a brain-computer interface") and then produce a concrete scene description.
+
+383
+00:59:27.967 --> 00:59:33.830
+Image Generation—Call the text-to-image model with the rewritten prompt to obtain the image.
+
+384
+00:59:33.830 --> 00:59:36.830
+The execution path is hard-coded.
+
+385
+00:59:36.830 --> 00:59:49.367
+The LLM node in this workflow performs translation—converting human language into an input format the tool can understand—and it exists because text-to-image models "don't understand plain speech.
+
+386
+00:59:49.367 --> 00:59:57.292
+Harness code that specifically patches a capability shortcoming of a tool (or model) like this can be called an adapter layer.
+
+387
+00:59:57.292 --> 01:00:09.280
+But if the image-generation tool is replaced with a multimodal model that has native image generation capability, such as Nano Banana 2 or GPT-Image 2, prompt rewriting is no longer needed.
+
+388
+01:00:09.280 --> 01:00:16.267
+No matter how the user phrases the request, the model understands it on its own and produces the image directly.
+
+389
+01:00:16.267 --> 01:00:24.155
+Experiment 1-4 introductory difficulty, one star: : Text-to-Image Workflow vs. Native Image Generation
+
+390
+01:00:24.155 --> 01:00:27.967
+Send the same plain-language request through two routes.
+
+391
+01:00:27.967 --> 01:00:47.242
+Workflow route: an LLM first rewrites the request into a Stable Diffusion-style prompt, then calls the text-to-image model to produce the image; native route: send the sentence as-is to a multimodal model that supports native image generation (such as GPT-Image 2), producing the image in a single call.
+
+392
+01:00:47.242 --> 01:00:56.217
+Compare two things: what the prompt-rewriting node turns the original request into, and which route's image stays closer to the original request.
+
+393
+01:00:56.217 --> 01:01:11.992
+It is worth comparing two categories of requests: one that is concrete (for example, a poster with specified copy), and one that is broad (such as the AGI work scene above)—for this category, the workflow route may still have advantages of its own.
+
+394
+01:01:12.148 --> 01:01:21.373
+This experiment shows that the parts of a Harness that patch the model's capability shortcomings will be internalized by the model itself as the model grows stronger.
+
+395
+01:01:21.323 --> 01:01:46.573
+In this first chapter alone, this has already happened several times: few-shot examples and prompting tricks like "let's think step by step" were internalized by instruction tuning and reasoning models; output-format repair and JSON parsing tolerance were internalized by structured output and native tool calling; and text-to-image prompt rewriting was absorbed by the model's native multimodal understanding and generation capabilities.
+
+396
+01:01:46.573 --> 01:01:53.423
+Each round of internalization eliminates adapter-layer code of the "translation" and "scaffolding" kind.
+
+397
+01:01:53.423 --> 01:01:56.998
+Autonomous Agent: Runtime Decision-Making.
+
+398
+01:01:56.998 --> 01:02:02.223
+When the fixed path of a workflow is insufficient, we need an autonomous Agent.
+
+399
+01:02:02.223 --> 01:02:12.435
+The core difference between an autonomous Agent and a workflow is that the execution path is not predefined but is determined at runtime by the Agent based on environmental feedback.
+
+400
+01:02:12.435 --> 01:02:18.160
+Returning to the flight example, an autonomous Agent needs no four predefined nodes.
+
+401
+01:02:18.160 --> 01:02:31.498
+The user says, "Book me a flight to Shanghai next Wednesday," and the Agent determines the sequence dynamically: it searches for flights, discovers that login is required, verifies identity, and resumes the search.
+
+402
+01:02:31.498 --> 01:02:39.735
+If the cheapest flight has a layover, it can ask whether that is acceptable; if the user says no, it adjusts the search criteria.
+
+403
+01:02:39.735 --> 01:02:49.973
+An autonomous Agent therefore has to plan for itself—choose its own execution steps—and recognize failure and change strategy rather than simply halting on error.
+
+404
+01:02:49.973 --> 01:03:04.860
+But autonomy is not unbounded: explicit stopping conditions must be designed in (task complete, maximum iterations reached, unrecoverable error hit), or the Agent can enter infinite loops or continue executing after the task is already done.
+
+405
+01:03:04.860 --> 01:03:17.885
+From an implementation perspective, an autonomous Agent is essentially an LLM using tools in a loop, continuously obtaining environmental feedback to make progress on the task—this is the ReAct loop introduced earlier.
+
+406
+01:03:17.885 --> 01:03:29.148
+Common exit conditions include: calling a final output tool, the model returning a response without any tool calls, or encountering an error or reaching the maximum number of rounds.
+
+407
+01:03:29.148 --> 01:03:34.835
+As illustrated in Figure 1-6: Execution loop of an autonomous Agent.
+
+408
+01:03:34.835 --> 01:03:42.060
+Autonomous Agents are well suited to open-ended problems—those where it is difficult to predict the number of steps required.
+
+409
+01:03:42.060 --> 01:04:02.448
+Typical use cases include: Coding Agents solving SWE-bench (Software Engineering Benchmark, a benchmark for evaluating an Agent's ability to automatically fix real GitHub issues) tasks, "Computer Use" Agents operating computer interfaces like a human, and research tasks requiring iterative search and analysis.
+
+410
+01:04:02.448 --> 01:04:06.548
+Autonomy also costs more and lets errors compound.
+
+411
+01:04:06.548 --> 01:04:17.210
+Deploying an autonomous Agent therefore demands thorough testing in a sandbox, appropriate guardrails and monitoring, and human-in-the-loop checkpoints at critical decision points.
+
+412
+01:04:17.210 --> 01:04:20.098
+Choosing and Mixing the Two Patterns.
+
+413
+01:04:20.098 --> 01:04:35.923
+In practice, workflows and autonomous Agents are not mutually exclusive—many systems mix the two: critical processes with strict compliance requirements run as workflows for reliability, while the parts that need flexible decisions switch to autonomous mode.
+
+414
+01:04:35.923 --> 01:04:50.835
+n8n, for example, is a mature open-source workflow automation framework in which developers build Agents by arranging functional components on a visual canvas—and workflow nodes and autonomous Agent nodes can coexist in the same system.
+
+415
+01:04:50.835 --> 01:04:56.460
+As illustrated in Figure 1-7: n8n workflow editor interface.
+
+416
+01:04:56.620 --> 01:05:03.807
+Another way to mix them is to have the autonomous Agent write the workflow first, and then let the workflow do the executing.
+
+417
+01:05:03.757 --> 01:05:15.795
+After reading the task, the Agent decides the topology itself and generates a piece of orchestration code; once that code exists, the execution phase falls back to the determinism of a workflow.
+
+418
+01:05:15.795 --> 01:05:24.070
+This keeps the autonomous Agent's flexibility in the face of unfamiliar tasks while sparing the model from making a decision at every dispatch.
+
+419
+01:05:24.070 --> 01:05:27.445
+Chapter 10 discusses this form in detail.
+
+420
+01:05:27.445 --> 01:05:31.182
+Brief Comparison of Mainstream Agent Frameworks.
+
+421
+01:05:31.182 --> 01:05:38.970
+The following table summarizes widely used Agent frameworks and platforms to help readers identify the right one for their scenario:
+
+422
+01:05:38.970 --> 01:05:57.395
+Framework/Platform: Codex Harness; Core Positioning: Open-source Agent runtime behind Codex; Orchestration Pattern: Autonomous; Development Approach: Code-first, embeddable in your own app; Suitable Scenarios: Coding Agents, embedding an Agent into your own product.
+
+423
+01:05:57.395 --> 01:06:14.332
+Framework/Platform: Claude Agent SDK; Core Positioning: Production-grade Agent development framework; Orchestration Pattern: Autonomous; Development Approach: Code-first; Suitable Scenarios: Complex autonomous tasks, Coding Agents.
+
+424
+01:06:14.332 --> 01:06:32.520
+Framework/Platform: LangChain / LangGraph; Core Positioning: General LLM application framework; Orchestration Pattern: Workflow + autonomous; Development Approach: Code-first; Suitable Scenarios: Complex reasoning chains, multi-step workflows.
+
+425
+01:06:32.520 --> 01:06:48.482
+Framework/Platform: n8n; Core Positioning: Visual workflow automation; Orchestration Pattern: Workflow + autonomous; Development Approach: Low-code; Suitable Scenarios: Business automation, nontechnical teams.
+
+426
+01:06:48.482 --> 01:07:05.920
+Framework/Platform: Dify; Core Positioning: LLM application development platform; Orchestration Pattern: Workflow + conversational; Development Approach: Low-code + API; Suitable Scenarios: Enterprise RAG, knowledge-base applications.
+
+427
+01:07:05.920 --> 01:07:22.357
+Framework/Platform: CrewAI; Core Positioning: Role-based multi-Agent orchestration; Orchestration Pattern: Multi-Agent collaboration; Development Approach: Code-first; Suitable Scenarios: Team-style task decomposition and execution.
+
+428
+01:07:22.357 --> 01:07:42.032
+Framework/Platform: OpenClaw; Core Positioning: Open-source all-purpose personal Agent; Orchestration Pattern: Autonomous + event-driven; Development Approach: Configuration + code; Suitable Scenarios: Personal assistants, Deep Research, Computer Use, multiplatform messaging.
+
+429
+01:07:42.032 --> 01:07:58.632
+Framework/Platform: DeepSeek Harness; Core Positioning: Agent self-evolution framework; Orchestration Pattern: Everything is a plugin; Development Approach: Code-first, easy to customize; Suitable Scenarios: Agent developers, researchers.
+
+430
+01:07:58.632 --> 01:08:13.345
+Framework/Platform: Pi; Core Positioning: Minimal Coding Agent framework; Orchestration Pattern: Autonomous; Development Approach: Code-first, easy to customize; Suitable Scenarios: Agent developers.
+
+431
+01:08:13.345 --> 01:08:17.095
+The first two rows deserve a separate clarification.
+
+432
+01:08:17.095 --> 01:08:27.532
+Codex is OpenAI's Coding Agent product (App, CLI, IDE extension), and the Codex Harness is the runtime layer that drives all of these forms.
+
+433
+01:08:27.532 --> 01:08:51.320
+The Codex Harness offers three integration paths: codex exec suits one-off tasks in scripts and CI; the Codex SDK suits third-party application code that starts, resumes, and streams tasks; and the app-server provides persistent sessions, event streams, and approval callbacks over the JSON-RPC protocol, which suits building an Agent directly into a product.
+
+434
+01:08:51.320 --> 01:09:02.770
+Claude Agent SDK and Claude Code stand in a similar relationship, except that what Claude opens up is the SDK interface—the Harness implementation itself is not open source.
+
+435
+01:09:02.770 --> 01:09:05.645
+Agent frameworks evolve rapidly.
+
+436
+01:09:05.645 --> 01:09:12.307
+By the time you read this book, some of these frameworks may already be obsolete and new ones may be popular.
+
+437
+01:09:12.307 --> 01:09:17.282
+Learning the API of one particular framework is therefore not important.
+
+438
+01:09:17.282 --> 01:09:25.945
+When choosing a framework, the key question is not its sophistication, but whether its abstraction is thin enough to let you focus on business logic.
+
+439
+01:09:26.116 --> 01:09:35.403
+Orchestration patterns solve the organization of context and tools within the Harness—how LLM calls, tools, and data flows connect.
+
+440
+01:09:35.353 --> 01:09:41.366
+But task completion is not enough; tasks must also be completed correctly and safely.
+
+441
+01:09:41.366 --> 01:09:48.053
+We therefore turn to guardrails, which put constraints, verification, and correction into practice.
+
+442
+01:09:48.053 --> 01:09:50.341
+Guardrails and Safety.
+
+443
+01:09:50.341 --> 01:10:00.266
+Guardrails implement the Harness’s constraints, verification, and correction mechanisms, providing a layered defense that keeps Agent behavior safe and controllable.
+
+444
+01:10:00.266 --> 01:10:12.378
+Well-designed guardrails help manage data privacy risks (for example, preventing system prompt leakage) and reputational risks (for example, keeping model behavior consistent with the brand).
+
+445
+01:10:12.378 --> 01:10:19.403
+Start with guardrails for the risks you have already identified, then add new ones as new vulnerabilities surface.
+
+446
+01:10:19.403 --> 01:10:22.516
+Think of guardrails as defense in depth.
+
+447
+01:10:22.516 --> 01:10:31.003
+No single guardrail is likely to be sufficient on its own, but several specialized ones combined make a far more resilient Agent system.
+
+448
+01:10:31.003 --> 01:10:35.366
+Guardrails also have another failure mode: false refusal.
+
+449
+01:10:35.366 --> 01:10:46.428
+To reduce the chance of allowing dangerous requests, a model may also reject legitimate but sensitive-looking work, such as authorized security testing or model distillation research.
+
+450
+01:10:46.428 --> 01:10:55.666
+Guardrail evaluation should therefore test not only whether prohibited requests are blocked, but also whether clearly permitted requests can still be completed.
+
+451
+01:10:55.666 --> 01:10:57.803
+Types of Guardrails.
+
+452
+01:10:57.803 --> 01:11:04.766
+Guardrails can be placed at three layers: the context layer, the execution layer, and the data layer.
+
+453
+01:11:04.766 --> 01:11:18.216
+These three are ordered not by where they sit in the request lifecycle, but by how hard they are to bypass—the lower the layer, the less it depends on the model's own judgment, and the harder it is for a single successful attack to get through.
+
+454
+01:11:18.216 --> 01:11:23.578
+The book uses this three-layer framework to organize its later security discussions.
+
+455
+01:11:23.578 --> 01:11:30.578
+Context-layer guardrails govern what the model gets to see, intercepting content before it enters the context.
+
+456
+01:11:30.578 --> 01:11:33.778
+They usually comprise four mechanisms.
+
+457
+01:11:33.778 --> 01:11:41.303
+A relevance classifier flags off-topic queries—a coding assistant asked "how tall is the Empire State Building?
+
+458
+01:11:41.303 --> 01:12:02.328
+A safety classifier detects jailbreaks (inducing the model to bypass its safety limits) and prompt injection (embedding malicious instructions in the input); the key difference is that a jailbreak is the user trying to get around the model's own limits, whereas prompt injection is an attacker manipulating the model indirectly through external data such as web pages or documents.
+
+459
+01:12:02.328 --> 01:12:09.003
+Content moderation flags harmful or inappropriate input such as violent or discriminatory content.
+
+460
+01:12:09.003 --> 01:12:19.528
+Rule-based protection applies deterministic measures—blocklists, input length limits, regular-expression filters—against known threats such as SQL injection.
+
+461
+01:12:19.528 --> 01:12:27.441
+Source labelling and the separation of "instructions" from "data" also belong to this layer; Chapter 2 develops them.
+
+462
+01:12:27.441 --> 01:12:34.353
+Anthropic's Constitutional Classifiers provide one example of classifier-based guardrails in practice.
+
+463
+01:12:34.353 --> 01:12:37.366
+Their design has three key elements.
+
+464
+01:12:37.366 --> 01:12:47.703
+First, rule-driven training: natural-language rules specifying what is allowed and prohibited are used to generate synthetic training data for the input and output classifiers.
+
+465
+01:12:47.703 --> 01:13:05.641
+Second, joint contextual judgment: the new generation checks the user's question and the model's answer together, because some answers look perfectly fine on their own (e.g., "how to use food flavorings"), and only against the question does it become clear that "food flavorings" is code for chemical reagents.
+
+466
+01:13:05.641 --> 01:13:22.266
+Third, two-stage screening: an extremely lightweight probe—which reads the model's internal activations at almost zero cost—checks every conversation first, and anything suspicious is escalated to a more powerful classifier for review rather than being refused outright.
+
+467
+01:13:22.266 --> 01:13:30.828
+This way the first stage can tolerate more false positives without hurting the user experience, and the overall cost is greatly reduced.
+
+468
+01:13:30.988 --> 01:13:39.563
+But this layer has a structural ceiling: an Agent cannot reliably determine whether prompt injection has already compromised its own context.
+
+469
+01:13:39.513 --> 01:13:48.963
+The context layer can therefore lower the success rate of an attack but cannot offer a guarantee—which is exactly why the two layers below it are necessary.
+
+470
+01:13:48.963 --> 01:13:55.588
+Execution-layer guardrails govern what the model gets to do, validating an action before it takes effect.
+
+471
+01:13:55.588 --> 01:14:09.700
+At their core is tool risk rating: each tool is labelled low, medium, or high risk according to reversibility, privilege level, and financial impact, and high-risk operations require additional review or human confirmation.
+
+472
+01:14:09.700 --> 01:14:25.538
+What matters is that this review must be performed by a mechanism outside the context—an independent review process, least-privilege credentials, sandbox isolation, a human in the loop—otherwise the same attack may compromise both the Agent and its safeguards.
+
+473
+01:14:25.538 --> 01:14:47.613
+The reply returned to the user is itself an action (Chapter 4 classifies it as a user-communication tool), so output checks belong to this layer too: a PII filter screens the output for personally identifiable information such as ID or phone numbers to prevent unnecessary exposure, and output validation checks content to keep replies aligned with brand values.
+
+474
+01:14:47.613 --> 01:14:52.763
+Data-layer guardrails govern which changes the system is allowed to make to its data.
+
+475
+01:14:52.763 --> 01:15:10.013
+They enforce who may perform which operations on which records through stable, human-reviewed mechanisms: row-level security policies in the database, constraints and validators, controlled views and stored procedures, and an access context bound by a trusted runtime that cannot be forged.
+
+476
+01:15:10.013 --> 01:15:24.175
+The value of this layer is precisely that it does not depend on the two above it being correct—even if the prompt injection succeeds and the generated code omits its permission checks entirely, the unauthorized operation is still rejected at the data layer.
+
+477
+01:15:24.175 --> 01:15:29.800
+Chapter 5 develops this layer through the example of dynamically generated software.
+
+478
+01:15:29.800 --> 01:15:31.800
+Human Intervention.
+
+479
+01:15:31.800 --> 01:15:40.325
+Human-in-the-loop intervention is a key protective measure: it lets an Agent improve real-world performance without degrading the user experience.
+
+480
+01:15:40.325 --> 01:15:49.425
+It matters most in early deployment, when it helps identify failure modes, surface edge cases, and establish a robust evaluation cycle.
+
+481
+01:15:49.425 --> 01:15:55.963
+With a human-in-the-loop mechanism, an Agent that cannot complete a task can hand over control gracefully.
+
+482
+01:15:55.963 --> 01:16:04.775
+In customer service, this means escalating to a human representative; for a Coding Agent, it means handing control back to the developer.
+
+483
+01:16:04.775 --> 01:16:09.350
+There are typically two main situations that trigger human intervention:
+
+484
+01:16:09.350 --> 01:16:12.125
+Exceeding Failure Thresholds
+
+485
+01:16:12.125 --> 01:16:16.063
+Set caps on the Agent's retries and operations.
+
+486
+01:16:16.063 --> 01:16:20.213
+If the Agent exceeds those caps, escalate to a human.
+
+487
+01:16:20.213 --> 01:16:22.513
+High-Risk Operations
+
+488
+01:16:22.513 --> 01:16:32.225
+Sensitive, irreversible, or high-risk operations should trigger human oversight—at least until the team has built enough confidence in the Agent's reliability.
+
+489
+01:16:32.225 --> 01:16:37.563
+Typical examples include authorizing a large refund or processing a payment.
+
+490
+01:16:37.563 --> 01:16:43.738
+Back to the main thread of the five Harness elements—let us see how they relate to the structure of this book.
+
+491
+01:16:43.738 --> 01:16:47.288
+The Five Harness Elements and the "Building" Part.
+
+492
+01:16:47.288 --> 01:16:52.163
+The two formulas describe the same architecture at different levels of detail.
+
+493
+01:16:52.163 --> 01:17:06.375
+Agent = LLM + Context + Tools provides the organizing framework for the book: Chapters 2–6 cover construction, Chapters 7–9 cover evaluation and improvement, and Chapter 10 covers collaboration.
+
+494
+01:17:06.375 --> 01:17:18.700
+Agent = Model + Harness expands context and tools into five responsibilities for a production system: context management, tool interfaces, constraints, verification, and correction.
+
+495
+01:17:18.700 --> 01:17:26.588
+It therefore explains the architecture covered in the construction chapters, rather than providing a separate outline for all ten chapters.
+
+496
+01:17:26.588 --> 01:17:32.713
+Within that scope, the five Harness elements map cleanly onto chapters 2 through 5:
+
+497
+01:17:32.884 --> 01:17:50.521
+Harness Focus: Context Management; Corresponding Chapter: Chapter 2 (Context Engineering); Core Content: Prompt engineering, Agent status bar, context compression, Agent Skills; Security Concerns: Prompt injection and context contamination.
+
+498
+01:17:50.471 --> 01:18:09.609
+Harness Focus: Context Management Across Sessions; Corresponding Chapter: Chapter 3 (User Memory and Knowledge Bases); Core Content: User memory, RAG, structured indexing, agentic RAG; Security Concerns: Sensitive information exposure, privacy protection.
+
+499
+01:18:09.609 --> 01:18:29.846
+Harness Focus: Tool Interfaces and Constraints; Corresponding Chapter: Chapter 4 (Tools); Core Content: Tool classification, permission control, MCP standard, proactive tool discovery; Security Concerns: Misoperation, unauthorized access, irreversible operations.
+
+500
+01:18:29.846 --> 01:18:48.684
+Harness Focus: Verification and Correction; Corresponding Chapter: Chapter 5 (Coding Agents and General-Purpose Agents); Core Content: Coding Agent's Harness, test-driven development, codified rules; Security Concerns: Identity impersonation, responsibility attribution.
+
+501
+01:18:48.684 --> 01:18:58.934
+Chapter 6 (Interaction) does not belong to any of the five elements; what it expands is the modality and timing of the observation and action spaces themselves.
+
+502
+01:18:58.934 --> 01:19:04.996
+Chapters 7 through 9 ask how we know the Harness was built right, and how to keep making it better.
+
+503
+01:19:04.996 --> 01:19:10.809
+Chapter 10 replaces a single Agent's Harness with a collaboration structure among several.
+
+504
+01:19:10.809 --> 01:19:16.134
+Forcing these chapters into the five categories would make the categories less useful.
+
+505
+01:19:16.134 --> 01:19:31.246
+Security likewise is not partitioned by chapter: it is a cross-cutting concern (a problem that affects many parts of a system) running through the whole book, organized by the three guardrail layers of the previous section—context, execution, data.
+
+506
+01:19:31.246 --> 01:19:37.921
+The "Security Concerns" column above identifies the main security concerns addressed in each chapter.
+
+507
+01:19:37.921 --> 01:19:45.346
+Anthropic's practice in building long-running Agents shows how Harness design can solve problems the model itself cannot.
+
+508
+01:19:45.346 --> 01:20:06.746
+They split complex tasks between an "Initialization Agent" (setting up the environment, decomposing the task list) and an "Execution Agent" (making incremental progress each session and leaving clear handover artifacts), using a structured Harness to tackle the two failure modes of long tasks: running out of context and declaring the task done prematurely.
+
+509
+01:20:06.746 --> 01:20:19.359
+The chapters ahead work through the Harness component by component—Chapter 2 begins with the most central one, context engineering, and Chapter 5 lays out the complete practice of Harness engineering in Coding Agents.
+
+510
+01:20:19.359 --> 01:20:22.271
+Design Patterns That Run Through the Book.
+
+511
+01:20:22.271 --> 01:20:29.796
+The chapters that follow repeatedly use the same group of design patterns, so they are named and defined canonically here once.
+
+512
+01:20:29.796 --> 01:20:34.796
+Proposer-Reviewer: the creator and reviewer work in separate contexts.
+
+513
+01:20:34.796 --> 01:20:44.184
+The reviewer assesses the artifact itself—the rendered result, the test output, or the structured call arguments—rather than the creator's reasoning.
+
+514
+01:20:44.184 --> 01:20:54.484
+The premise is that self-review is unreliable: a model may struggle to recognize its own blind spots or detect whether its context has been compromised by prompt injection.
+
+515
+01:20:54.484 --> 01:21:21.109
+Chapter 3 uses it to update knowledge; Chapter 4 uses it for pre-approval and post-validation of tool calls (the Sidecar is a read-only variant); the PPT, video and log experiments of Chapter 5 are all built on it; Chapter 7 uses it to evaluate UIs; Chapter 9 uses it to review update proposals; and Chapter 10 discusses its shape in peer collaboration, and why an Agent must not review itself.
+
+516
+01:21:21.109 --> 01:21:30.046
+Progressive Disclosure: rather than putting everything into the context at once, offer a searchable catalogue first and load the details on demand.
+
+517
+01:21:30.046 --> 01:21:36.134
+It optimizes two things simultaneously—the context budget and selection accuracy.
+
+518
+01:21:36.134 --> 01:21:51.871
+Agent Skills in Chapter 2 is the archetype (metadata resident, body loaded on demand); the layered retrieval of Chapter 3, the proactive tool discovery and paginated truncation of Chapter 4, and Agent discovery in Chapter 10 are all variants.
+
+519
+01:21:52.036 --> 01:21:58.361
+Append-only: state evolves by appending, and what has been written is never revised in place.
+
+520
+01:21:58.311 --> 01:22:03.273
+What this buys is cacheability, replayability and auditability.
+
+521
+01:22:03.273 --> 01:22:11.961
+Chapter 2 shows the performance benefit of keeping the KV-cache prefix stable: changes earlier in the prefix invalidate more of the cache.
+
+522
+01:22:11.961 --> 01:22:23.086
+Chapter 3's event-based memory and Chapter 4's practice of appending newly discovered tool schemas to the trajectory, rather than inserting them into the prefix, follow the same principle.
+
+523
+01:22:23.086 --> 01:22:32.911
+Boundary Set + Retention Set: every change must be validated both on "the samples it is supposed to change" and on "the samples it must not affect".
+
+524
+01:22:32.911 --> 01:22:40.736
+Testing only the former mistakes overfitting for progress; testing only the latter mistakes an ineffective change for a safe one.
+
+525
+01:22:40.736 --> 01:22:51.661
+The regression tasks of Chapter 7, the training/evaluation isolation of Chapter 8, and the update-proposal validation of Chapter 9 all rest on this pair of sets.
+
+526
+01:22:51.661 --> 01:23:01.398
+Minimal Diff, Reversible: keep each change as small as possible, carrying its provenance, and independently revertible instead of rewritten wholesale.
+
+527
+01:23:01.398 --> 01:23:07.998
+This is what makes attribution possible—when something breaks, it can be traced to one specific change.
+
+528
+01:23:07.998 --> 01:23:26.661
+The knowledge updates of Chapter 3, the code patches of Chapter 5, and the prompt and program updates of Chapter 9 all follow it; and the three update paths given at the start of this chapter (in-context adaptation, external-artifact updates, parameter updates) are themselves ordered from most to least reversible.
+
+529
+01:23:26.661 --> 01:23:28.548
+Chapter Summary.
+
+530
+01:23:28.548 --> 01:23:34.511
+This chapter has built a practice-first framework for understanding and constructing AI Agents.
+
+531
+01:23:34.511 --> 01:23:49.098
+Agent = Reasoning Engine + Working Context + Action Interfaces: The LLM provides reasoning and decision-making, context supplies the working set of information available at decision time, and tools provide the action interfaces.
+
+532
+01:23:49.098 --> 01:23:51.798
+None of the three is dispensable.
+
+533
+01:23:51.798 --> 01:24:08.611
+Expanding Context and Tools Is the Primary Capability Lever: Once the model is fixed, redefining or enlarging the observation and action spaces—that is, expanding context and tools—can often turn an unsolvable task into a solvable one directly.
+
+534
+01:24:08.611 --> 01:24:20.986
+The evolution of both Manus and OpenClaw shows that much of an Agent's versatility comes from expanding the interfaces available to it; that expansion must remain on-demand and be paired with permissions and verification.
+
+535
+01:24:20.986 --> 01:24:31.448
+Context Is the Decisive Factor: Context consists of a static prefix (system prompt + tool definitions) and a dynamic trajectory (message history).
+
+536
+01:24:31.448 --> 01:24:46.486
+Ablation shows the components are not equivalent: removing tool definitions or tool results takes away the ability to act or to close the loop outright, while the cost of removing the other two depends on whether that information can be reconstructed from the current observations.
+
+537
+01:24:46.486 --> 01:24:53.573
+The essence of the ReAct loop is appending to the trajectory, over and over, so the model keeps advancing the task.
+
+538
+01:24:53.573 --> 01:25:08.361
+Harness Is the Competitive Advantage: Model capability is commoditizing; the real differentiator is the Harness—the constraints, verification, and correction mechanisms built around context and tools that enable reliable task completion.
+
+539
+01:25:08.361 --> 01:25:16.673
+In production-grade Agent systems, the vast majority of Harness code goes into these safeguards, not the context and tools alone.
+
+540
+01:25:16.673 --> 01:25:27.461
+From Workflow to Autonomous Agent: Prompts first, then workflows, autonomous Agents last—that ordering is the most practical way to reduce unexpected behavior.
+
+541
+01:25:27.461 --> 01:25:33.748
+Every orchestration pattern has situations where it fits; no single pattern is best everywhere.
+
+542
+01:25:33.748 --> 01:25:44.598
+Five design patterns run through the book: Proposer-Reviewer, Progressive Disclosure, Append-only, Boundary Set + Retention Set, and Minimal Diff + Reversible.
+
+543
+01:25:44.598 --> 01:25:52.486
+Security Is an Architectural Issue: Security has to be considered from the first line of code, not patched on before launch.
+
+544
+01:25:52.486 --> 01:26:01.786
+Guardrails are divided by difficulty of bypass into context, execution, and data layers; all later security discussions use this structure.
+
+545
+01:26:01.948 --> 01:26:08.160
+The next chapter examines the Harness's most central component in depth: context engineering.
+
+546
+01:26:08.110 --> 01:26:16.485
+Chapter 8 covers the Agent concept's academic roots in reinforcement learning and compares traditional RL with modern LLM Agents.
+
+547
+01:26:16.485 --> 01:26:21.560
+The thought questions below explore the chapter's core concepts in greater depth.
+
+548
+01:26:21.560 --> 01:26:25.110
+There is no single correct answer to each question.
+
+549
+01:26:25.110 --> 01:26:27.048
+Thought Questions.
+
+550
+01:26:27.048 --> 01:26:38.373
+intermediate difficulty, two stars:  If you could only add one capability to an Agent system—a stronger model, richer context, or more tools—which would you choose?
+
+551
+01:26:38.373 --> 01:26:41.410
+Under what conditions would your choice change?
+
+552
+01:26:41.410 --> 01:26:50.360
+advanced difficulty, three stars:  In a ReAct loop, cumulative cache reads grow approximately quadratically with the number of rounds.
+
+553
+01:26:50.360 --> 01:26:52.898
+How can this growth be reduced?
+
+554
+01:26:52.898 --> 01:27:01.998
+intermediate difficulty, two stars:  The "Model as Agent" paradigm means models are becoming more autonomous in tool-calling decisions.
+
+555
+01:27:01.998 --> 01:27:07.873
+However, this chapter argues that the importance of Harness engineering is actually increasing.
+
+556
+01:27:07.873 --> 01:27:10.823
+How can these two trends coexist?
+
+557
+01:27:10.823 --> 01:27:14.660
+Where does the future core value of Agent frameworks lie?
+
+558
+01:27:14.660 --> 01:27:25.673
+intermediate difficulty, two stars:  In the ablation experiment, the absence of "tool result feedback" makes the Agent retry until it exhausts its iteration budget.
+
+559
+01:27:25.673 --> 01:27:33.348
+In a production environment, besides missing tool results, what other situations could push an Agent into this kind of loop?
+
+560
+01:27:33.348 --> 01:27:37.210
+What detection and termination mechanisms would you design?
+
+561
+01:27:37.210 --> 01:27:48.085
+introductory difficulty, one star:  This chapter analyzed five Agent products along three dimensions: working context, action interfaces, and strategy.
+
+562
+01:27:48.085 --> 01:27:56.298
+Pick an AI product you use daily, analyze it along the same three dimensions, and judge whether its architecture is appropriate.
+
+563
+01:27:56.298 --> 01:27:59.510
+If you were designing it, what would you improve?
+
+564
+01:27:59.510 --> 01:28:10.085
+intermediate difficulty, two stars:  If you were to design a customer service system specifically for booking flights, would you choose a workflow pattern or an autonomous Agent pattern?
+
+565
+01:28:10.085 --> 01:28:13.885
+Is it possible to mix both patterns in the same system?
+
+566
+01:28:13.885 --> 01:28:20.098
+advanced difficulty, three stars:  The guardrails section mentioned tool risk ratings.
+
+567
+01:28:20.098 --> 01:28:33.335
+If a tool is generally low-risk but becomes high-risk with specific parameter combinations (e.g., delete_file deleting a normal file vs. deleting a system file), how would you design dynamic risk assessment?
+
+568
+01:28:33.335 --> 01:28:41.760
+intermediate difficulty, two stars:  In the Agent product table in this chapter, all Agents have an "open-ended" action space.
+
+569
+01:28:41.760 --> 01:28:50.935
+In what scenarios would a constrained action space (e.g., only being able to choose from predefined options) be superior to an open-ended one?
+
+570
+01:28:50.935 --> 01:28:59.548
+intermediate difficulty, two stars:  The human-in-the-loop intervention mechanism requires the Agent to "gracefully hand over control.
+
+571
+01:28:59.548 --> 01:29:06.785
+However, in practice, the user might be offline, respond slowly, or give vague instructions.
+
+572
+01:29:06.785 --> 01:29:09.748
+What should the Agent do in such cases?
+
+573
+01:29:09.748 --> 01:29:24.560
+advanced difficulty, three stars:  The introduction states that "good design principles should transcend model iteration cycles," but the concrete engineering methods used to implement those principles may become obsolete as model capabilities improve.
+
+574
+01:29:24.560 --> 01:29:29.110
+Give an example of such an Agent engineering method and explain why.
+

@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 280" width="240" height="280">
+  <defs>
+    <linearGradient id="alipay_grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1677ff"/>
+      <stop offset="100%" stop-color="#0958d9"/>
+    </linearGradient>
+  </defs>
+  <!-- Card background -->
+  <rect width="240" height="280" rx="16" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+  <!-- Header with Alipay icon -->
+  <path d="M0,16 Q0,0 16,0 L224,0 Q240,0 240,16 L240,48 L0,48 Z" fill="url(#alipay_grad)"/>
+  <circle cx="28" cy="24" r="12" fill="#ffffff"/>
+  <text x="24" y="29" font-family="sans-serif" font-size="14" font-weight="900" fill="#1677ff">支</text>
+  <text x="50" y="30" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="14" font-weight="700" fill="#ffffff">支付宝打赏 (Alipay)</text>
+  
+  <!-- QR Code Mock Pattern -->
+  <g transform="translate(30, 64)">
+    <rect width="180" height="180" fill="#f8fafc" rx="8" stroke="#cbd5e1" stroke-width="1"/>
+    <!-- Position Detection Patterns (Top Left, Top Right, Bottom Left) -->
+    <rect x="15" y="15" width="40" height="40" rx="6" fill="#1677ff"/>
+    <rect x="23" y="23" width="24" height="24" rx="4" fill="#ffffff"/>
+    <rect x="29" y="29" width="12" height="12" rx="2" fill="#1677ff"/>
+
+    <rect x="125" y="15" width="40" height="40" rx="6" fill="#1677ff"/>
+    <rect x="133" y="23" width="24" height="24" rx="4" fill="#ffffff"/>
+    <rect x="139" y="29" width="12" height="12" rx="2" fill="#1677ff"/>
+
+    <rect x="15" y="125" width="40" height="40" rx="6" fill="#1677ff"/>
+    <rect x="23" y="133" width="24" height="24" rx="4" fill="#ffffff"/>
+    <rect x="29" y="139" width="12" height="12" rx="2" fill="#1677ff"/>
+
+    <!-- Decorative matrix dots -->
+    <circle cx="80" cy="25" r="4" fill="#334155"/>
+    <circle cx="95" cy="25" r="4" fill="#334155"/>
+    <circle cx="70" cy="40" r="4" fill="#334155"/>
+    <circle cx="100" cy="40" r="4" fill="#334155"/>
+    <circle cx="85" cy="55" r="4" fill="#1677ff"/>
+    <circle cx="25" cy="80" r="4" fill="#334155"/>
+    <circle cx="45" cy="95" r="4" fill="#334155"/>
+    <circle cx="65" cy="80" r="4" fill="#334155"/>
+    <circle cx="80" cy="80" r="4" fill="#334155"/>
+    <circle cx="100" cy="80" r="4" fill="#334155"/>
+    <circle cx="120" cy="80" r="4" fill="#334155"/>
+    <circle cx="140" cy="95" r="4" fill="#334155"/>
+    <circle cx="155" cy="80" r="4" fill="#334155"/>
+    <circle cx="70" cy="110" r="4" fill="#334155"/>
+    <circle cx="90" cy="110" r="4" fill="#1677ff"/>
+    <circle cx="110" cy="110" r="4" fill="#334155"/>
+    <circle cx="80" cy="130" r="4" fill="#334155"/>
+    <circle cx="100" cy="130" r="4" fill="#334155"/>
+    <circle cx="125" cy="140" r="4" fill="#334155"/>
+    <circle cx="145" cy="140" r="4" fill="#334155"/>
+    <circle cx="90" cy="155" r="4" fill="#1677ff"/>
+    <circle cx="115" cy="155" r="4" fill="#334155"/>
+    
+    <!-- Center Heart Icon Badge -->
+    <rect x="75" y="75" width="30" height="30" rx="8" fill="#ffffff" stroke="#1677ff" stroke-width="2"/>
+    <text x="82" y="96" font-size="16">💖</text>
+  </g>
+  
+  <text x="120" y="262" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12" fill="#64748b">支付宝扫一扫 · 请喝咖啡</text>
+</svg>

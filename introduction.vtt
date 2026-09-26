@@ -1,0 +1,642 @@
+WEBVTT
+
+1
+00:00:00.100 --> 00:00:01.825
+Introduction .
+
+2
+00:00:01.775 --> 00:00:12.287
+From August to October 2025, I delivered a series of technical lectures at the "AI Agent Bootcamp" organized by Turing, the Chinese tech publisher.
+
+3
+00:00:12.287 --> 00:00:26.275
+The course centered on a core question: How can we design AI Agents guided by interpretable, verifiable, and reusable engineering principles, rather than relying on intuition, empirical heuristics, and endless trial-and-error?
+
+4
+00:00:26.275 --> 00:00:39.887
+Consequently, the lectures did not stop at getting a working demo; instead, they analyzed why an Agent adopts a particular architecture, along with the capability boundaries and engineering trade-offs behind each design decision.
+
+5
+00:00:39.887 --> 00:00:47.762
+This book was systematically organized, expanded, and restructured from the lecture notes and companion experiments of that course.
+
+6
+00:00:47.762 --> 00:00:52.900
+The creation of this book was itself an exercise in human-agent collaboration.
+
+7
+00:00:52.900 --> 00:01:04.925
+From initial conception to final manuscript, I primarily adopted whisper coding (dictation-based collaboration), working with Pine's voice Agent to organize materials and iterate on the text.
+
+8
+00:01:04.925 --> 00:01:13.187
+When preparing lectures, I would first dictate a chapter outline, leaving the Agent to research related work and produce draft materials.
+
+9
+00:01:13.187 --> 00:01:22.675
+After each lecture, incorporating feedback from participants, we repeatedly scrutinized and revised arguments, case studies, and experiments.
+
+10
+00:01:22.675 --> 00:01:33.250
+Speaking lowered the friction of externalizing thoughts into text and drastically compressed the iterative cycle of "pose questions → retrieve materials → generate drafts → review and revise.
+
+11
+00:01:33.250 --> 00:01:41.325
+Thus, this book not only discusses Agents; it also records a new mode of knowledge production deeply co-created with Agents.
+
+12
+00:01:41.325 --> 00:01:54.812
+Since the release of DeepSeek R1 in early 2025, the center of gravity in both AI research and industrial practice has shifted from raw foundation model capabilities to the systematic engineering deployment of Agents.
+
+13
+00:01:54.812 --> 00:02:13.800
+On the model side, Agentic Reinforcement Learning has begun to internalize tool-calling and environmental interaction capabilities directly into model parameters, endowing models with stronger general capabilities across domains such as programming (coding), mathematical reasoning, and GUI operation (computer use).
+
+14
+00:02:13.800 --> 00:02:28.212
+On the product side, general-purpose Agents such as Manus, Claude Code, and OpenClaw have reshaped human-computer interaction paradigms, establishing "code generation + file system" as a foundational architectural blueprint.
+
+15
+00:02:28.212 --> 00:02:39.762
+Re-examining the Agent architectural principles summarized during the course reveals that despite the rapid evolution of models and products, these principles still maintain enduring explanatory power.
+
+16
+00:02:39.762 --> 00:02:50.100
+While terms such as Skill, harness, and loop engineering later gained widespread industry adoption, the corresponding engineering practices emerged well beforehand.
+
+17
+00:02:50.100 --> 00:02:57.375
+Conceptual terminology represents the distillation of accumulated empirical practice, not its point of departure.
+
+18
+00:02:57.375 --> 00:03:01.975
+In other words: practice comes first, naming comes later.
+
+19
+00:03:01.975 --> 00:03:08.325
+These principles stem primarily from engineering practice in long-horizon, high-stakes environments.
+
+20
+00:03:08.325 --> 00:03:26.187
+As Chief Scientist of Pine AI, I led the development of Pine alongside our team, enabling the Agent to communicate with real humans on behalf of users and handle complex tasks involving tangible financial interests, such as bill negotiations, refund disputes, and subscription cancellations.
+
+21
+00:03:26.187 --> 00:03:37.200
+Such tasks typically span extended durations, involve multi-turn negotiations, and carry the risk that an error at any single step could lead to direct monetary loss.
+
+22
+00:03:37.200 --> 00:03:46.300
+Rigorous demands for reliability, safety, and auditability compelled us to crystallize the architectural principles emphasized throughout this book.
+
+23
+00:03:46.300 --> 00:03:50.362
+The following examples are drawn directly from this practice:
+
+24
+00:03:50.362 --> 00:04:09.625
+Well before the concept of Skills became widespread, we had already adopted dynamic prompt loading to address unbounded prompt bloat, command-line tool execution to solve tool list explosion, and system status bars to provide Agents with awareness of their runtime environment, the user's local time, and operational status.
+
+25
+00:04:09.796 --> 00:04:23.958
+Well before the term harness gained popularity, we were already employing mechanisms similar to Claude Code to mitigate unstable tool calls, hallucinations, dangerous or unauthorized operations, and instruction non-compliance.
+
+26
+00:04:23.908 --> 00:04:34.208
+Well before loop engineering became an established discipline, we were using what this book terms the proposer-reviewer pattern to prevent models from prematurely declaring tasks complete.
+
+27
+00:04:34.208 --> 00:04:38.033
+These methodologies are by no means unique to Pine.
+
+28
+00:04:38.033 --> 00:04:45.333
+Many model and Agent engineering teams arrived at similar techniques independently when tackling analogous challenges.
+
+29
+00:04:45.333 --> 00:04:51.171
+This convergence demonstrates that they reflect universal constraints inherent to Agent systems.
+
+30
+00:04:51.171 --> 00:05:07.046
+Grounded in these insights, I launched the "AI Agent Bootcamp" at Turing in 2025 and have continuously taught an AI Agent hands-on course at the University of Chinese Academy of Sciences (UCAS) from 2024 to 2026.
+
+31
+00:05:07.046 --> 00:05:17.408
+Releasing this book as open source reflects our aspiration to make this reusable knowledge and empirical experience accessible to a broader community of researchers and practitioners.
+
+32
+00:05:17.408 --> 00:05:20.933
+Practice comes first, naming comes later.
+
+33
+00:05:20.933 --> 00:05:35.908
+For enterprise Agent development, this means engineering practice cannot continually lag behind conceptual buzz: by the time a term achieves industry consensus, the underlying problem has typically undergone prolonged exploration in frontier systems.
+
+34
+00:05:35.908 --> 00:05:42.083
+To identify and resolve these challenges ahead of the curve, I believe two conditions are essential:
+
+35
+00:05:42.083 --> 00:05:50.796
+First, anchor development in authentic business scenarios that push the Agent's capability ceiling, and continually gather real-world feedback.
+
+36
+00:05:50.796 --> 00:06:04.096
+In Pine's case, a single task can span hours or even weeks, requiring iterative communication across multiple stakeholders through lengthy phone calls, intricate form filling, and multi-turn email exchanges.
+
+37
+00:06:04.096 --> 00:06:12.746
+Throughout this process, critical figures must remain error-free, operations strictly controllable, and user interests firmly protected.
+
+38
+00:06:12.746 --> 00:06:26.096
+Scenarios of sufficient complexity relentlessly expose the gap between raw model capabilities and business requirements, compelling teams to engineer harnesses that systematically bridge what models cannot yet accomplish autonomously.
+
+39
+00:06:26.096 --> 00:06:35.871
+Conversely, if business demands can be trivially satisfied by the next routine model upgrade, teams will struggle to cultivate enduring architectural principles.
+
+40
+00:06:35.871 --> 00:06:40.396
+Second, establish a systematic evaluation methodology.
+
+41
+00:06:40.396 --> 00:06:49.558
+Without evaluation, it is impossible to determine whether an observed improvement stems from genuine architectural design or mere stochastic variance.
+
+42
+00:06:49.558 --> 00:07:02.221
+Rigorous evaluation transforms Agent iteration from subjective intuition into a measurable, reproducible engineering process—serving as the cornerstone of applying the scientific method to systems development.
+
+43
+00:07:02.221 --> 00:07:05.821
+Chapter 7 is dedicated to this methodology.
+
+44
+00:07:05.821 --> 00:07:15.783
+Regardless of how underlying models advance or how product form-factors evolve, virtually all successful Agent systems converge on the same architectural patterns.
+
+45
+00:07:15.783 --> 00:07:29.758
+This is no coincidence: sound design principles should transcend individual model lifecycles, because they characterize not the usage of any specific model, but the fundamental paradigms through which intelligent systems interact with the world.
+
+46
+00:07:29.908 --> 00:07:44.070
+Richard Sutton, Turing Award laureate and father of reinforcement learning, once observed that cosmic evolution has progressed through four grand stages: from dust to stars, from stars to life, and from life to designed entities (agents).
+
+47
+00:07:44.020 --> 00:07:49.845
+Biological evolution is blind: governed by random mutation and natural selection.
+
+48
+00:07:49.845 --> 00:07:57.483
+Most organisms do not comprehend their own underlying mechanics, nor can they deliberately design or modify themselves.
+
+49
+00:07:57.483 --> 00:08:12.545
+Agents, however, represent a fundamentally new paradigm in cosmic evolution: through code generation, they can achieve bootstrapping and self-directed evolution—akin to a programmer authoring a second programmer, who in turn engineers the next.
+
+50
+00:08:12.545 --> 00:08:22.808
+That is, an Agent can comprehend its own operational mechanisms, author entirely new agents aligned with specific goals, and even iteratively enhance itself.
+
+51
+00:08:22.808 --> 00:08:28.595
+The mission of this book is to guide you in mastering the architectural principles behind this creation.
+
+52
+00:08:28.595 --> 00:08:35.470
+The core formula of this book is just one sentence: Agent = LLM + Context + Tools.
+
+53
+00:08:35.470 --> 00:08:38.170
+All three are indispensable.
+
+54
+00:08:38.170 --> 00:08:42.570
+More intuitively: Brain + Eyes + Hands and Feet.
+
+55
+00:08:42.570 --> 00:08:56.208
+The brain (LLM) is responsible for thinking and decision-making; the eyes (Context) determine what information the Agent can see; and the hands and feet (Tools) determine what actions the Agent can take.
+
+56
+00:08:56.208 --> 00:09:11.508
+Strictly speaking, "eyes" is an approximate analogy: context encompasses not only environmental information and dialogue history, but also tool definitions—meaning what the Agent "sees" also includes "which hands and feet are available.
+
+57
+00:09:11.508 --> 00:09:17.983
+This metaphor is designed to convey the core intuition: context is everything the model can perceive.
+
+58
+00:09:17.983 --> 00:09:25.033
+For readers familiar with reinforcement learning, these three can also be mapped into formal RL terminology.
+
+59
+00:09:25.033 --> 00:09:34.608
+Specifically, the LLM corresponds to the Policy, Context corresponds to the Observation Space, and Tools correspond to the Action Space.
+
+60
+00:09:34.608 --> 00:09:41.270
+These three conceptual frameworks describe the very same entity, merely at different levels of abstraction.
+
+61
+00:09:41.270 --> 00:09:43.020
+Book Structure .
+
+62
+00:09:43.020 --> 00:09:49.983
+This book comprises ten chapters structured around two closely interconnected questions (Figure 0-2).
+
+63
+00:09:49.983 --> 00:10:05.545
+Part I, "How to Build an Agent" (Chapters 1 through 6), starts from foundational concepts and progressively explores context, user memory and knowledge bases, tools, Coding Agents, and the expansion of observation and action spaces.
+
+64
+00:10:05.545 --> 00:10:28.670
+Part II, "How to Enhance Agent Capabilities" (Chapters 7 through 10), first establishes measurable empirical feedback via evaluation, and then scales capabilities across three distinct dimensions: model parameters (post-training), monolithic system level (continuous evolution from operational experience), and multi-agent systems (collaborative orchestration).
+
+65
+00:10:28.670 --> 00:10:32.470
+Chapter 1: Getting Started with AI Agents.
+
+66
+00:10:32.470 --> 00:10:37.595
+begins with real-world Agent products to build an intuitive grasp of Agents.
+
+67
+00:10:37.595 --> 00:10:53.183
+It thoroughly dissects the core formula across three tiers: implementation (LLM + Context + Tools), intuition (Brain + Eyes + Hands and Feet), and formal theory (Policy, Observation Space, and Action Space).
+
+68
+00:10:53.183 --> 00:11:12.345
+Through hands-on experiments, it examines the concrete mechanics of the ReAct loop ("Think → Act → Observe") and distinguishes among three adaptation mechanisms operating at different timescales: within-task contextual adaptation, cross-task updates to external artifacts, and parameter updates during training cycles.
+
+69
+00:11:12.345 --> 00:11:22.683
+Finally, it surveys orchestration patterns from deterministic workflows to fully autonomous Agents, establishing a unified conceptual foundation for the chapters that follow.
+
+70
+00:11:22.852 --> 00:11:26.077
+Chapter 2: Context Engineering.
+
+71
+00:11:26.027 --> 00:11:31.764
+is the most critical chapter in the book, systematically unpacking the "Eyes" dimension.
+
+72
+00:11:31.764 --> 00:11:40.427
+Starting from API message structures and the core Agent loop, it establishes the fundamental premise that "Context is a list of messages.
+
+73
+00:11:40.427 --> 00:11:48.914
+It deeply analyzes the mechanics of KV Cache—the cornerstone of reusing historical computation during LLM inference.
+
+74
+00:11:48.914 --> 00:12:06.739
+It then explores Prompt Engineering methodologies including process-oriented design, tool descriptions, and business rule refinement; Prompt Injection attacks and defenses; the on-demand loading mechanism of Agent Skills; Agent status bar techniques; and Context Compression strategies.
+
+75
+00:12:06.739 --> 00:12:10.739
+Chapter 3: User Memory and Knowledge Bases.
+
+76
+00:12:10.739 --> 00:12:23.014
+extends context management into a persistent cross-session knowledge system, enabling Agents not only to retain the active conversation, but also to accumulate and retrieve knowledge across multiple interactions.
+
+77
+00:12:23.014 --> 00:12:47.064
+It examines four progressive implementations of user memory; covers the complete RAG (Retrieval-Augmented Generation) technology stack from text chunking, dense and sparse retrieval, to hybrid search and re-ranking; explores multimodal information extraction and advanced knowledge organization; and investigates Agentic RAG, where the Agent autonomously decides when and how to retrieve information.
+
+78
+00:12:47.064 --> 00:12:49.714
+Chapter 4: Tools.
+
+79
+00:12:49.714 --> 00:12:57.139
+explores the bridge connecting the Agent with the external world, systematically expanding the "Hands and Feet" dimension.
+
+80
+00:12:57.139 --> 00:13:20.377
+It introduces the Model Context Protocol (MCP) tool interoperability standard and design principles across five tool categories (Perception, Execution, Collaboration, Event Triggering, and User Communication); discusses implementation pathways for multimodal perception; and places special emphasis on security mechanisms and permission control for execution tools.
+
+81
+00:13:20.377 --> 00:13:24.789
+Chapter 5: Coding Agents and General-Purpose Agents.
+
+82
+00:13:24.789 --> 00:13:32.252
+proposes that "Coding Agent + File System" constitutes the core technical bedrock for general-purpose Agents.
+
+83
+00:13:32.252 --> 00:13:51.964
+Using the OpenClaw architecture as an organizing thread, it dissects the workflows and implementation techniques of Coding Agents, while revealing the extensive value of code generation beyond programming—from assisting human reasoning and constructing knowledge bases, to dynamically synthesizing new tools and enabling Agent bootstrapping.
+
+84
+00:13:51.964 --> 00:13:57.514
+Chapter 6: Interaction: Expanding the Observation and Action Spaces.
+
+85
+00:13:57.514 --> 00:14:08.202
+breaks the turn-taking, request-response paradigm assumed in the first five chapters, expanding the Agent's interactive capabilities across both modal and temporal dimensions.
+
+86
+00:14:08.202 --> 00:14:40.614
+Asynchronous, event-driven designs allow the world to proactively wake the Agent (event-triggered tools, user communication tools, virtual identities, and isolated execution sandboxes); voice pushes interaction latencies to the millisecond scale (from cascaded pipelines to end-to-end omnimodal, full-duplex models); Computer Use empowers Agents to operate graphical user interfaces like a human; and embodied manipulation (robotics) projects the action space into the physical world (VLA control
+
+87
+00:14:40.614 --> 00:14:43.202
+and Sim2Real transfer).
+
+88
+00:14:43.202 --> 00:14:53.639
+All four domains share a common set of underlying primitives: wake-up, safepoints, cancellation, preemption, and fast/slow loop separation.
+
+89
+00:14:53.639 --> 00:14:56.989
+Chapter 7: Evaluating Agents.
+
+90
+00:14:56.989 --> 00:15:01.552
+constructs a rigorous, scientific evaluation methodology.
+
+91
+00:15:01.552 --> 00:15:23.964
+It covers evaluation environments (centering on tool calling and human-computer interaction, with simulation environments examined independently at the chapter's conclusion), dataset design principles, LLM-as-a-Judge automated evaluation, evaluation-driven model selection, and the end-to-end closed loop that translates evaluation findings into concrete system enhancements.
+
+92
+00:15:24.124 --> 00:15:27.124
+Chapter 8: Model Post-Training.
+
+93
+00:15:27.074 --> 00:15:36.336
+thoroughly explores the two primary post-training paradigms: Supervised Fine-Tuning (SFT) and Reinforcement Learning (RL).
+
+94
+00:15:36.336 --> 00:15:51.449
+Structured around two core theses—"SFT handles memorization, RL drives generalization" and "Data and environments trump algorithms"—it provides an end-to-end panoramic view across pre-training, SFT, and RL.
+
+95
+00:15:51.449 --> 00:16:10.374
+Topics include classical RL foundations; reward signal engineering (from binary outcome rewards and process rewards to "reward outcomes, constrain process" verified-path penalties); single-turn and multi-turn RL algorithms; and frontier advances in sample efficiency optimization.
+
+96
+00:16:10.374 --> 00:16:14.211
+Chapter 9: Continual Evolution of Agents.
+
+97
+00:16:14.211 --> 00:16:20.374
+investigates how to convert an Agent's operational experience into capabilities for its next version.
+
+98
+00:16:20.374 --> 00:16:44.086
+It first defines learning signals composed of environmental outcomes, process rules, and LLM Rubrics; then systematically compares four distinct update substrates: knowledge documents, Prompts & Skills, programs & Harnesses, and model parameters; and finally examines candidate validation, canary rollouts, rollback mechanisms, and long-term consolidation.
+
+99
+00:16:44.086 --> 00:16:47.486
+Chapter 10: Multi-Agent Collaboration.
+
+100
+00:16:47.486 --> 00:16:55.861
+scales from monolithic agent capabilities to system-level coordination, exploring how multiple Agents divide labor and collaborate.
+
+101
+00:16:55.861 --> 00:17:18.724
+It presents a systematic classification framework for multi-agent collaboration (Shared vs. Isolated Context × Peer vs. Manager vs. Decentralized topologies), demonstrates collaborative architectural designs through concrete case studies (including a Translation Agent and Phone-Computer Coordination Agents), and explores frontier directions in Agent societies and Agent economies.
+
+102
+00:17:18.724 --> 00:17:20.786
+How to Read This Book .
+
+103
+00:17:20.786 --> 00:17:28.774
+The chapters of this book are relatively self-contained; you can tailor your reading journey based on your specific background and objectives:
+
+104
+00:17:28.774 --> 00:17:46.486
+If you are an Agent developer, we recommend reading the book sequentially: Chapters 1 through 6 establish complete methodologies for building Agents, while Chapters 7 through 10 address capability scaling across evaluation, post-training, continual evolution, and multi-agent coordination.
+
+105
+00:17:46.486 --> 00:17:57.799
+If your time is limited, prioritize Chapter 1 (to establish global architectural intuition) and Chapter 2 (to master the indispensable discipline of Context Engineering).
+
+106
+00:17:57.799 --> 00:18:11.724
+Because the low-level mechanics of KV Cache in Chapter 2 are quite technical, you may skim the underlying derivations on first read and focus on the three core takeaways highlighted at the start without impeding comprehension of subsequent sections.
+
+107
+00:18:11.724 --> 00:18:18.211
+If your primary focus is model training, you can jump directly to Chapter 8 (Model Post-Training).
+
+108
+00:18:18.211 --> 00:18:30.374
+Since rigorous evaluation (Chapter 7) is a strict prerequisite for training, we advise reading them in tandem, having first reviewed Chapters 1 and 2 to establish architectural grounding.
+
+109
+00:18:30.374 --> 00:18:41.561
+Each chapter contains a large number of experiments and thought questions, numbered in the format "Experiment X-Y" (where X is the chapter number and Y is the within-chapter index).
+
+110
+00:18:41.561 --> 00:19:02.274
+Experiment and thought question titles indicate difficulty via star ratings: One star denotes introductory level, suitable for all readers; ★One star denotes intermediate difficulty, requiring practical engineering experience; ★★One star denotes advanced challenges, typically involving open-ended inquiries or complex systems design.
+
+111
+00:19:02.274 --> 00:19:09.111
+Most experiments are accompanied by complete, runnable code hosted in our companion open-source repository:
+
+112
+00:19:09.111 --> 00:19:14.336
+The companion code is available on GitHub in the ai-agent-book repository.
+
+113
+00:19:14.336 --> 00:19:17.749
+You can clone the entire codebase using Git:
+
+114
+00:19:17.749 --> 00:19:23.874
+For example, you can clone the repository from GitHub or download the complete ZIP archive.
+
+115
+00:19:24.028 --> 00:19:30.565
+Readers unfamiliar with Git can also navigate to the repository page and click Code → Download ZIP.
+
+116
+00:19:30.515 --> 00:19:36.465
+Experiment code is organized by chapter in `chapter1/` through `chapter10/`.
+
+117
+00:19:36.465 --> 00:19:52.340
+To locate "Experiment X-Y," first open the corresponding `chapterX/README.md` (or `README.en.md`), find the project directory by experiment number, and follow the project's own README to install dependencies and run the code.
+
+118
+00:19:52.340 --> 00:20:03.115
+Certain experiments designated as "reproduction guides" rely on external repositories; detailed instructions for accessing them are provided in their respective README files.
+
+119
+00:20:03.115 --> 00:20:07.165
+I strongly encourage you to run these experiments hands-on.
+
+120
+00:20:07.165 --> 00:20:16.353
+AI Agent engineering is an intensely empirical discipline; many architectural intuitions can only be genuinely forged through active debugging.
+
+121
+00:20:16.353 --> 00:20:18.290
+Prerequisites .
+
+122
+00:20:18.290 --> 00:20:26.053
+This book is intended for readers with some technical foundation, but does not require expertise in any specialized subfield.
+
+123
+00:20:26.053 --> 00:20:33.290
+The prerequisites below are categorized into "Required" and "Recommended" tiers to help you assess your readiness.
+
+124
+00:20:33.290 --> 00:20:49.290
+A Terminology Note: This book carefully distinguishes two terms that casual usage often conflates: Reasoning denotes the model's step-by-step thinking process during generation (as in reasoning models, chain-of-thought, and reasoning tokens; rendered in Chinese as 思考).
+
+125
+00:20:49.290 --> 00:20:59.890
+Inference denotes the model's forward computation at deployment time (as in inference cost, inference serving stack, and inference-time compute; rendered in Chinese as 推理).
+
+126
+00:20:59.890 --> 00:21:04.703
+Keeping these two concepts distinct is vital for clean system design.
+
+127
+00:21:04.703 --> 00:21:08.315
+Required: Foundations for the Entire Book
+
+128
+00:21:08.315 --> 00:21:14.103
+Python Programming: Virtually all experiments in this book are implemented in Python.
+
+129
+00:21:14.103 --> 00:21:20.890
+You should be familiar with basic syntax, standard data structures, and package management (`pip`).
+
+130
+00:21:20.890 --> 00:21:27.565
+Mastery is not required, but you should comfortably read and modify Python code of moderate complexity.
+
+131
+00:21:27.565 --> 00:21:39.928
+Basic Experience with LLMs: You should have hands-on experience with ChatGPT, Claude, or comparable systems, and understand the foundational interaction pattern of "Prompt → Model Response.
+
+132
+00:21:39.928 --> 00:21:52.178
+An AI-Assisted Programming Tool: We strongly recommend installing and familiarizing yourself with at least one AI coding assistant (such as Claude Code, Codex, Cursor, or TRAE).
+
+133
+00:21:52.178 --> 00:21:59.578
+On one hand, these tools drastically boost experiment productivity given the extensive coding and debugging involved.
+
+134
+00:21:59.578 --> 00:22:14.515
+On the other hand, these programming assistants are themselves mature Coding Agents: by using them daily, you will intuitively experience core mechanisms explored throughout this book—including the ReAct loop, tool invocation, and context management.
+
+135
+00:22:14.515 --> 00:22:20.215
+This firsthand exposure provides invaluable intuition for Agent design principles.
+
+136
+00:22:20.215 --> 00:22:30.715
+General Software Engineering Fundamentals: Familiarity with command-line operations, Git version control, JSON data interchange, and RESTful APIs.
+
+137
+00:22:30.715 --> 00:22:37.690
+These concepts form the operational bedrock for executing experiments and understanding tool-calling mechanisms.
+
+138
+00:22:37.690 --> 00:22:41.328
+Recommended: Enhancing Specific Chapters
+
+139
+00:22:41.328 --> 00:22:52.253
+Machine Learning Fundamentals (Chapter 8): Familiarity with training vs. inference, loss functions, gradient descent, and overfitting will aid in grasping model post-training.
+
+140
+00:22:52.253 --> 00:23:13.628
+Elementary Mathematics (Chapters 2–3, 8): An intuitive grasp of linear algebra (e.g., vectors representing direction and magnitude, matrices performing batch transformations) helps demystify embeddings and attention mechanisms; basic probability and statistics illuminate evaluation metrics and expected rewards in reinforcement learning.
+
+141
+00:23:13.628 --> 00:23:21.140
+Mathematics in this book avoids gratuitous formal derivations, prioritizing physical and geometric intuition.
+
+142
+00:23:21.140 --> 00:23:35.428
+Web Development Fundamentals (Chapter 6): Understanding HTTP, WebSockets, and client-server architectures will contextualize event-driven asynchronous Agent architectures and real-time voice Agent communication experiments.
+
+143
+00:23:35.596 --> 00:23:44.883
+Basic Understanding of the Transformer Architecture (Chapters 2, 8): Transformers underpin virtually all contemporary large language models.
+
+144
+00:23:44.833 --> 00:24:02.558
+For readers seeking a visual, foundational primer, we recommend Illustrating Large Models (《图解大模型》, published in Chinese by Turing), which uses intuitive visual diagrams to explain Transformers, pre-training, and fine-tuning—forming an ideal complement to this book's systems-engineering perspective.
+
+145
+00:24:02.558 --> 00:24:07.258
+If you find yourself lacking certain prerequisites, do not be deterred.
+
+146
+00:24:07.258 --> 00:24:16.733
+The core value of this book resides in architectural design principles and engineering methodology, rather than isolated algorithms or transient tricks.
+
+147
+00:24:16.733 --> 00:24:26.046
+Outside of Chapter 8 on post-training, mathematical and machine learning prerequisites remain minimal, making this book fully approachable as a starting point.
+
+148
+00:24:26.046 --> 00:24:35.946
+Agent technology continues to evolve at a blistering pace, but sound architectural design principles possess the resilience to transcend technological waves.
+
+149
+00:24:35.946 --> 00:24:42.771
+Once you master why systems are designed the way they are, you will maintain clear discernment amid industry shifts.
+
+150
+00:24:42.771 --> 00:24:48.808
+It is my sincere hope that this book serves as your trustworthy guide in engineering AI Agents.
+
+151
+00:24:48.808 --> 00:24:50.721
+Acknowledgments .
+
+152
+00:24:50.721 --> 00:25:02.946
+I would like to express my heartfelt gratitude to Meng Ge and Liu Meiying, editors at Turing, for their meticulous editorial work and their dedication in organizing the Turing "AI Agent Bootcamp" course.
+
+153
+00:25:02.946 --> 00:25:11.558
+I am equally grateful to Professor Liu Junming for offering the hands-on AI Agent course at the University of Chinese Academy of Sciences.
+
+154
+00:25:11.558 --> 00:25:28.521
+My sincere thanks also go to all participants of the Turing "AI Agent Bootcamp" and all students of the UCAS AI Agent course—in the course of lecturing, your thoughtful feedback and probing questions provided tremendous inspiration and sharpened my own understanding of these concepts.
+
+155
+00:25:28.521 --> 00:25:33.121
+I extend deep appreciation to all my colleagues at Pine AI.
+
+156
+00:25:33.121 --> 00:25:48.408
+Without an exceptional product like Pine AI and the demanding real-world challenges it posed, achieving such profound practical insights into the Agent domain would have been impossible; in countless brainstorming sessions, my colleagues offered invaluable perspectives.
+
+157
+00:25:48.408 --> 00:25:54.771
+I am also indebted to many friends across the AI industry (too numerous to name individually).
+
+158
+00:25:54.771 --> 00:26:03.333
+Throughout our industry discussions, your candid feedback corrected many of my misconceptions and elevated my comprehension of models and Agents.
+
+159
+00:26:03.333 --> 00:26:09.733
+Most of all, my deepest gratitude goes to my family, especially my wife, Meng Jiaying.
+
+160
+00:26:09.733 --> 00:26:16.883
+Her unwavering support enabled me to complete this book, and her keen feedback substantially improved the manuscript.
+

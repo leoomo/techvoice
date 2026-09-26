@@ -1,0 +1,4182 @@
+WEBVTT
+
+1
+00:00:00.100 --> 00:00:03.100
+Chapter 8: Model Post-Training.
+
+2
+00:00:03.050 --> 00:00:08.762
+The core formula of this book is Agent = LLM + Context + Tools.
+
+3
+00:00:08.762 --> 00:00:13.050
+This chapter turns to the LLM itself—the "brain.
+
+4
+00:00:13.050 --> 00:00:24.812
+We first use Mid-training to fill gaps in domain knowledge and foundational capabilities, then use post-training methods such as SFT and RL to shape how the model uses context and tools.
+
+5
+00:00:24.812 --> 00:00:38.125
+The end of Chapter 7 pointed out that the evaluation system and simulation environment are the two cornerstones of post-training: the evaluation environment gives training its practice ground, and the evaluation metrics give it its target.
+
+6
+00:00:38.125 --> 00:00:46.412
+This chapter builds on those cornerstones and discusses how to actually change model weights—how to bake capability into the parameters.
+
+7
+00:00:46.412 --> 00:00:51.400
+This chapter assumes no background in reinforcement learning or model training.
+
+8
+00:00:51.400 --> 00:00:55.587
+We don't expect you to know gradients or policy optimization.
+
+9
+00:00:55.587 --> 00:01:04.925
+Instead, we start from the question of how a model gets trained at all, making clear what each step is for, how it works, and what problem it solves.
+
+10
+00:01:04.925 --> 00:01:12.175
+By the end of the chapter, you should be able to answer the following questions: At what stages are model capabilities formed?
+
+11
+00:01:12.175 --> 00:01:14.387
+What does each stage do?
+
+12
+00:01:14.387 --> 00:01:18.775
+How are the stages commonly combined, and when can the order differ?
+
+13
+00:01:18.775 --> 00:01:22.450
+And where should you focus your effort in your own projects?
+
+14
+00:01:22.450 --> 00:01:30.462
+First, let's establish the most important map: modern model capability development can usually be divided into four parts.
+
+15
+00:01:30.462 --> 00:01:43.062
+Pre-training lays the general foundation, Mid-training fills knowledge and capability gaps on the target distribution, and SFT and RL then shape behavior according to output requirements and task objectives.
+
+16
+00:01:43.062 --> 00:01:48.275
+Pre-training: Training on massive internet text to "predict the next token.
+
+17
+00:01:48.275 --> 00:01:53.825
+This step teaches the model language rules, world knowledge, and basic reasoning.
+
+18
+00:01:53.825 --> 00:02:00.650
+It's like a person who has read all the books in a library—erudite, but not yet good at answering questions.
+
+19
+00:02:00.650 --> 00:02:07.825
+This is the most expensive step (often tens of millions of dollars) and the foundation of all capabilities.
+
+20
+00:02:07.825 --> 00:02:21.912
+Mid-training (intermediate training or continued pre-training): Starting from an existing base model, continue language modeling on target-language data, domain documents, code, long contexts, or deliberately designed capability data.
+
+21
+00:02:21.912 --> 00:02:29.700
+It does not rebuild the foundation from scratch; it fills in the "textbook chapters" that general pre-training covered poorly.
+
+22
+00:02:29.700 --> 00:02:40.312
+It uses less data and compute than full pre-training and is better suited than SFT to absorbing large bodies of knowledge and forming the basic representations a task requires.
+
+23
+00:02:40.312 --> 00:02:53.125
+Some teams treat Mid-training as the latter part of pre-training; others call it Continued Pre-training (CPT), Domain-Adaptive Pre-training (DAPT), or Task-Adaptive Pre-training (TAPT).
+
+24
+00:02:53.125 --> 00:03:02.225
+Supervised Fine-Tuning (SFT): Training the model on labeled input-output pairs, much like a teacher giving a student standard answers to imitate.
+
+25
+00:03:02.225 --> 00:03:11.162
+Thousands to tens of thousands of question–reference response pairs teach the model what format, style, and process to use when responding.
+
+26
+00:03:11.162 --> 00:03:19.162
+This step transforms a knowledgeable and capable model into an assistant that understands instructions and produces well-structured outputs.
+
+27
+00:03:19.162 --> 00:03:24.787
+It is cheap, fast, and stable, and almost all deployed models undergo it.
+
+28
+00:03:24.787 --> 00:03:34.275
+Reinforcement Learning (RL): Letting the model try repeatedly and improve from rewards and penalties, much like reviewing exercises according to their scores.
+
+29
+00:03:34.275 --> 00:03:45.662
+Instead of directly imitating the tokens of a standard response, RL lets the model try on its own, increasing the probability of good behavior and decreasing the probability of poor behavior.
+
+30
+00:03:45.662 --> 00:04:01.562
+When the base model can already succeed occasionally, and the rewards, data, and environment are well designed, this step can improve decisions in unseen situations—and it is also the step that takes up the most space in this chapter and requires the most engineering effort.
+
+31
+00:04:01.732 --> 00:04:18.344
+An intuitive analogy: Pre-training is a general education, Mid-training is an intensive study of specialist textbooks, SFT is a teacher demonstrating solution and communication conventions, and RL is working problems yourself and refining your approach from the outcomes.
+
+32
+00:04:18.294 --> 00:04:21.944
+This chapter has two main threads that run throughout.
+
+33
+00:04:21.944 --> 00:04:26.107
+Please remember them, as all subsequent content serves them:
+
+34
+00:04:26.107 --> 00:04:34.432
+Thread One: In this chapter's controlled experiments, SFT tends to memorize demonstrations while RL generalizes better.
+
+35
+00:04:34.432 --> 00:04:46.794
+Under the same task, model, and budget in GeneralPoints and V-IRL, SFT overfits the training answers, while RL more often learns a transferable strategy under the tested distribution shifts.
+
+36
+00:04:46.794 --> 00:05:01.907
+This is a measured result under those experimental conditions, not a universal property of SFT and RL: SFT can generalize with diverse data and appropriate regularization, and RL can overfit when its reward or environment is biased.
+
+37
+00:05:01.907 --> 00:05:16.732
+This chapter uses "SFT memorizes, RL generalizes" as shorthand for these experiments, and the section "From Pre-training to RL: An Overview of the Four Training Stages" explains why the two objectives can produce that difference.
+
+38
+00:05:16.732 --> 00:05:21.269
+Thread Two: Data and environment matter more than algorithms.
+
+39
+00:05:21.269 --> 00:05:25.844
+This is the industry's most counterintuitive and most valuable lesson.
+
+40
+00:05:25.844 --> 00:05:32.707
+With off-the-shelf RL algorithms such as PPO and GRPO, knowing how to use them is enough.
+
+41
+00:05:32.707 --> 00:05:47.557
+What actually determines success are three things: whether the Mid-training corpus repairs the foundation, whether the demonstration data establishes a behavioral protocol, and whether the simulation environment and reward provide reliable trial-and-error feedback.
+
+42
+00:05:47.557 --> 00:05:54.032
+In many scenarios, if the first two kinds of data are good enough, RL is not needed at all.
+
+43
+00:05:54.032 --> 00:06:02.582
+This chapter will repeatedly redirect your attention from "which algorithm should I tune?" to "have the data and environment been set up correctly?
+
+44
+00:06:02.582 --> 00:06:08.907
+Reading Guide: The content of this chapter is divided into two paths based on the reader's background:
+
+45
+00:06:08.907 --> 00:06:20.394
+Agent Application Developers (don't need to train models themselves): Start by reading the opening "From Pre-training to RL: An Overview of the Four Training Stages" to build a global understanding.
+
+46
+00:06:20.394 --> 00:06:29.519
+Then you can skip the two [Optional Reading] sections on classic RL and pre-training background and continue from the standalone Mid-training section.
+
+47
+00:06:29.519 --> 00:06:46.819
+Focus on the decision framework for choosing Mid-training, SFT, and RL, as well as the judgment that "data and environment are more important than algorithms"—these insights will influence your design decisions in Harness engineering, including when a prompt is enough and when training is worthwhile.
+
+48
+00:06:46.819 --> 00:06:51.182
+Model Training Engineers: Read sequentially from the beginning.
+
+49
+00:06:51.182 --> 00:06:57.982
+The two [Optional Reading] sections provide complete background on reinforcement learning and pre-training.
+
+50
+00:06:57.982 --> 00:07:02.494
+The subsequent experiments provide reproducible training schemes.
+
+51
+00:07:02.494 --> 00:07:07.319
+From Pre-training to RL: An Overview of the Four Training Stages.
+
+52
+00:07:07.319 --> 00:07:13.044
+The introduction gave you the four-part map; this section works through the mechanics of each part.
+
+53
+00:07:13.044 --> 00:07:17.919
+They differ in their data, optimization objectives, and costs.
+
+54
+00:07:17.919 --> 00:07:22.219
+Understanding those differences is the key to the entire chapter.
+
+55
+00:07:22.219 --> 00:07:26.519
+Table 8-1 gives the overview; the details follow.
+
+56
+00:07:26.519 --> 00:07:30.932
+Table 8-1 The Four Parts of Model Capability Development
+
+57
+00:07:30.932 --> 00:07:48.244
+Stage: Pre-training; Data Used: Massive raw internet text; Optimization Objective: Predict the next token; What Is Learned: Language rules, world knowledge, basic reasoning; Typical Cost: Very High (millions to tens of millions USD).
+
+58
+00:07:48.244 --> 00:08:13.157
+Stage: Mid-training; Data Used: Target-language/domain/capability corpora plus retention data; Optimization Objective: Continue next-token prediction (usually with loss on every token); What Is Learned: Fill gaps in domain knowledge, language, and foundational capabilities; Typical Cost: Medium to high, depending on token volume and whether all parameters are trained.
+
+59
+00:08:13.324 --> 00:08:34.949
+Stage: SFT; Data Used: Thousands to tens of thousands of "input-output" demonstration pairs; Optimization Objective: Predict the next token (loss calculated only on the response); What Is Learned: Instruction following, output format, style, process protocol; Typical Cost: Low (hours to days).
+
+60
+00:08:34.899 --> 00:08:55.449
+Stage: RL; Data Used: Task and environment + reward signal (reference answers optional); Optimization Objective: Maximize expected reward; What Is Learned: Transferable decision-making strategy, newly discovered solutions; Typical Cost: High (often tens to hundreds of times that of SFT).
+
+61
+00:08:55.449 --> 00:08:59.261
+What Pre-training Does: Predicting the Next Token.
+
+62
+00:08:59.261 --> 00:09:07.674
+All the "intelligence" of modern large models is built on a task so simple it's surprising: Next Token Prediction (NTP).
+
+63
+00:09:07.674 --> 00:09:12.124
+Show the model the first part of a text and have it guess the next token.
+
+64
+00:09:12.124 --> 00:09:19.774
+For example, given the input "The capital of China is," the model should assign a high probability to "Beijing.
+
+65
+00:09:19.774 --> 00:09:25.136
+Each time the model guesses, it compares its prediction to the actual next token.
+
+66
+00:09:25.136 --> 00:09:33.274
+The larger the difference (called the loss), the more it adjusts its parameters to guess more accurately in similar contexts next time.
+
+67
+00:09:33.274 --> 00:09:51.624
+By repeatedly doing this on trillions of tokens of internet text, the model is forced to learn grammar, facts, logic, and even basic reasoning—because to consistently guess the next token correctly across a vast range of contexts, there's no shortcut; it must truly "digest" the patterns in the text.
+
+68
+00:09:51.624 --> 00:10:00.936
+There's a key point to remember that will carry through to Mid-training, SFT, and RL: The model's output is essentially a probability distribution.
+
+69
+00:10:00.936 --> 00:10:07.711
+Given the preceding text, the model assigns a probability to every possible token in its vocabulary.
+
+70
+00:10:07.711 --> 00:10:16.699
+Training," at its core, is adjusting this probability distribution—making the probability of desired tokens higher and undesired ones lower.
+
+71
+00:10:16.699 --> 00:10:23.424
+The difference among the four parts lies only in "what is desired" and "what signal defines desired.
+
+72
+00:10:23.424 --> 00:10:36.924
+After pre-training, the model is erudite but not user-friendly: if you ask it a question, it might continue generating more questions instead of answering—because in internet text, a question is often followed by another question.
+
+73
+00:10:36.924 --> 00:10:41.886
+It hasn't yet learned the protocol of "when asked a question, you should answer.
+
+74
+00:10:41.886 --> 00:10:46.686
+The Essence of Mid-training: Continue Learning on the Target Distribution.
+
+75
+00:10:46.686 --> 00:10:52.049
+General pre-training cannot cover every language, domain, and capability.
+
+76
+00:10:52.049 --> 00:11:12.374
+If a model can barely read Korean documents, does not understand an enterprise's internal protocols, or has never formed the code and long-context representations required by the target task, skipping this stage and jumping straight to teaching it "how to answer" or rewarding only success and failure cannot fill in those missing foundational capabilities.
+
+77
+00:11:12.374 --> 00:11:22.124
+Mid-training retains pre-training's next-token objective but narrows the data distribution to the target domain and mixes in general retention data to control forgetting.
+
+78
+00:11:22.124 --> 00:11:32.361
+It asks whether the model possesses the knowledge and foundational capabilities needed to complete the task—not what the response should look like or which policy earns the highest reward.
+
+79
+00:11:32.361 --> 00:11:40.224
+Mid-training and SFT may appear to use similar loss functions, but their data organization and supervision density differ.
+
+80
+00:11:40.224 --> 00:11:48.236
+Mid-training usually treats whole documents, code, or derivations as learning targets and computes loss over many tokens.
+
+81
+00:11:48.236 --> 00:11:55.661
+SFT organizes data as input-output demonstrations and usually computes loss only on response tokens.
+
+82
+00:11:55.661 --> 00:12:09.761
+It is technically possible to make a model memorize some facts through a small question-answer SFT set, but this repeatedly reinforces only a few access paths: the model may memorize the questions without forming broadly accessible knowledge.
+
+83
+00:12:09.761 --> 00:12:19.236
+Prefer Mid-training when absorbing large, interconnected bodies of domain knowledge; prefer RAG when the knowledge must remain updateable and traceable.
+
+84
+00:12:19.236 --> 00:12:23.999
+The Essence of SFT: "Predict the Next Token" with Different Data.
+
+85
+00:12:24.148 --> 00:12:35.260
+This is the first key insight to grasp in this chapter: Mathematically, SFT and pre-training are the same task—both predict the next token and minimize the same loss function.
+
+86
+00:12:35.210 --> 00:12:40.160
+Many beginners think SFT is a completely new method, but it's not.
+
+87
+00:12:40.160 --> 00:12:45.010
+The difference between SFT and pre-training lies in just two things:
+
+88
+00:12:45.010 --> 00:12:46.710
+Different Data.
+
+89
+00:12:46.710 --> 00:12:59.073
+Pre-training uses raw internet text (unstructured, containing everything); SFT uses carefully prepared "input-output" pairs, uniformly formatted as "user question → ideal answer.
+
+90
+00:12:59.073 --> 00:13:08.635
+The model continues "predicting the next token" on these demonstrations, thereby learning the protocol of "how to structure a response when asked a question.
+
+91
+00:13:08.635 --> 00:13:13.160
+Loss is calculated only on the "response" (loss masking).
+
+92
+00:13:13.160 --> 00:13:17.873
+An SFT sample consists of a question and a labeled response.
+
+93
+00:13:17.873 --> 00:13:23.198
+We don't want the model to learn "how to ask a question," only "how to answer.
+
+94
+00:13:23.198 --> 00:13:32.035
+So, when calculating the loss, the tokens in the question part are masked, and gradients are backpropagated only through the response portion.
+
+95
+00:13:32.035 --> 00:13:37.310
+This is the only substantive engineering difference between SFT and pre-training.
+
+96
+00:13:37.310 --> 00:13:52.260
+Once you see this, it becomes clear why SFT can exhibit memorization on limited demonstrations: its optimization goal is to maximize the probability of every token in the labeled response, reproducing the demonstration as closely as possible.
+
+97
+00:13:52.260 --> 00:13:59.735
+For tasks with clear goals and fixed formats, this is extremely efficient—a few thousand examples suffice.
+
+98
+00:13:59.735 --> 00:14:09.460
+But when coverage and diversity are insufficient, the model may overfit surface patterns or shortcuts in the demonstrations and lose performance under distribution shift.
+
+99
+00:14:09.460 --> 00:14:18.660
+In a nutshell, SFT uses extremely high sample efficiency to encode a stable input-to-output mapping and protocol in the model's parameters.
+
+100
+00:14:18.660 --> 00:14:30.123
+It encodes protocol knowledge—how to say or do something, including format, style, and process—rather than large amounts of factual knowledge—what the model knows.
+
+101
+00:14:30.123 --> 00:14:33.760
+The latter relies on pre-training or RAG.
+
+102
+00:14:33.760 --> 00:14:37.760
+Training Cost: LoRA Parameter-Efficient Fine-Tuning.
+
+103
+00:14:37.760 --> 00:14:50.710
+Both SFT and the subsequent RL require updating model parameters, and full-parameter fine-tuning has high VRAM requirements (needing to store gradients and optimizer states for billions of parameters).
+
+104
+00:14:50.710 --> 00:15:03.448
+LoRA (Low-Rank Adaptation) is the most common cost-saving method: instead of modifying the large original weight matrices, it attaches a small "patch" (low-rank matrix) to learn the task.
+
+105
+00:15:03.448 --> 00:15:10.660
+The parameter count is only 1%–5% of the original, yet it can approach the performance of full fine-tuning.
+
+106
+00:15:10.660 --> 00:15:20.485
+Because the original weights are frozen, LoRA also causes less perturbation to the base model's existing capabilities, reducing the risk of catastrophic forgetting.
+
+107
+00:15:20.485 --> 00:15:23.298
+A few validated rules of thumb
+
+108
+00:15:23.298 --> 00:15:27.960
+When to Repair the Foundation Before Applying SFT or RL.
+
+109
+00:15:28.132 --> 00:15:33.469
+An RL policy does not directly imitate the tokens of a reference response.
+
+110
+00:15:33.419 --> 00:15:42.744
+It uses rewards to evaluate responses the model generates itself, although reference answers or preference data may still be used to calculate that reward.
+
+111
+00:15:42.744 --> 00:15:52.382
+Learning from this signal requires at least two preconditions: the output must be verifiable, and the current policy must occasionally explore valuable behavior.
+
+112
+00:15:52.382 --> 00:15:55.594
+The first precondition is format support.
+
+113
+00:15:55.594 --> 00:16:04.594
+If the task requires JSON or a tool call and the model emits unparseable text, the reward function cannot even tell success from failure.
+
+114
+00:16:04.594 --> 00:16:17.894
+SFT can first teach the model to produce correctly structured outputs: a small number of demonstrations stabilizes the format and basic procedure so that the reward can be computed, after which RL can optimize the policy.
+
+115
+00:16:17.894 --> 00:16:22.607
+This is the familiar "SFT first, RL second" pattern.
+
+116
+00:16:22.607 --> 00:16:27.219
+The second, more fundamental precondition is capability support.
+
+117
+00:16:27.219 --> 00:16:33.607
+Sample held-out tasks at a temperature close to the training setup and measure pass@1 and pass@k.
+
+118
+00:16:33.607 --> 00:16:43.269
+If the probability of success on one sample is p, then under approximately independent sampling the probability of at least one success in k samples is
+
+119
+00:16:43.269 --> 00:16:50.107
+\operatorname{pass@}k = 1-(1-p)^k.
+
+120
+00:16:50.107 --> 00:17:04.082
+If pass@1 is low but pass@k rises clearly with k, the correct policy is already in the model's distribution but has too little probability mass; RL, rejection sampling, or distillation has something to amplify.
+
+121
+00:17:04.082 --> 00:17:15.482
+Conversely, if empirical pass@k remains near zero at a reasonable k, sampling temperature, and task coverage, the base model can hardly generate a successful trajectory.
+
+122
+00:17:15.482 --> 00:17:27.882
+With only a terminal 0/1 reward, a GRPO rollout group will likely be all zero, eliminating within-group advantage; PPO likewise sees no positive example showing where to move.
+
+123
+00:17:27.882 --> 00:17:36.107
+Increasing the sample count merely waits roughly 1/p trials for an accidental success, and quickly becomes impractical.
+
+124
+00:17:36.107 --> 00:17:39.044
+At that point, ask what is missing.
+
+125
+00:17:39.044 --> 00:17:48.119
+If it is domain language, facts, code patterns, or foundational long-context capability, use Mid-training to repair the foundation.
+
+126
+00:17:48.119 --> 00:17:53.782
+If the capability exists but cannot be expressed through the interface, use SFT.
+
+127
+00:17:53.782 --> 00:18:01.319
+If the model makes partial progress but cannot reach the endpoint, add verifiable partial rewards or curriculum learning.
+
+128
+00:18:01.319 --> 00:18:12.057
+RL is good at raising the probability of existing but unlikely successful behavior; it is poor at creating knowledge and capabilities the model never learned from an all-zero reward.
+
+129
+00:18:12.057 --> 00:18:21.119
+One boundary remains important: "SFT must come first" is true only when output format or basic behavior has not yet been established.
+
+130
+00:18:21.119 --> 00:18:30.844
+Experiment 8-11 shows that Llama-3.2-Vision-11B fails under strict structured-output requirements when trained directly with RL.
+
+131
+00:18:30.844 --> 00:18:40.369
+A sufficiently strong base model with nonzero success, however, can skip SFT; DeepSeek-R1-Zero is one example.
+
+132
+00:18:40.369 --> 00:18:48.719
+Its later cold-start SFT primarily improved readability and language consistency rather than injecting task knowledge for RL.
+
+133
+00:18:48.719 --> 00:18:55.494
+The standalone decision section below gives the fuller Mid-training/SFT/RL workflow.
+
+134
+00:18:55.494 --> 00:19:01.419
+The Essential Difference Between SFT and RL (The Most Important Table in This Chapter).
+
+135
+00:19:01.419 --> 00:19:08.907
+We have used "SFT memorizes, RL generalizes" to summarize this chapter's controlled experiments.
+
+136
+00:19:08.907 --> 00:19:12.332
+Now let's explain why that tendency can appear.
+
+137
+00:19:12.332 --> 00:19:15.907
+The key is the different optimization objectives:
+
+138
+00:19:15.907 --> 00:19:20.344
+SFT maximizes the probability of the labeled response.
+
+139
+00:19:20.344 --> 00:19:26.182
+Maximum likelihood pushes the model to reproduce the demonstration for each training sample.
+
+140
+00:19:26.182 --> 00:19:36.944
+Diverse, representative demonstrations can teach generalizable features, but limited demonstrations or prompts can also produce overfitting to surface patterns or shortcuts.
+
+141
+00:19:36.944 --> 00:19:46.544
+In GeneralPoints, the limited demonstrations treated J/Q/K as 10, and performance dropped when those values changed at test time.
+
+142
+00:19:46.708 --> 00:19:49.845
+RL maximizes expected reward.
+
+143
+00:19:49.795 --> 00:19:55.133
+The model explores paths and raises the probability of those that earn high reward.
+
+144
+00:19:55.133 --> 00:20:04.045
+When the reward faithfully represents the objective and exploration is sufficient, it can discover transferable strategies absent from the demonstrations.
+
+145
+00:20:04.045 --> 00:20:10.883
+In GeneralPoints, recomputing the answer when values changed produced better out-of-distribution performance.
+
+146
+00:20:10.883 --> 00:20:16.908
+Conversely, a biased reward or environment can make RL overfit to shortcuts too.
+
+147
+00:20:16.908 --> 00:20:21.608
+Table 8-2 Essential Comparison of SFT and RL
+
+148
+00:20:21.608 --> 00:20:34.458
+Dimension: Optimization Objective; SFT (Supervised Fine-Tuning): Maximize probability of labeled answer (Maximum Likelihood); RL (Reinforcement Learning): Maximize expected reward.
+
+149
+00:20:34.458 --> 00:20:49.158
+Dimension: Training Signal; SFT (Supervised Fine-Tuning): Token-level supervision on a labeled response; RL (Reinforcement Learning): Policy-generated responses or trajectories + outcome- or step-level scalar rewards.
+
+150
+00:20:49.158 --> 00:21:02.120
+Dimension: Data Form; SFT (Supervised Fine-Tuning): "Input-Output" demonstration pairs; RL (Reinforcement Learning): Task and environment + reward signal (reference answers optional).
+
+151
+00:21:02.120 --> 00:21:15.770
+Dimension: Direct Optimization Pressure; SFT (Supervised Fine-Tuning): Imitate mappings and protocols in the demonstrations; RL (Reinforcement Learning): Reinforce behaviors and strategies that earn reward.
+
+152
+00:21:15.770 --> 00:21:35.358
+Dimension: Under Distribution Shift; SFT (Supervised Fine-Tuning): Depends on demonstration coverage and regularization; limited demonstrations overfit in this chapter's experiments; RL (Reinforcement Learning): Depends on reward, environment, and exploration; transfer was better in this chapter's experiments.
+
+153
+00:21:35.358 --> 00:21:48.520
+Dimension: Sample Efficiency; SFT (Supervised Fine-Tuning): High (thousands of examples are effective); RL (Reinforcement Learning): Low (often tens to hundreds of times that of SFT).
+
+154
+00:21:48.520 --> 00:22:01.008
+Dimension: Training Stability; SFT (Supervised Fine-Tuning): High, converges quickly; RL (Reinforcement Learning): Low, prone to oscillation, requires careful tuning.
+
+155
+00:22:01.008 --> 00:22:20.170
+Dimension: Best Suited For; SFT (Supervised Fine-Tuning): Solidifying format/style/process, high-quality demonstrations, stable environment; RL (Reinforcement Learning): Needing generalization to new scenarios, exploring optimal strategies, high annotation cost.
+
+156
+00:22:20.170 --> 00:22:26.458
+Seen through the probability distribution, SFT and RL differ in another important way.
+
+157
+00:22:26.458 --> 00:22:33.858
+A question usually admits several families of reasonable answers, each corresponding to a "mode" in the distribution.
+
+158
+00:22:33.858 --> 00:22:44.295
+Maximum-likelihood SFT learns the demonstrations one by one and therefore often exhibits a mass-covering tendency: it tries to cover the several modes that appear in the training data.
+
+159
+00:22:44.295 --> 00:22:59.608
+RL redistributes probability according to reward and, combined with the common reverse-KL constraint, more readily exhibits a mode-seeking tendency: it concentrates probability on a few high-reward modes rather than reproducing every demonstration evenly.
+
+160
+00:22:59.608 --> 00:23:11.258
+This distinction explains their characteristic strengths: SFT is good at covering many known ways of phrasing something, RL is good at searching among candidate behaviors for a high-reward strategy.
+
+161
+00:23:11.258 --> 00:23:24.245
+Whether the end result preserves diversity or contracts to a few modes depends on the demonstration distribution, the reward function, the KL direction and coefficient, entropy regularization, and the sampling temperature.
+
+162
+00:23:24.412 --> 00:23:27.899
+Post-training also shapes when a model acts.
+
+163
+00:23:27.849 --> 00:23:36.387
+Coding models provide a concrete example: GPT-family and Claude-family models often exhibit different default action thresholds.
+
+164
+00:23:36.387 --> 00:23:46.574
+The former may read more of a repository before editing; the latter may localize from fewer files, implement first, and then use test feedback to correct course.
+
+165
+00:23:46.574 --> 00:23:52.999
+This is not a matter of anthropomorphizing one model as “cautious” and another as “instinctive.
+
+166
+00:23:52.999 --> 00:24:03.087
+It is a policy in the parameters estimating whether the expected value of reading one more file still exceeds the expected value of submitting and validating the current patch.
+
+167
+00:24:03.087 --> 00:24:10.937
+If SFT demonstrations repeatedly investigate broadly before editing, the model imitates a higher action threshold.
+
+168
+00:24:10.937 --> 00:24:20.587
+If process or outcome rewards repeatedly validate rapid localization and an early verifiable loop, probability mass shifts toward earlier action.
+
+169
+00:24:20.587 --> 00:24:34.699
+Experiment 7-9 in Chapter 7 swaps models inside an identical neutral Coding harness and measures this behavior changing with the model: the harness need not enforce a workflow for the model to carry a stable tool-use policy of its own.
+
+170
+00:24:34.699 --> 00:24:41.074
+The harness can modify the policy, but its primary source can reside in the post-trained parameters.
+
+171
+00:24:41.074 --> 00:24:52.249
+Because vendors do not publish their complete data and reward recipes, the experiment establishes a model-side behavioral difference, not the particular proprietary algorithm that caused it.
+
+172
+00:24:52.249 --> 00:24:58.162
+Online feedback creates an opportunity to explore strategies beyond the demonstrations.
+
+173
+00:24:58.162 --> 00:25:07.999
+SFT on a fixed dataset uses direct training signals from demonstrations, but it can still combine pre-training knowledge and generalize to unseen inputs.
+
+174
+00:25:07.999 --> 00:25:17.674
+Online RL generates responses from the current policy and receives environmental feedback, so it can directly evaluate candidates absent from the demonstrations.
+
+175
+00:25:17.674 --> 00:25:28.949
+This does not automatically guarantee a higher ceiling: results depend on the base model, demonstration coverage, reward fidelity, exploration, and optimization stability.
+
+176
+00:25:28.949 --> 00:25:37.737
+The terms "online/offline" and the stricter "on-policy/off-policy" will be used in the reward and distillation sections.
+
+177
+00:25:37.737 --> 00:25:42.924
+For now, consider three opportunities created by online feedback:
+
+178
+00:25:42.924 --> 00:25:47.949
+First, it can evaluate candidates beyond a fixed demonstration set.
+
+179
+00:25:47.949 --> 00:25:56.524
+SFT's direct supervision comes from recorded responses; RL can also reinforce new behaviors that the reward function can score.
+
+180
+00:25:56.524 --> 00:26:07.974
+The "pushcut" action in Experiment 8-13 (SimpleVLA-RL) never appeared in human demonstrations, showing the possibility of discovering a strategy outside the data.
+
+181
+00:26:07.974 --> 00:26:14.649
+But the model cannot learn quality the reward cannot recognize or discover a strategy it never explores.
+
+182
+00:26:14.649 --> 00:26:20.087
+Second, it can exploit tasks where verification is easier than generation.
+
+183
+00:26:20.087 --> 00:26:27.562
+SFT needs a correct answer or good trajectory written first; RL needs a reliable way to judge answer quality.
+
+184
+00:26:27.562 --> 00:26:33.062
+Math answers can be checked, code can be tested, and proofs can be verified.
+
+185
+00:26:33.062 --> 00:26:40.012
+This asymmetry is a strength of RLVR, but an incomplete verifier can also produce reward hacking.
+
+186
+00:26:40.012 --> 00:26:44.499
+Third, it can train on states visited by the current policy.
+
+187
+00:26:44.499 --> 00:26:54.812
+Offline imitation has the classic problem of covariate shift: after a policy leaves the demonstrations and enters unseen states, recovery signals may be absent.
+
+188
+00:26:54.812 --> 00:27:06.137
+In specific sequential imitation-learning settings, worst-case error can accumulate roughly as T^2 with trajectory length T, while online data aggregation can reduce it to about T.
+
+189
+00:27:06.137 --> 00:27:16.949
+On-Policy Distillation (see "Distillation: Improving Sample Efficiency" later in this chapter) combines this online matching with SFT's dense supervision.
+
+190
+00:27:16.949 --> 00:27:26.237
+To use an analogy: SFT studies an existing map in detail, while RL can use reward as a compass to explore candidate routes beyond it.
+
+191
+00:27:26.237 --> 00:27:30.112
+An inaccurate map or compass can lead the model astray.
+
+192
+00:27:30.112 --> 00:27:38.724
+Many systems therefore use SFT to establish a stable starting point, then add RL when the reward and environment are trustworthy.
+
+193
+00:27:38.884 --> 00:27:43.809
+With this panorama in hand, every later section has a place on the map.
+
+194
+00:27:43.759 --> 00:27:57.034
+The next two sections, both [Optional Reading]—"From Classic RL Agents to Modern Agents" and "Model Pre-training Basics"—fill in the reinforcement learning and pre-training background for readers who want to go deeper.
+
+195
+00:27:57.034 --> 00:28:02.584
+Readers who just want to get their hands on post-training can skip ahead to the SFT section.
+
+196
+00:28:02.584 --> 00:28:07.046
+From Classic RL Agents to Modern Agents [Optional Reading].
+
+197
+00:28:07.046 --> 00:28:09.621
+Agent-Environment Interaction.
+
+198
+00:28:09.621 --> 00:28:18.621
+Reinforcement Learning (RL) is fundamentally about learning how to select actions based on the current situation to maximize cumulative reward.
+
+199
+00:28:18.621 --> 00:28:30.421
+Imagine an AI learning to play chess: each move is an action, winning gives a positive reward, losing gives a negative reward, and the cumulative reward is the total gain from the entire game.
+
+200
+00:28:30.421 --> 00:28:41.471
+The Agent and the environment interact continuously: at each step, the Agent observes the current state, chooses an action, and the environment produces a new state and gives a reward.
+
+201
+00:28:41.471 --> 00:28:56.921
+To understand this interaction more intuitively, the following diagram shows the standard RL loop—at each time step, the Agent observes the environment state, outputs an action, and the environment gives a reward and transitions to a new state based on that action.
+
+202
+00:28:56.921 --> 00:29:03.221
+As illustrated in Figure 8-1: Reinforcement Learning Agent-Environment Interaction Loop.
+
+203
+00:29:03.221 --> 00:29:10.346
+This interaction produces a trajectory—a complete record of "state → action → reward → new state → action → reward...
+
+204
+00:29:10.346 --> 00:29:15.509
+The quality of a policy is ultimately reflected in the quality of the trajectories.
+
+205
+00:29:15.509 --> 00:29:25.084
+A value function answers the question: "If I am in this state now and continue acting according to the current policy, how much total reward will I eventually accumulate?
+
+206
+00:29:25.084 --> 00:29:33.921
+This is like an experienced chess player looking at a position and, without calculating to the end, intuitively estimating the winning probability.
+
+207
+00:29:33.921 --> 00:29:45.096
+When the "current policy" is replaced by the "optimal policy," we get the optimal value function, which will be used later in this chapter when discussing the Bellman optimality equation.
+
+208
+00:29:45.096 --> 00:29:53.596
+The boundary between the Agent and the environment follows a simple principle: anything the Agent cannot arbitrarily change belongs to the environment.
+
+209
+00:29:53.596 --> 00:30:20.871
+Two unique features distinguish reinforcement learning from supervised learning (which requires labeled correct answers) and unsupervised learning (which discovers hidden patterns in data): trial-and-error search (the Agent must figure out which actions are good on its own, without a teacher directly providing the correct answer) and delayed reward (the effect of an action may only become apparent many steps later, e.g., the value of a good chess move is only evident at the end of the game).
+
+210
+00:30:20.871 --> 00:30:31.546
+This also brings about the unique exploration-exploitation tradeoff: always taking familiar paths means learning nothing new; always trying randomly means never reaching the goal.
+
+211
+00:30:31.546 --> 00:30:36.096
+A reinforcement learning system consists of five core elements:
+
+212
+00:30:36.268 --> 00:30:41.593
+Action Space: Defines the set of all possible actions the Agent can take.
+
+213
+00:30:41.543 --> 00:30:54.405
+Actions can be discrete (e.g., "which move to make" in chess, with a finite number of options) or continuous (e.g., "how many degrees to rotate a joint" for a robot, a continuous value).
+
+214
+00:30:54.405 --> 00:31:00.043
+Policy: The Agent's behavioral rule, specifying what to do in a given state.
+
+215
+00:31:00.043 --> 00:31:08.593
+A policy can be simple (a lookup table: in state A, execute action X) or complex (a deep neural network).
+
+216
+00:31:08.593 --> 00:31:12.793
+Reward Signal: The immediate feedback from the environment.
+
+217
+00:31:12.793 --> 00:31:25.530
+However, the Agent's goal is to maximize long-term, not immediate, reward—this distinction is crucial, just as investment should not be judged by today's gains and losses but by long-term returns.
+
+218
+00:31:25.530 --> 00:31:35.505
+Value Function: Estimates the total cumulative reward obtainable from a given state in the future, helping the Agent make wise decisions even without immediate feedback.
+
+219
+00:31:35.505 --> 00:31:42.205
+One of the most important insights from sixty years of RL research is the central role of value estimation.
+
+220
+00:31:42.205 --> 00:31:47.180
+Environment Model (optional): Predicts the environment's response to actions.
+
+221
+00:31:47.180 --> 00:32:01.693
+Methods that use an environment model are called model-based methods (first learn to predict how the environment changes, then plan accordingly); those without are called model-free methods (do not predict the environment, but learn directly from experience).
+
+222
+00:32:01.693 --> 00:32:15.455
+Table 8-3 compares the key components of various Agent systems, revealing the universality of the Agent concept and helping readers see the difference in action spaces between traditional RL Agents and modern LLM Agents.
+
+223
+00:32:15.455 --> 00:32:20.393
+Table 8-3 Comparison of Key Elements in Different Agent Systems
+
+224
+00:32:20.393 --> 00:32:34.505
+Agent Type: Newborn Gazelle; Environment: Terrain, gravity, body posture; Action Space: Continuous high-dimensional (muscle group contractions); Reward Signal: Balance (+), Falling (-).
+
+225
+00:32:34.505 --> 00:32:48.818
+Agent Type: Vacuum Robot; Environment: Room layout, battery level; Action Space: Discrete (direction, vacuum, charge); Reward Signal: Cleaned area (+), Battery depleted (-).
+
+226
+00:32:48.818 --> 00:33:02.305
+Agent Type: Chess Grandmaster; Environment: Board state, time limit; Action Space: Discrete finite (legal moves); Reward Signal: Win (+1), Loss (-1).
+
+227
+00:33:02.305 --> 00:33:18.455
+Agent Type: Customer Service Agent; Environment: Conversation history, knowledge base; Action Space: Variable-length compositional (think, speak, API call); Reward Signal: Problem solved (+), Handling time (-).
+
+228
+00:33:18.455 --> 00:33:34.718
+Agent Type: Code Assistant Agent; Environment: Requirements document, codebase; Action Space: Variable-length compositional (think, search, edit, execute); Reward Signal: Test passed (+), Bug introduced (-).
+
+229
+00:33:34.718 --> 00:33:37.855
+The table reveals an important distinction.
+
+230
+00:33:37.855 --> 00:33:48.893
+Representative board-game and Atari environments use predefined finite discrete primitive actions, while robot control uses continuous actions with fixed dimensions and physical bounds.
+
+231
+00:33:48.893 --> 00:34:00.680
+Modern LLM-based customer-service and coding Agents compose finite tokens and tool calls into variable-length action sequences, making the possible sequences difficult to enumerate at once.
+
+232
+00:34:00.680 --> 00:34:04.993
+They can also use internal thinking to improve their capabilities.
+
+233
+00:34:04.993 --> 00:34:11.605
+Two Action Representations: Classic RL Settings and Variable-Length LLM Policies.
+
+234
+00:34:11.605 --> 00:34:16.468
+The most visible difference between the two settings is how actions are represented.
+
+235
+00:34:16.468 --> 00:34:23.143
+An MDP itself can represent finite or infinite, discrete or continuous action spaces.
+
+236
+00:34:23.143 --> 00:34:38.518
+The representative board-game and Atari environments here use finite discrete primitive actions, robot control uses bounded continuous actions, and an LLM policy composes a finite token vocabulary and tool schemas into variable-length sequences.
+
+237
+00:34:38.518 --> 00:34:46.680
+This compositional representation has major consequences for algorithm design, sample efficiency, and generalization.
+
+238
+00:34:46.680 --> 00:34:49.380
+Each setting is discussed below.
+
+239
+00:34:49.380 --> 00:34:53.818
+Foundational Example: MDP and Tabular Q-learning.
+
+240
+00:34:53.980 --> 00:35:04.555
+MDP (Markov Decision Process) is the mathematical framework for reinforcement learning, defining core elements such as states, actions, and rewards.
+
+241
+00:35:04.505 --> 00:35:12.917
+Its core assumption is the Markov property: the future depends only on the current state, which must contain all history relevant to the decision.
+
+242
+00:35:12.917 --> 00:35:24.830
+In chess, for example, the state includes not only piece placement but also the side to move, castling and en passant rights, and information needed for the fifty-move and repetition rules.
+
+243
+00:35:24.830 --> 00:35:31.280
+With a sufficient state definition, the entire game record need not be reread for each transition.
+
+244
+00:35:31.280 --> 00:35:39.067
+If an observation omits necessary history, that history must be added to the state or handled with a partially observable model.
+
+245
+00:35:39.067 --> 00:35:45.755
+As illustrated in Figure 8-2: Markov Decision Process (MDP) Diagram.
+
+246
+00:35:45.755 --> 00:35:51.080
+The representative RL environments in this section use predefined action spaces.
+
+247
+00:35:51.080 --> 00:36:02.442
+The 361 move positions in Go are large but finite; chess actions can still be enumerated; and Atari games typically expose a few to a dozen discrete primitive actions.
+
+248
+00:36:02.442 --> 00:36:15.817
+Robotic Agents use continuous but bounded action spaces: joint angles, velocities, and grip forces are continuous values, but have clear physical bounds and dimensions fixed by the robot's degrees of freedom.
+
+249
+00:36:15.817 --> 00:36:20.742
+Finite discrete actions make individual candidates easier to evaluate.
+
+250
+00:36:20.742 --> 00:36:32.030
+If the numbers of states and actions are small enough, tabular Q-learning stores their values directly; larger Atari and board-game state spaces combine function approximation with search.
+
+251
+00:36:32.030 --> 00:36:41.555
+Continuous-action MDPs cannot enumerate every action, so methods such as policy gradients and actor-critic approximate the policy and value function.
+
+252
+00:36:41.555 --> 00:36:49.767
+The classic example in this section also differs from an LLM policy because it starts trial-and-error learning without pretrained knowledge.
+
+253
+00:36:49.767 --> 00:36:55.430
+Within this framework, one of the most fundamental and important algorithms is Q-learning.
+
+254
+00:36:55.430 --> 00:37:05.705
+It maintains a value estimate for each "state-action" pair: if you take action a in state s and then act optimally thereafter, how much total reward can you expect?
+
+255
+00:37:05.705 --> 00:37:13.667
+Intuitively, whether an action is good depends on the immediate reward it brings, plus "how good the next state it leads to is.
+
+256
+00:37:13.667 --> 00:37:28.242
+Writing this intuition as an equation gives the core recursive relationship of the famous Bellman equation in RL textbooks: The true value of an action = the immediate reward obtained at this step + the maximum future value obtainable from the next state:
+
+257
+00:37:28.242 --> 00:37:37.130
+Q^(s, a) = r + \gamma \max_{a'} Q^(s', a'
+
+258
+00:37:37.130 --> 00:38:05.780
+where r is the immediate reward, s' is the next state reached after executing the action (written in deterministic form for intuition; in a stochastic environment, an expectation over the next state s' is needed), and \gamma \in [0, 1) is the discount factor—it determines how much the Agent values the future: the closer \gamma is to 1, the more it values long-term returns; the closer to 0, the more it focuses on the immediate.
+
+259
+00:38:05.780 --> 00:38:19.030
+The "cumulative reward" mentioned repeatedly earlier is precisely the sum of rewards at each step, discounted by \gamma: \sum_{t} \gamma^{t} r_t.
+
+260
+00:38:19.030 --> 00:38:32.767
+After each action, the algorithm slightly adjusts the old estimate towards the "actually observed outcome"—this paradigm of "correcting an old estimate with a one-step actual result" is called Temporal-Difference Learning (TD learning).
+
+261
+00:38:32.767 --> 00:38:37.905
+After thousands of trials, the estimate gradually approaches the true value.
+
+262
+00:38:37.905 --> 00:38:45.430
+The following two figures show the exploration process of Q-learning in a grid world and the gradual convergence of Q-values.
+
+263
+00:38:45.430 --> 00:38:50.105
+As illustrated in Figure 8-3: Q-learning Grid World.
+
+264
+00:38:50.105 --> 00:38:55.430
+As illustrated in Figure 8-4: Q-value Update Visualization.
+
+265
+00:38:55.588 --> 00:39:04.313
+Q-learning is an off-policy method: it can learn an optimal policy from data generated by an exploratory policy different from the target policy.
+
+266
+00:39:04.263 --> 00:39:15.150
+It still requires adequate coverage of the relevant state-action pairs and appropriate learning-rate and convergence conditions; it does not automatically converge on an arbitrary data distribution.
+
+267
+00:39:15.150 --> 00:39:28.088
+The strict definitions of on-policy and off-policy methods, and how they map to LLM post-training, are discussed later in the section "RL Algorithms: From 16 Rollouts to One Parameter Update.
+
+268
+00:39:28.088 --> 00:39:35.075
+Experiment 8-1 introductory difficulty, one star: : Q-learning Performance in a Treasure Hunt Game
+
+269
+00:39:35.075 --> 00:39:41.625
+To verify the characteristics and limitations of Q-learning, we designed a treasure hunt game environment.
+
+270
+00:39:41.625 --> 00:40:09.275
+This environment includes several key challenges: hidden mechanisms require the Agent to discover the correspondence between keys and doors, weapon effects, and item crafting rules on its own; multi-step dependencies mean that completing the task requires the correct sequence of actions (optimal solution: 11 steps); sparse rewards mean that only key actions and the final victory yield significant rewards, with most intermediate steps receiving no feedback.
+
+271
+00:40:09.275 --> 00:40:23.850
+The Q-learning Agent uses standard parameter settings and an ε-greedy exploration strategy: it usually selects the currently optimal action but occasionally chooses a random one, with the proportion of random exploration gradually decreasing during training.
+
+272
+00:40:23.850 --> 00:40:31.550
+The learning curve shows typical characteristics (an episode is one complete game, from start to completion or failure
+
+273
+00:40:31.550 --> 00:40:40.413
+First 1000 episodes: 0% win rate, Q-table has only 124 states, Agent is blindly exploring
+
+274
+00:40:40.413 --> 00:40:47.638
+First 5000 episodes: Still no stable victories, Q-table has 133 states
+
+275
+00:40:47.638 --> 00:40:55.150
+7,000–8,000 episodes: Win rate gradually rises from 34% to 96%
+
+276
+00:40:55.150 --> 00:41:04.213
+10,000 episodes: 100% win rate, Q-table has 145 states, found the 11-step optimal solution
+
+277
+00:41:04.213 --> 00:41:12.313
+The entire training takes less than 10 seconds (very efficient simulation), but requires nearly 10,000 complete attempts.
+
+278
+00:41:12.313 --> 00:41:27.600
+This demonstrates the behavior of the prior-free, ε-greedy tabular Q-learning setup used in this experiment: it needs substantial random exploration to complete the path by chance, and value signals propagate slowly enough to require repeated reinforcement.
+
+279
+00:41:27.600 --> 00:41:33.700
+In a game simulator, 10,000 trials take only 10 seconds, a negligible cost.
+
+280
+00:41:33.700 --> 00:41:47.000
+But in real-world Agent scenarios—where each phone call has a cost, each browser operation has a delay, and each wrong decision can have irreversible consequences—10,000 trials are completely unacceptable.
+
+281
+00:41:47.000 --> 00:41:56.088
+One reason to use a pretrained LLM policy is that accumulated knowledge can support effective decisions with far fewer environmental interactions.
+
+282
+00:41:56.088 --> 00:42:09.563
+This prior-free tabular Q-learning experiment has three limitations: even a simple task needs extensive interaction, values learned in one environment do not transfer directly to another, and each new task must be explored again.
+
+283
+00:42:09.563 --> 00:42:13.863
+These are not limitations of the MDP framework itself.
+
+284
+00:42:13.863 --> 00:42:26.425
+Function approximation, transfer learning, and model-based RL can handle richer states and knowledge transfer, although they may still require substantial environmental interaction compared with a pretrained LLM.
+
+285
+00:42:26.425 --> 00:42:30.213
+Agents Based on Pretrained LLM Policies.
+
+286
+00:42:30.213 --> 00:42:36.988
+Large language models have brought an important practical change to how Agent actions are represented and initialized.
+
+287
+00:42:36.988 --> 00:42:43.450
+Classic RL can also model internal computation or information gathering as states and actions.
+
+288
+00:42:43.450 --> 00:42:58.388
+The practical change introduced by LLMs is not that thinking became possible for the first time, but that a pretrained language policy can represent internal computation as variable-length token sequences and generate it within the same policy as external actions.
+
+289
+00:42:58.388 --> 00:43:04.425
+Thinking tokens do not directly change the external world, but they can improve the final action.
+
+290
+00:43:04.425 --> 00:43:11.938
+The action representation now includes not only "what to do," but also "how long to think and what to think about.
+
+291
+00:43:12.100 --> 00:43:19.300
+The most important practical innovation is incorporating thinking tokens as special actions in the policy output space.
+
+292
+00:43:19.250 --> 00:43:31.637
+Representative traditional RL environments emphasize primitive actions such as moving, attacking, and picking up, although internal computation can also be modeled in an MDP or hierarchical policy.
+
+293
+00:43:31.637 --> 00:43:37.875
+In LLM Agents, internal thinking becomes a core part of the learned language action space.
+
+294
+00:43:37.875 --> 00:43:48.187
+It does not directly change the external environment or receive immediate environmental reward, but can express many computational paths within token costs and context limits.
+
+295
+00:43:48.187 --> 00:43:57.025
+Variable-length compositional actions create a much larger search space than primitive actions and are difficult to learn from scratch without prior knowledge.
+
+296
+00:43:57.025 --> 00:44:02.075
+An Agent learning from scratch is like searching for treasure in a desert blindfolded.
+
+297
+00:44:02.075 --> 00:44:17.837
+LLMs instead learn human problem-solving patterns from massive text pre-training: math solutions often follow "identify conditions → recall formulas → calculate step by step," while coding follows "understand requirements → design structure → implement details.
+
+298
+00:44:17.837 --> 00:44:24.800
+The pretrained policy gives structured paths higher prior probability, greatly compressing the search space.
+
+299
+00:44:24.800 --> 00:44:39.750
+Thus, even without additional RL, a pretrained LLM can generate a basic logical Chain of Thought (CoT), learned through next-token prediction over math solutions, code comments, discussions, and other human-written reasoning traces.
+
+300
+00:44:39.750 --> 00:44:47.887
+RL post-training then uses external rewards to teach the LLM to apply these patterns more effectively to a specific task.
+
+301
+00:44:47.887 --> 00:44:55.212
+Language structure is not a separate "internal reward"; it acts as a prior distribution in the pretrained policy.
+
+302
+00:44:55.212 --> 00:45:08.150
+A pattern consistently present in training data, such as "we need to convert currency, so first look up the exchange rate," may start with higher generation probability than an unrelated path such as checking the weather.
+
+303
+00:45:08.150 --> 00:45:14.325
+RL uses the actual task reward to reshape path probabilities from that starting distribution.
+
+304
+00:45:14.325 --> 00:45:21.200
+As illustrated in Figure 8-5: Comparison of Classic RL and Modern LLM Agent.
+
+305
+00:45:21.200 --> 00:45:37.350
+The pretrained language policy enables LLM Agents to understand unseen instructions (zero-shot generalization) and adapt to new tasks from a few demonstrations (few-shot adaptation), in sharp contrast with the prior-free tabular Q-learning setting above.
+
+306
+00:45:37.350 --> 00:45:45.300
+Expanding from predefined primitive actions to variable-length compositional actions is an important shift in the AI Agent paradigm.
+
+307
+00:45:45.300 --> 00:46:01.187
+LLM actions are still defined by a finite token vocabulary and tool schemas, but internal thinking, natural-language queries, program code, complex JSON, and multimodal content combine into an explosive number of variable-length sequences.
+
+308
+00:46:01.187 --> 00:46:08.062
+Code interpreters and search tools connect that representation to a wide range of real-world tasks and information.
+
+309
+00:46:08.062 --> 00:46:20.412
+This creates both opportunities and challenges: Agents can combine basic tools to handle unseen tasks, but reward design and efficient exploration must operate over an enormous compositional space.
+
+310
+00:46:20.572 --> 00:46:38.534
+Models such as Kimi K3, which are optimized for tool use and long-chain reasoning, illustrate the typical direction of the LLM+RL paradigm: large-scale language pre-training provides the foundation, and post-training strengthens problem decomposition, tool use, and self-correction.
+
+311
+00:46:38.484 --> 00:47:00.934
+OpenVLA (detailed in Chapter 6) showcases the VLA (Vision-Language-Action) architecture paradigm of the LLM era: a vision encoder processes environmental observations, a language model understands instructions and reasons, and an action decoder generates control signals, enabling language-conditioned control and cross-task generalization.
+
+312
+00:47:00.934 --> 00:47:11.522
+To be clear, OpenVLA itself is trained through imitation learning on nearly one million robot demonstration trajectories, making it SFT in nature rather than RL.
+
+313
+00:47:11.522 --> 00:47:24.484
+SimpleVLA-RL, introduced in Experiment 8-13 later in this chapter, is the representative example of bringing RL into robotics by using rewards to further optimize this kind of VLA architecture.
+
+314
+00:47:24.484 --> 00:47:30.347
+As illustrated in Figure 8-6: Evolution of OpenAI Training Paradigms.
+
+315
+00:47:30.347 --> 00:47:42.809
+OpenAI's Exploration Path (chronicled by Shunyu Yao, Assistant Professor at Princeton University and author of the ReAct paper, in "The Second Half") traces an evolution in how the field thought.
+
+316
+00:47:42.809 --> 00:47:51.547
+Phase 1 (2015-2016), Algorithm-Centric: The prevailing belief was that better algorithms were the key.
+
+317
+00:47:51.547 --> 00:47:58.622
+Progress was made in standard environments such as Atari, but every new environment required retraining from scratch.
+
+318
+00:47:58.622 --> 00:48:16.284
+Phase 2 (2016-2018), The Importance of Environment: Gym standardized a range of tasks; Universe and World of Bits attempted to turn the entire internet into an RL training environment; and Dota 2 pursued superhuman performance in a specific complex environment.
+
+319
+00:48:16.284 --> 00:48:22.247
+The idea was clear, but general computer use and web navigation remained out of reach.
+
+320
+00:48:22.247 --> 00:48:37.759
+Phase 3 (2018-present), Awakening of Priors: GPT-2/GPT-3 demonstrated the power of language pre-training; WebGPT and ChatGPT proved those priors could be turned into practical Agents.
+
+321
+00:48:37.759 --> 00:48:43.697
+The most important discovery: priors can be acquired in ways that have nothing to do with RL.
+
+322
+00:48:43.697 --> 00:48:51.159
+This is a counterintuitive truth—for decades, RL researchers may have had their priorities exactly backwards.
+
+323
+00:48:51.159 --> 00:48:57.072
+The real order is not algorithm > environment > prior, but prior > environment > algorithm.
+
+324
+00:48:57.072 --> 00:49:05.259
+Experiment 8-2 intermediate difficulty, two stars: : Comparative Study of Traditional RL and LLM Agent
+
+325
+00:49:05.259 --> 00:49:12.809
+As illustrated in Figure 8-7: Architecture Comparison of Q-learning and LLM Agent in a Treasure Hunt Game.
+
+326
+00:49:12.809 --> 00:49:22.159
+We compared Q-learning with an LLM Agent—Kimi K3, maintaining a buffer of up to 50 experiences—in the same treasure hunt game.
+
+327
+00:49:22.159 --> 00:49:28.759
+The results are astonishing: The LLM Agent completed the game in 18 steps on its first try.
+
+328
+00:49:28.759 --> 00:49:45.234
+Early Stage (Purposeful Exploration): Picks up a rusty sword ("A weapon is better than bare hands"), systematically explores the map, deduces "need to find a key" after finding the north gate locked, explores the storeroom, acquires the red key and magic crystal.
+
+329
+00:49:45.234 --> 00:49:58.672
+Middle Stage (Mechanism Understanding and Proactive Synthesis): Understands the "key auto-use" rule and anticipates the rusty sword is insufficient against the guard, proactively synthesizes a silver sword on step 8.
+
+330
+00:49:58.672 --> 00:50:06.397
+Late Stage (Execution and Error Correction): Heads north with the silver sword and defeats the powerful guard at step 13.
+
+331
+00:50:06.397 --> 00:50:16.597
+Along the way, it makes one or two ineffective attempts—repeatedly swinging the sword or backtracking—and finally obtains the dragon's treasure at step 18.
+
+332
+00:50:16.597 --> 00:50:22.359
+This demonstrates a fundamental difference between semantic understanding and symbolic mapping.
+
+333
+00:50:22.359 --> 00:50:29.284
+The LLM Agent understood the conceptual structure of the game; every step had purpose and logical support.
+
+334
+00:50:29.284 --> 00:50:40.134
+For Q-learning, "door," "key," and "sword" are just meaningless symbol combinations, and it can only slowly discover their relationships through extensive statistical learning.
+
+335
+00:50:40.300 --> 00:50:50.362
+Computational cost presents an interesting paradox: Q-learning runs 10,000 games in 10 seconds, while the LLM Agent takes 1-2 minutes per game.
+
+336
+00:50:50.312 --> 00:51:02.037
+However, in real-world tasks, the time, money, and risk costs per interaction far outweigh pure computational costs, so judging solely by GPU time is unfair.
+
+337
+00:51:02.037 --> 00:51:11.275
+A more critical insight is: The LLM Agent's success isn't due to having a better "learning algorithm," but because it carries vast prior knowledge.
+
+338
+00:51:11.275 --> 00:51:18.975
+When game rules change, Q-learning needs complete retraining, while the LLM Agent can adapt directly through reasoning.
+
+339
+00:51:18.975 --> 00:51:37.150
+This leads to a practical design principle: Traditional RL remains valuable in scenarios with low simulation costs and high repeatability; in real-world scenarios with high interaction costs and a need for rapid adaptation, the sample efficiency of LLM Agents is more valuable in practice.
+
+340
+00:51:37.150 --> 00:51:51.575
+Chapter 1 already provided a conceptual map of how contextual adaptation, updates to external artifacts, and parameter updates work together; the section “Post-Training Practical Takeaways” at the end of this chapter returns to the topic.
+
+341
+00:51:51.575 --> 00:51:59.987
+This chapter's main thread is post-training: writing into model parameters capabilities that cannot be fully expressed through external rules.
+
+342
+00:51:59.987 --> 00:52:03.562
+Model Pre-training Basics [Optional Reading].
+
+343
+00:52:03.562 --> 00:52:10.537
+To understand why post-training techniques are effective, one must first understand what pre-training establishes.
+
+344
+00:52:10.537 --> 00:52:22.962
+Post-training (SFT and RL) essentially optimizes within the representation space established by pre-training—the knowledge structure laid down by pre-training determines the ceiling of post-training.
+
+345
+00:52:22.962 --> 00:52:33.175
+Therefore, we examine the core aspects of pre-training through two experiments: training a small-scale language model from scratch and extending visual capabilities.
+
+346
+00:52:33.175 --> 00:52:45.687
+The two experiments in this section are supplementary and are intended to build intuition about pre-training—that is, initial training on large-scale data that teaches a model basic language patterns and world knowledge.
+
+347
+00:52:45.687 --> 00:52:54.637
+Experiment 8-5, which injects new language knowledge into an existing base model, appears in the standalone Mid-training section that follows.
+
+348
+00:52:54.637 --> 00:52:59.737
+As illustrated in Figure 8-8: Pre-training Next Token Prediction.
+
+349
+00:52:59.737 --> 00:53:08.387
+Language model training generally follows the pipeline "tokenization — pre-training (including Mid-training when needed) — post-training.
+
+350
+00:53:08.387 --> 00:53:12.162
+Tokenization segments text into discrete units.
+
+351
+00:53:12.162 --> 00:53:18.725
+For example, "I like programming" might be tokenized into "I," "like," "program," "ming.
+
+352
+00:53:18.725 --> 00:53:23.125
+These tokens are the smallest textual units processed by the model.
+
+353
+00:53:23.125 --> 00:53:30.600
+The task of pre-training is conceptually simple: show the model the first part of a text segment and have it predict the next token.
+
+354
+00:53:30.600 --> 00:53:40.875
+By comparing its prediction to the correct answer (this difference is called loss; smaller loss means more accurate prediction), the model continuously adjusts its parameters.
+
+355
+00:53:40.875 --> 00:53:49.587
+After repeated training on massive text data, the model gradually learns language rules, world knowledge, and basic reasoning abilities.
+
+356
+00:53:49.587 --> 00:53:57.337
+After pre-training, the model can generate fluent text, but the output lacks structure and struggles to follow instructions.
+
+357
+00:53:57.337 --> 00:54:11.287
+Post-training then transforms the model into a practical assistant through SFT—training on labeled input-output pairs—and preference optimization, such as DPO, which teaches the model to generate responses that humans prefer.
+
+358
+00:54:11.287 --> 00:54:20.212
+Experiment 8-3 intermediate difficulty, two stars: : Training an LLM from Scratch—The Power of Algorithm Improvement
+
+359
+00:54:20.212 --> 00:54:30.325
+Using MiniMind 2, a 100-million-parameter model, as a case study, the experiment completes the entire training process on a consumer-grade GPU.
+
+360
+00:54:30.325 --> 00:54:45.287
+Two algorithmic optimizations—QK Norm and the Muon optimizer—triple the convergence speed and significantly improve generation quality, all at very low cost: approximately 14 hours of training and 34 dollars in total.
+
+361
+00:54:45.436 --> 00:55:08.186
+Effects of each training stage: After pre-training, the model can answer factual questions like "What is the highest mountain in the world?" but the format is non-standard; after SFT, instruction following and output formatting improve significantly, allowing the model to organize answers as expected; preference optimization further reduces factual errors and unnatural expressions.
+
+362
+00:55:08.136 --> 00:55:22.361
+The 100-million-parameter model still has obvious limitations (prone to errors on complex problems), but the lesson is: With a fixed, small budget, algorithmic improvements offer better value than simply scaling up size.
+
+363
+00:55:22.361 --> 00:55:28.711
+Experiment 8-4 intermediate difficulty, two stars: : Training Your Own VLM
+
+364
+00:55:28.711 --> 00:55:35.211
+As illustrated in Figure 8-9: Vision-Language Model (VLM) Architecture.
+
+365
+00:55:35.211 --> 00:55:40.723
+VLMs unify visual perception and language understanding within a single model.
+
+366
+00:55:40.723 --> 00:55:47.161
+The core challenge is cross-modal alignment—making "what is seen" correspond to "what is said.
+
+367
+00:55:47.161 --> 00:56:12.036
+The architecture consists of three components: a Vision Encoder (e.g., CLIP, parameters frozen) extracts semantic features from images; a Projection Layer (lightweight, the only part trained from scratch) acts as a "translator" between visual features and the language model, mapping visual features into a representation space the language model can understand; and a Language Model generates descriptive text.
+
+368
+00:56:12.036 --> 00:56:33.611
+Training uses a "freeze LLM + train only projection layer" strategy to avoid catastrophic forgetting (forgetting old skills after learning new ones); after the alignment pre-training stage, the LLM is unfrozen, and SFT is performed on high-quality image-description pairs, significantly improving the detail and accuracy of its descriptions.
+
+369
+00:56:33.611 --> 00:56:51.223
+This experiment reveals the basic paradigm for multimodal model training: reusing unimodal pre-training results and achieving cross-modal alignment by training a lightweight projection layer—efficient and scalable, but the projection layer's limited expressiveness can become a bottleneck for deep cross-modal understanding.
+
+370
+00:56:51.223 --> 00:57:04.248
+Extending the same "vision encoder + projection layer + LLM" architecture one step further by having the model output actions produces the VLA (Vision-Language-Action) model detailed in Chapter 6.
+
+371
+00:57:04.248 --> 00:57:14.486
+Together, the two pre-training experiments reveal a pattern: under a limited budget, algorithmic and architectural improvements often offer better value than scale alone.
+
+372
+00:57:14.486 --> 00:57:23.811
+More importantly, pre-training supplies descriptive knowledge and language-modeling capability but not structured instruction following or task-oriented behavior.
+
+373
+00:57:23.811 --> 00:57:30.561
+Yet SFT and RL cannot bypass a target language or domain that general pre-training never covered.
+
+374
+00:57:30.561 --> 00:57:33.498
+That is the gap Mid-training addresses.
+
+375
+00:57:33.498 --> 00:57:38.236
+Mid-training: Filling Knowledge and Foundational Capability Gaps.
+
+376
+00:57:38.236 --> 00:57:46.311
+In this chapter, Mid-training means taking an existing base model and continuing language-model training on a target data distribution.
+
+377
+00:57:46.311 --> 00:57:54.886
+It usually retains pre-training's next-token objective and computes loss over every token in a document, code sample, or derivation.
+
+378
+00:57:54.886 --> 00:58:05.573
+Classic DAPT/TAPT research shows that a second pre-training stage on domain or task-related unlabeled corpora can continue improving downstream performance.
+
+379
+00:58:05.573 --> 00:58:13.023
+Mid" describes its place in the capability-development pipeline; its data format and loss remain those of pre-training.
+
+380
+00:58:13.023 --> 00:58:16.598
+Mid-training mainly addresses two kinds of gap:
+
+381
+00:58:16.598 --> 00:58:31.398
+Knowledge gaps: General pre-training did not adequately cover a target language, finance, medicine, law, internal enterprise documents, or a class of codebases, so the model cannot even understand the concepts and terminology.
+
+382
+00:58:31.398 --> 00:58:42.698
+Foundational capability gaps: The target task requires long-context, coding, mathematical-derivation, or multimodal representations that the base model has not formed.
+
+383
+00:58:42.698 --> 00:58:50.448
+The problem is not merely the response format: even after many samples, the model almost never reaches a correct solution.
+
+384
+00:58:50.620 --> 00:58:56.795
+This also explains why SFT should not be treated as the main vehicle for knowledge injection.
+
+385
+00:58:56.745 --> 00:59:04.507
+SFT can memorize a small number of facts and often follows Mid-training to teach the model how to answer domain questions.
+
+386
+00:59:04.507 --> 00:59:15.570
+But a small QA set covers only a limited set of phrasings; it is better at training how to access and express knowledge than at carrying a large, interconnected body of raw knowledge.
+
+387
+00:59:15.570 --> 00:59:23.532
+Conversely, reducing language-model loss on domain text does not ensure the model will retrieve that knowledge in response to a question.
+
+388
+00:59:23.532 --> 00:59:32.645
+Research shows that the order and organization of continued pre-training and instruction tuning materially affect whether knowledge can be accessed in QA form.
+
+389
+00:59:32.645 --> 00:59:44.607
+A robust recipe is usually: Mid-training absorbs knowledge and capabilities → small-scale SFT establishes access and output protocols → RL is added if needed once success is nonzero.
+
+390
+00:59:44.607 --> 00:59:47.145
+Constructing Mid-training Data.
+
+391
+00:59:47.145 --> 00:59:50.570
+Infer data needs from the failure distribution.
+
+392
+00:59:50.570 --> 00:59:57.420
+Slice evaluations by topic, language, document type, code pattern, and context length.
+
+393
+00:59:57.420 --> 01:00:08.457
+Determine which low-pass@k cases come from a base-model gap, and add data only for knowledge and capability gaps rather than misdiagnosing output-format errors as missing knowledge.
+
+394
+01:00:08.457 --> 01:00:11.245
+Build high-density target corpora.
+
+395
+01:00:11.245 --> 01:00:26.745
+Raw documents establish terminology and factual associations; repositories teach structure and dependencies; textbook-style derivations, synthetic explanations, and cross-document association samples make implicit relationships explicit.
+
+396
+01:00:26.745 --> 01:00:32.420
+Deduplicate, filter for quality, and check for evaluation-set contamination.
+
+397
+01:00:32.420 --> 01:00:35.082
+Mix the data by capability.
+
+398
+01:00:35.082 --> 01:01:02.695
+The mixture needs natural long text such as books, long documents, and code repositories; chain-of-thought data embodying the atomic long-text capabilities—long-text retrieval, multi-hop reasoning, instruction following, information aggregation and statistics; and Agent execution trajectories embodying the capabilities an Agent cannot do without—planning, tool selection and invocation, long-range state tracking, and recovery from errors.
+
+399
+01:01:02.695 --> 01:01:10.207
+The chain-of-thought and Agent-trajectory data can be distilled from a stronger open-source model or taken from existing datasets.
+
+400
+01:01:10.207 --> 01:01:13.770
+Use two forms of replay at every stage.
+
+401
+01:01:13.770 --> 01:01:21.582
+The first is the original short text and general data, which preserves language, knowledge, and short-context capability.
+
+402
+01:01:21.582 --> 01:01:37.270
+The second is "old tasks lifted to the new length": place short tasks the model already handles into a context of the current length, scattering relevant information and distractors across different positions, and check whether the same capability still holds in the wider window.
+
+403
+01:01:37.270 --> 01:01:47.482
+The general data is best drawn from the base model's original pre-training set; when that is unavailable, an open pre-training corpus such as FineWeb-2 can stand in.
+
+404
+01:01:47.482 --> 01:01:51.045
+Decide when to stop with multidimensional gates.
+
+405
+01:01:51.045 --> 01:02:01.820
+Besides training loss, track pass@1/pass@k on held-out domain tasks, general capabilities, prior instruction following, and the target task.
+
+406
+01:02:01.820 --> 01:02:19.057
+If domain metrics rise while the general retention set drops, the mixture or the learning rate is too aggressive; if loss falls while pass@k does not move, check whether the data truly covers the required capability, and whether the SFT that makes knowledge accessible is missing downstream.
+
+407
+01:02:19.057 --> 01:02:34.645
+After Mid-training, evaluation sets such as LongBench v2, IFEval, and the end-to-end Agent benchmarks described in Chapter 7 are needed to verify that the model's foundational long-context capability across different context lengths has not been lost.
+
+408
+01:02:34.645 --> 01:02:44.182
+Long-context capability underpins long chain-of-thought and instruction following, and those in turn underpin higher-order Agent capabilities such as tool calling.
+
+409
+01:02:44.332 --> 01:02:53.044
+Position and retrieval: single-needle and multi-needle extraction, key information at different positions, and retrieval under distractors;
+
+410
+01:02:52.994 --> 01:03:02.557
+Relations and reasoning: cross-paragraph, cross-document, and multi-hop relation tracking, contradiction resolution, and evidence composition;
+
+411
+01:03:02.557 --> 01:03:12.307
+Aggregation and statistics: counting, grouping, sorting, comparison, trend summaries, and aggregation over long tables or logs;
+
+412
+01:03:12.307 --> 01:03:24.582
+Instruction following: following complex instructions, including multiple instructions at once, contradiction resolution, adherence to a prescribed thinking procedure, and output-format compliance;
+
+413
+01:03:24.582 --> 01:03:31.457
+Long-chain thinking: solving hard mathematics, logical-reasoning, and code-generation problems;
+
+414
+01:03:31.457 --> 01:03:41.319
+Agent primitives: basic task decomposition, planning, tool selection, argument construction, state memory, and recovery from failure.
+
+415
+01:03:41.319 --> 01:03:49.044
+If facts change frequently or must be cited to primary sources, RAG is still preferable to writing them into weights.
+
+416
+01:03:49.044 --> 01:03:56.382
+Mid-training is better suited to stable, large-scale domain knowledge and capabilities that need internal representations.
+
+417
+01:03:56.382 --> 01:04:07.219
+Full-parameter Mid-training on a large model costs more and risks more forgetting than small-scale SFT, so validate the mixture in a small pilot before scaling the training budget.
+
+418
+01:04:07.219 --> 01:04:14.407
+Experiment 8-5 intermediate difficulty, two stars: : Continued Pre-training to Learn a New Language
+
+419
+01:04:14.407 --> 01:04:29.082
+Using Mistral 7B v0.3 as the base model—primarily pre-trained on English and with almost no understanding of Korean—the experiment introduces Korean capability through continued language-model training on Korean Wikipedia.
+
+420
+01:04:29.082 --> 01:04:37.944
+The model already has general representations and only needs to adapt to a new data distribution, making this much cheaper than training from scratch.
+
+421
+01:04:37.944 --> 01:04:48.969
+This experiment uses approximately 80% Korean and 20% English to mitigate catastrophic forgetting; that ratio is an experimental choice, not a universal default.
+
+422
+01:04:48.969 --> 01:04:55.119
+Korean instruction data is then used for SFT to obtain practical conversational ability.
+
+423
+01:04:55.119 --> 01:05:06.894
+The division of responsibility is clear: Mid-training first supplies Korean knowledge and language capability, then SFT teaches the model how to receive instructions and organize answers in Korean.
+
+424
+01:05:06.894 --> 01:05:17.594
+The experiment also demonstrates the catastrophic forgetting that continued pre-training can cause: blind ratings improved for Korean in the final stage while English capability declined.
+
+425
+01:05:17.594 --> 01:05:27.982
+Continued pre-training can write the target distribution into parameters, but it does not remove the need for retention sets, factual evaluation, and data-quality audits.
+
+426
+01:05:27.982 --> 01:05:36.482
+Once the model has enough knowledge and foundational capability, the next step is to turn it into a practical Agent that works according to a protocol.
+
+427
+01:05:36.482 --> 01:05:39.757
+SFT (Supervised Fine-Tuning).
+
+428
+01:05:39.757 --> 01:05:46.519
+As illustrated in Figure 8-10: Supervised Fine-Tuning (SFT) Pipeline.
+
+429
+01:05:46.519 --> 01:05:58.782
+The section "From Pre-training to RL: An Overview of the Four Training Stages" already explained the essence of SFT ("predict the next token" with different data and loss computed only on the response).
+
+430
+01:05:58.782 --> 01:06:08.432
+This section uses four experiments to show what this mechanism—writing stable mappings and protocols into parameters—solidifies across different tasks.
+
+431
+01:06:08.432 --> 01:06:22.969
+The core value of SFT is not injecting new knowledge but solidifying protocols: writing mappings, interaction formats, and style norms into parameters so the model can produce compliant outputs at inference time without lengthy prompts.
+
+432
+01:06:22.969 --> 01:06:32.032
+Typically, only a few thousand to tens of thousands of high-quality examples are needed to establish basic conversational ability and instruction following.
+
+433
+01:06:32.032 --> 01:06:36.182
+This efficiency can come with dependence on the training distribution.
+
+434
+01:06:36.182 --> 01:06:48.707
+In tasks that require exploring diverse correct strategies, or where deployment shifts away from the demonstrations, SFT may favor reproducing demonstrated patterns and lose performance in new situations.
+
+435
+01:06:48.707 --> 01:06:58.632
+The following experiments show this process of "solidifying protocols" from different angles; they do not establish a universal ranking of SFT and RL.
+
+436
+01:06:58.780 --> 01:07:06.605
+Before getting hands-on with SFT, there is one practical question you cannot avoid: where does SFT data come from?
+
+437
+01:07:06.555 --> 01:07:10.142
+The industry's answer boils down to three routes:
+
+438
+01:07:10.142 --> 01:07:20.042
+Human expert demonstrations—the highest quality ceiling, but expensive and slow; best used as the "seed data" that defines format and style;
+
+439
+01:07:20.042 --> 01:07:32.992
+Teacher-model generation—that is, synthetic data: have a strong model mass-produce "input-output" pairs, filter them, and distill them into the student; see Experiments 8-8 and 8-9;
+
+440
+01:07:32.992 --> 01:07:44.305
+Rejection sampling—the model samples several candidates for the same problem itself, a verifier picks out the correct ones, and it trains on those; see Experiment 8-9.
+
+441
+01:07:44.305 --> 01:07:47.217
+The three routes are often combined.
+
+442
+01:07:47.217 --> 01:08:06.980
+Whichever route you take, the construction pipeline is much the same: first define the task distribution and the output schema, then generate candidates in bulk, then filter for quality with rule-based validation, format checks, and human spot checks, and finally deduplicate, balance the mixture, and ensure diversity.
+
+443
+01:08:06.980 --> 01:08:15.792
+There is no need to chase volume—a few thousand to a few tens of thousands of high-quality samples is usually enough to solidify the output format.
+
+444
+01:08:15.792 --> 01:08:26.755
+Rather than piling up a hundred thousand dirty samples, refine ten thousand clean ones: every bit of noise in the data is something SFT may faithfully write into the parameters.
+
+445
+01:08:26.755 --> 01:08:37.330
+Experiment 8-6 advanced difficulty, three stars: : Voice SFT—From "Voice Cloning" to "Paralinguistic Modeling" [Extended Experiment]
+
+446
+01:08:37.330 --> 01:08:50.655
+Using Orpheus (contextual-prompt voice cloning) and Sesame (paralinguistic token modeling) as case studies, this experiment shows how "voice style and expression habits" get written into parameters.
+
+447
+01:08:50.655 --> 01:08:53.067
+The two take different routes:
+
+448
+01:08:53.067 --> 01:08:57.867
+Orpheus: Compresses the voice waveform into a token sequence.
+
+449
+01:08:57.867 --> 01:09:07.155
+By concatenating reference audio from the same speaker, the model learns to "speak in this person's voice," achieving cross-sentence timbre consistency.
+
+450
+01:09:07.155 --> 01:09:14.692
+Sesame: Abstracts paralinguistic phenomena like laughter and sighs into special tokens like <laugh>, <sigh>.
+
+451
+01:09:14.692 --> 01:09:19.655
+The model learns to "produce the corresponding sound when seeing the token.
+
+452
+01:09:19.655 --> 01:09:28.980
+In expressive tasks, SFT solidifies style control protocols and structured expression habits, not factual knowledge or complex reasoning.
+
+453
+01:09:28.980 --> 01:09:33.817
+The key lies in the diversity and annotation quality of the training data.
+
+454
+01:09:33.817 --> 01:09:48.592
+Common failure modes include too few speakers in the training data, causing everyone to sound the same, and token overfitting (where the model memorizes training sample details and performs worse on new situations), leading to "mechanical laughter.
+
+455
+01:09:48.592 --> 01:09:58.605
+Experiment 8-7 advanced difficulty, three stars: : Multilingual Thinking—Enabling the Model to Think in Any Language [Extended Experiment]
+
+456
+01:09:58.605 --> 01:10:13.230
+Most thinking models only "think" in English: regardless of the language you use to ask a question, the model's internal chain of thought is almost always in English, because the high-quality thinking demonstrations in the training data are mostly written in English.
+
+457
+01:10:13.230 --> 01:10:19.167
+The goal of this experiment is simple—to enable the model to think in a specified language.
+
+458
+01:10:19.167 --> 01:10:34.742
+The approach is to perform SFT on gpt-oss-20b: add a line reasoning language: German (or another language) to the system instruction, then train with reasoning examples in English, Spanish, French, etc.
+
+459
+01:10:34.742 --> 01:10:50.755
+The training data contains no Chinese at all, but after training, simply setting the reasoning language to Chinese enables the model to perform complete chain-of-thought reasoning in Chinese—this zero-shot cross-lingual generalization is the most interesting finding of this experiment.
+
+460
+01:10:50.755 --> 01:10:55.680
+Note that this is not the generalization capability of SFT itself.
+
+461
+01:10:55.680 --> 01:11:06.005
+Multilingual pre-training has already established a shared cross-lingual representation space in the model; SFT merely activates this pre-existing cross-lingual ability.
+
+462
+01:11:06.005 --> 01:11:15.005
+Experiment 8-8 intermediate difficulty, two stars: : Prompt Distillation—Replicating Usable Capabilities at Lower Cost
+
+463
+01:11:15.172 --> 01:11:28.209
+In practical applications, to make a model perform complex tasks, lengthy system prompts (thousands or even tens of thousands of tokens) are often required, increasing latency and cost with each call.
+
+464
+01:11:28.159 --> 01:11:34.009
+When using reasoning LLMs, internal thinking tokens further amplify the cost.
+
+465
+01:11:34.009 --> 01:11:44.384
+The idea behind prompt distillation is to compress the behavior of a "long prompt + thinking teacher" into a "short prompt/no prompt + non-thinking student.
+
+466
+01:11:44.384 --> 01:11:56.259
+The teacher generates high-quality answers under the full prompt and thinking mode; the training data retains only the user input and final conclusion, discarding the lengthy prompt and intermediate thinking process.
+
+467
+01:11:56.259 --> 01:11:59.884
+The student learns to "directly give the conclusion.
+
+468
+01:11:59.884 --> 01:12:12.284
+After distillation, the student's output quality on the same inputs approaches that of the teacher, while latency and cost are significantly reduced because there is no need to process lengthy prompts and thinking tokens.
+
+469
+01:12:12.284 --> 01:12:31.572
+Distillation can be performed along two dimensions: "large to small" (replacing a large model with a medium or small one to balance cost and quality) and "thinking to non-thinking" (folding explicit CoT into implicit parametric knowledge at the same scale, achieving a 20-30x improvement in response speed).
+
+470
+01:12:31.572 --> 01:12:37.234
+These two are not mutually exclusive and are often used together in production environments.
+
+471
+01:12:37.234 --> 01:12:55.247
+It is important to note that distillation inherits the teacher's boundaries—if the teacher has systematic errors on the long tail of the distribution, the student will further hard-code these errors; if the teacher relies on tools to ensure correctness, simple output distillation will lose the robustness provided by tools.
+
+472
+01:12:55.247 --> 01:13:13.972
+Engineering takeaway: when the product design is stable, the input distribution is predictable, and cost constraints are significant, prompt distillation is an excellent optimization; during exploration or before the task has stabilized, retaining explicit thinking and editable prompts remains central to rapid iteration.
+
+473
+01:13:13.972 --> 01:13:21.109
+Experiment 8-9 advanced difficulty, three stars: : Chain of Thought (CoT) Distillation
+
+474
+01:13:21.109 --> 01:13:31.547
+Prompt distillation discards the thinking process; CoT distillation does the opposite: it transfers the complete thinking trajectory of a strong teacher model to the student model.
+
+475
+01:13:31.547 --> 01:13:40.684
+Distilling CoT from a capable teacher model can enable a student with the same parameter count to recover 70%-80% of the teacher's capabilities.
+
+476
+01:13:40.684 --> 01:13:50.084
+For teams that do not aim to push the frontier of state-of-the-art capabilities but want models they can control themselves, this is the most pragmatic follower strategy.
+
+477
+01:13:50.084 --> 01:14:02.372
+The series of distilled small models open-sourced by DeepSeek-R1 (using R1's thinking trajectories to perform SFT on the Qwen and Llama series) are a representative example of this approach.
+
+478
+01:14:02.372 --> 01:14:05.984
+Background: The "Thinking Wall" Phenomenon.
+
+479
+01:14:05.984 --> 01:14:30.722
+Some closed-source reasoning models (e.g., OpenAI o-series, Gemini series) generate internal chain-of-thought during reasoning, but what users see is not the original thinking process—for reasons including distillation prevention, safety, and product experience, providers often rewrite or summarize the CoT before outputting it, hiding the most valuable original thinking process behind the API.
+
+480
+01:14:30.722 --> 01:14:52.397
+This is precisely why this experiment chooses open-source reasoning models as teachers: models like DeepSeek V4, Kimi K3, and GLM 5.2 directly expose their complete chain-of-thought, making distillation feasible both technically and under the license (though one should still confirm the license's terms regarding distilled products before use).
+
+481
+01:14:52.397 --> 01:14:58.259
+From the lab: a model that can write code may still refuse to help distill another model.
+
+482
+01:14:58.259 --> 01:15:07.997
+While implementing this experiment, the author first used OpenAI Codex powered by GPT-5.6-Sol to write the experimental code.
+
+483
+01:15:07.997 --> 01:15:13.834
+Once the task explicitly involved model distillation, Codex refused to continue.
+
+484
+01:15:13.834 --> 01:15:20.084
+The author then switched to Claude Code powered by Claude Opus 5 and encountered the same refusal.
+
+485
+01:15:20.084 --> 01:15:25.359
+Kimi K3 ultimately completed the experimental code and subsequent run.
+
+486
+01:15:25.516 --> 01:15:32.891
+Neither refusal concerned ordinary mathematical reasoning or merely asking a model to reveal its internal chain-of-thought.
+
+487
+01:15:32.841 --> 01:15:39.691
+The request was to implement a complete distillation experiment that used data from a strong teacher to train a student.
+
+488
+01:15:39.691 --> 01:15:55.216
+Model distillation is technically very similar to ordinary supervised fine-tuning, but vendor safety and product policies may also associate it with model extraction, capability replication, and intellectual-property protection, making it a sensitive category.
+
+489
+01:15:55.216 --> 01:16:03.291
+This event should not be simplified to "Claude does not provide chain-of-thought," nor does it prove that "Kimi has weaker guardrails.
+
+490
+01:16:03.291 --> 01:16:15.528
+Whether the Claude API returns summarized thinking, whether a Coding Agent will implement a distillation pipeline, and whether service terms permit model outputs to be used for training are three different questions.
+
+491
+01:16:15.528 --> 01:16:26.591
+This experiment did not attempt to bypass any model's hidden reasoning or safety mechanisms; it used only capabilities exposed by the products to conduct an authorized research workflow.
+
+492
+01:16:26.591 --> 01:16:36.828
+Here is a more practical and more important judgment: for the vast majority of people doing post-training, there is no need to distill the chain-of-thought of closed-source models at all.
+
+493
+01:16:36.828 --> 01:16:49.303
+The gap between today's best open-source models and SOTA closed-source models is not as large as one might imagine; a teacher model only needs to be "clearly stronger than the student", not "the best in the world".
+
+494
+01:16:49.303 --> 01:16:57.516
+If the model you are post-training is 200B parameters or smaller, an open-source SOTA model is entirely sufficient as the teacher.
+
+495
+01:16:57.516 --> 01:17:01.191
+Experiment Design: A three-step process.
+
+496
+01:17:01.191 --> 01:17:22.578
+Step 1, Collect Trajectories: Sample problems from the target task distribution (e.g., math, code), use the open-source teacher model to generate complete "thinking + answer" trajectories, and filter out trajectories with incorrect final answers using a rule-based validator—otherwise, the student will imitate the erroneous thinking process.
+
+497
+01:17:22.578 --> 01:17:31.653
+This step—"generate candidates, verify and filter, keep only correct trajectories"—has a name of its own: rejection sampling.
+
+498
+01:17:31.653 --> 01:17:38.153
+Performing SFT on data constructed this way is rejection sampling fine-tuning (RFT).
+
+499
+01:17:38.153 --> 01:17:54.791
+It sits between pure SFT and RL: no reward model to train, no policy gradients—just "sample many, reject the wrong ones, keep the right ones" to improve data quality, an extremely cost-effective way to construct data for verifiable tasks.
+
+500
+01:17:54.791 --> 01:18:07.678
+Step 2, SFT Training: Use "problem → <think> thinking trajectory </think> + final answer" as training pairs to perform standard SFT on a small model (e.g., 7B scale).
+
+501
+01:18:07.678 --> 01:18:19.416
+Step 3, Comparative Evaluation: Compare the student model before and after distillation, as well as the teacher model, on the same benchmark to measure the proportion of capability recovered.
+
+502
+01:18:19.416 --> 01:18:34.678
+Acceptance Criteria: The distilled student model shows significant improvement on math and code benchmarks relative to its pre-distillation performance, and its thinking trajectories exhibit teacher-like behaviors such as reflection, backtracking, and verification.
+
+503
+01:18:34.678 --> 01:18:47.178
+Also, be aware of the cost of distillation: the student will inherit the teacher's systematic errors and verbose thinking habits (the latter can be further optimized using the AdaptThink approach from Experiment 8-10).
+
+504
+01:18:47.332 --> 01:19:05.732
+These four experiments share a common feature—"writing stable mappings and protocols into parameters": voice SFT solidifies style-control protocols, multilingual SFT solidifies thinking-organization templates, and distillation SFT solidifies the direct mapping from input to output.
+
+505
+01:19:05.682 --> 01:19:15.332
+The clearer the objective, the cleaner the format, and the more stable the evaluation criteria, the more sample-efficiently SFT can improve performance.
+
+506
+01:19:15.332 --> 01:19:20.657
+SFT Data Synthesis: From Demonstrations to Trainable Trajectories.
+
+507
+01:19:20.657 --> 01:19:24.457
+The ceiling of SFT is set first by its data.
+
+508
+01:19:24.457 --> 01:19:44.007
+Real projects can rarely hand-write enough demonstrations one at a time; they usually combine a small human seed set, teacher-model generation, and verifier filtering: human demonstrations define the format and the boundaries, the teacher model scales them up, and rule-based verification or human spot checks hold the quality line.
+
+509
+01:19:44.007 --> 01:19:55.494
+When the model bootstraps itself, you can sample several candidates for the same problem and keep only the trajectories that pass verification—this is rejection sampling fine-tuning (RFT).
+
+510
+01:19:55.494 --> 01:20:09.907
+The goal of synthetic data is not to replay production logs but to distill from them a reusable task structure: user intent, initial state, available tools, business constraints, common failure modes, and success conditions.
+
+511
+01:20:09.907 --> 01:20:20.819
+Once identifying information is stripped, regenerate fictional people, orders, files, and states for each task type and place them in a resettable, isolated environment.
+
+512
+01:20:20.819 --> 01:20:27.682
+This preserves the genuine difficulties while keeping the model from memorizing customer data or internal credentials.
+
+513
+01:20:27.682 --> 01:20:38.169
+A dependable pipeline runs: production data → task blueprint → synthetic task → multiple candidate trajectories → task verification and trajectory verification → SFT data.
+
+514
+01:20:38.169 --> 01:20:51.832
+Task verification checks whether the problem itself is solvable, whether its difficulty is appropriate, and whether the reference result is correct; trajectory verification checks the final state, the tool calls, and the business constraints.
+
+515
+01:20:51.832 --> 01:21:06.707
+Conditions that can be written as unit tests, database assertions, or state-diff checks should use deterministic code first; open-ended qualities such as communication quality are then supplemented by a model evaluator and calibrated by human sampling.
+
+516
+01:21:06.707 --> 01:21:15.507
+Skill graphs, executable environments, and independent verifiers can further widen task coverage and filter out invalid trajectories.
+
+517
+01:21:15.507 --> 01:21:37.819
+The same task and verification infrastructure can later be turned into an RL environment, but the two stages use it differently: SFT keeps only the successful trajectories that passed verification, learning stable formats, procedures, and basic actions; RL has the current policy roll out again and uses environment rewards to explore paths beyond the demonstrations.
+
+518
+01:21:37.819 --> 01:21:50.944
+Failed trajectories should not be fed in directly as correct demonstrations—they can be used to construct preference pairs, to reveal gaps in task coverage, or to be added to training after a diagnosis and a fix have been appended.
+
+519
+01:21:50.944 --> 01:21:56.944
+What matters in data synthesis is not volume but coverage, diversity, and accuracy.
+
+520
+01:21:56.944 --> 01:22:12.132
+The training set should also be deduplicated and split by task template, customer, or time period, and the evaluation set must come from non-overlapping task types; reference solutions, hidden tests, and verifier feedback must not leak to the model.
+
+521
+01:22:12.292 --> 01:22:17.317
+The bad cases from Chapter 7 can also be turned into training data here.
+
+522
+01:22:17.267 --> 01:22:35.479
+Take the Coding Agent's "premature completion": first cut out the trajectory prefix up to the point where it is about to declare completion, then treat that premature declaration as the rejected sample and "run the tests first, check the acceptance conditions one by one, and only then conclude" as the chosen sample.
+
+523
+01:22:35.479 --> 01:22:50.367
+Data like this suits DPO or decision-boundary demonstrations rather than being used directly as correct SFT trajectories; the failure reason, the applicable conditions, and the verifier should be stored with the sample so it can be traced and re-examined.
+
+524
+01:22:50.367 --> 01:23:03.967
+The build_preference_data.py in Experiment 8-17 offers two construction paths—a deterministic template and a teacher model—and keeps the training data separate from the evaluation set that follows.
+
+525
+01:23:03.967 --> 01:23:09.979
+The two Bad Case experiments added in this chapter demonstrate two different supervision targets.
+
+526
+01:23:09.979 --> 01:23:26.379
+The Chinese curly-quote case first distills the feedback into a scope-sensitive documentation Skill and then runs SFT on structured synthetic data; the special-string case turns old_string mismatches into a byte-exact copying task, training token-by-token fidelity.
+
+527
+01:23:26.379 --> 01:23:40.704
+Both share Chapter 7's failure-attribution and train/eval isolation protocols, but they do not share a total score: the former tests "change what should change, leave what should be left," the latter tests "copy verbatim.
+
+528
+01:23:40.704 --> 01:23:44.842
+When to Choose Mid-training, SFT, and RL.
+
+529
+01:23:44.842 --> 01:23:53.229
+The section "From Pre-training to RL: An Overview of the Four Training Stages" explained the mechanics of all three training methods.
+
+530
+01:23:53.229 --> 01:24:04.667
+This section gives a practical diagnosis: first decide whether the missing piece is the foundation, the protocol, or the policy; do not treat every model failure as a need for RL.
+
+531
+01:24:04.667 --> 01:24:13.967
+As illustrated in Figure 8-11: SFT→RL Two-Stage Training Pipeline; Mid-training Precedes These Two Behavioral-Alignment Stages.
+
+532
+01:24:13.967 --> 01:24:19.692
+Table 8-4 Criteria for Choosing Mid-training, SFT, and RL
+
+533
+01:24:19.692 --> 01:24:49.842
+Observed behavior: The model does not know domain concepts, the language, or basic operations; pass@k stays near zero under reasonable sampling; Main gap: Knowledge and capability are outside the base model's effective support; Preferred method: Mid-training; use RAG for dynamic facts; Gate for moving on: Held-out domain results improve, general retention remains acceptable, and the target task begins to yield verifiably correct or partially correct trajectories.
+
+534
+01:24:49.842 --> 01:25:12.954
+Observed behavior: The model is occasionally correct, but format, tool schema, tone, or fixed procedure is unstable; Main gap: Behavioral protocol has not been solidified; Preferred method: SFT or constrained decoding; Gate for moving on: Parse success stabilizes, and a verifier can reliably score key actions and output protocols.
+
+535
+01:25:12.954 --> 01:25:39.292
+Observed behavior: Success is nonzero and rewards are reliable, but good policies have low probability or long-horizon decisions and OOD generalization remain weak; Main gap: Probability allocation and policy optimization; Preferred method: RL; Gate for moving on: Reward agrees with the real objective, rollout groups have enough reward variation, and independent test performance improves during training.
+
+536
+01:25:39.292 --> 01:26:02.942
+Observed behavior: Only a few stable demonstrations exist and no interactive environment is available; Main gap: Imitable data exists, online feedback does not; Preferred method: SFT/RFT/offline preference optimization; Gate for moving on: Establish a baseline and evaluation first, then decide whether building an RL environment is worthwhile.
+
+537
+01:26:02.942 --> 01:26:05.379
+Make the decision in this order:
+
+538
+01:26:05.379 --> 01:26:09.204
+First rule out solutions that do not modify weights.
+
+539
+01:26:09.204 --> 01:26:16.479
+If prompts, tools, code constraints, or context management solve the behavior problem, do not train.
+
+540
+01:26:16.479 --> 01:26:22.442
+Prefer RAG for facts that need frequent updates, citations, or deletion.
+
+541
+01:26:22.612 --> 01:26:26.499
+Measure capability support on a target held-out set.
+
+542
+01:26:26.449 --> 01:26:37.824
+Do not look only at greedy pass@1; under a fixed sampling setup, also measure pass@k, partial-progress rate, parse rate, and manually audit failure causes.
+
+543
+01:26:37.824 --> 01:26:47.849
+If pass@k remains near zero and failures cluster around knowledge or foundational capability, use Mid-training first and remeasure before choosing a later stage.
+
+544
+01:26:47.849 --> 01:26:53.087
+Use SFT to establish protocols, not to stuff in a knowledge base.
+
+545
+01:26:53.087 --> 01:27:04.649
+When the model can do the task but cannot do it as required, use high-quality demonstrations to solidify JSON schemas, tool calls, terminology, procedures, and style.
+
+546
+01:27:04.649 --> 01:27:12.649
+A few facts may enter the parameters with the demonstrations, but a handful of QA pairs should not carry a large knowledge base.
+
+547
+01:27:12.649 --> 01:27:16.162
+Use RL only when there is something to explore.
+
+548
+01:27:16.162 --> 01:27:25.599
+RL is appropriate when the current policy already produces scoreable, occasionally successful rollouts and the reward faithfully represents deployment goals.
+
+549
+01:27:25.599 --> 01:27:39.287
+If pass@k is near zero, first use Mid-training/SFT or design a reachable curriculum and partial rewards; applying PPO or GRPO directly to all-zero rollouts usually only burns sampling budget.
+
+550
+01:27:39.287 --> 01:27:44.362
+This flow does not require every project to run all three methods in order.
+
+551
+01:27:44.362 --> 01:27:56.262
+A strong base model may enter RL directly, a format-only task may need only SFT, and stable domain knowledge may need Mid-training followed by reuse of the model's existing alignment.
+
+552
+01:27:56.262 --> 01:28:04.499
+The key is that every transition has a measurable entry condition rather than treating "Mid-training → SFT → RL" as a ritual pipeline.
+
+553
+01:28:04.499 --> 01:28:10.062
+Single-Turn Reinforcement Learning: A Comparison of Memory and Generalization.
+
+554
+01:28:10.062 --> 01:28:21.424
+Single-turn" means the task is completed in one interaction: the model receives input, produces output, and receives a reward, without needing to maintain state across steps.
+
+555
+01:28:21.424 --> 01:28:31.649
+This simplified setting allows us to focus on the fundamental differences in learning mechanisms between SFT and RL, without the complexity of multi-turn interactions.
+
+556
+01:28:31.649 --> 01:28:43.524
+The single-turn scenario provides clear controlled experimental conditions: the same task, the same base model, the same computational budget, with the only variable being the training method.
+
+557
+01:28:43.524 --> 01:28:56.962
+The first experiment demonstrates how RL learns the meta-strategy of "when to think"; the second experiment uses an arithmetic reasoning card game to systematically quantify "SFT memorizes, RL generalizes.
+
+558
+01:28:56.962 --> 01:29:05.962
+Before the experiments, let's build some minimal intuition about RL algorithms, enough to follow the terms that come up in the experiments that follow.
+
+559
+01:29:05.962 --> 01:29:22.812
+The RL training in this chapter mostly rests on the policy gradient: the model generates several responses to the same problem, increasing the probability of high-reward responses and decreasing that of low-reward responses—moving further in rewarding directions and less in unrewarding ones.
+
+560
+01:29:22.812 --> 01:29:46.312
+To discourage a single large update from derailing the model, mainstream PPO clips additional gains in its surrogate objective when a probability ratio falls outside a specified range; this discourages large changes but does not impose a hard constraint on policy movement (the later experiments use "PPO with a value network," whose value network estimates a baseline for finer-grained advantages).
+
+561
+01:29:46.312 --> 01:29:56.924
+The other method, GRPO, trains no value network; instead it compares multiple responses to the same problem against one another to judge each one's relative quality.
+
+562
+01:29:56.924 --> 01:30:00.999
+That intuition is all you need for the next two experiments.
+
+563
+01:30:00.999 --> 01:30:05.862
+The same mechanism can be written as the Python-style pseudocode below.
+
+564
+01:30:05.862 --> 01:30:15.737
+It omits sampling parallelism, KL regularization, and optimizer details, marking only the causal chain from one rollout to a parameter update:
+
+565
+01:30:15.737 --> 01:30:25.037
+Here is the trajectory representation tracking the sequence of user prompts, model decisions, and environment observations across execution steps.
+
+566
+01:30:25.037 --> 01:30:29.637
+PPO's value network and clipped objective can be written separately:
+
+567
+01:30:29.637 --> 01:30:38.937
+Here is the trajectory representation tracking the sequence of user prompts, model decisions, and environment observations across execution steps.
+
+568
+01:30:39.100 --> 01:30:55.712
+The "relative" in GRPO comes from comparing rollouts within a group for the same prompt; the old_policy in PPO is the frozen policy snapshot that generated this batch of rollouts, and the probability ratio measures how far the current policy has already moved from it.
+
+569
+01:30:55.662 --> 01:31:08.012
+Clipping discourages large steps but is not a hard constraint on policy movement; both still depend on a reliable environment and reward, and the specific training adaptations appear in the corresponding experiments.
+
+570
+01:31:08.012 --> 01:31:15.237
+Experiment 8-10 intermediate difficulty, two stars: : AdaptThink—Learning "When Not to Think"
+
+571
+01:31:15.237 --> 01:31:27.025
+Large reasoning models (e.g., OpenAI o1, DeepSeek-R1) generate lengthy chain-of-thought for all problems, causing unnecessary overhead on simple problems.
+
+572
+01:31:27.025 --> 01:31:41.700
+The experiment first validates an intuition: NoThinking mode (skipping thinking via <think></think>) performs comparably or even better on simple problems; only when facing difficult problems does the advantage of Thinking mode become apparent.
+
+573
+01:31:41.700 --> 01:31:46.725
+AdaptThink uses RL to train the model to adaptively choose the mode.
+
+574
+01:31:46.725 --> 01:31:48.975
+Two core components:
+
+575
+01:31:48.975 --> 01:31:56.087
+Constrained Optimization Objective: Encourages NoThinking while ensuring overall performance does not degrade.
+
+576
+01:31:56.087 --> 01:32:19.800
+Importance Sampling Strategy: Balances Thinking and NoThinking samples to solve the cold-start problem (here, cold start specifically refers to the initial model almost always choosing Thinking, leaving the NoThinking branch with too few samples to learn effectively; this differs from the earlier use of "cold-start SFT" for DeepSeek-R1, which involves a small number of demonstration examples).
+
+577
+01:32:19.800 --> 01:32:35.337
+The "importance sampling" mentioned here is a common statistical method—when the sampling distribution is biased towards a certain class of samples, weights are applied to the samples to "correct" the distribution, ensuring that the learning signal fairly covers all classes.
+
+578
+01:32:35.337 --> 01:32:42.125
+This idea is repeatedly used in RL algorithms like PPO and DAPO discussed later in this book.
+
+579
+01:32:42.125 --> 01:32:47.500
+The canonical record of this historical training run is the checkpoint-free training report.
+
+580
+01:32:47.500 --> 01:32:55.562
+The public W&B main run wubbn5tj used 8×NVIDIA H100 80GB GPUs.
+
+581
+01:32:55.562 --> 01:33:48.525
+From step 0→300, MATH500 accuracy changed from 0.8100→0.8180 (+0.80 pp) while response length changed from 4911.46→1576.62 (-67.90%); GSM8K changed from 0.796816→0.818802 (+2.20 pp) and 1025.24→477.33 (-53.44%); and AIME mean@16 changed from 0.314583→0.310417 (-0.42 pp) and 12119.51→6402.23 (-47.17%).
+
+582
+01:33:48.525 --> 01:33:57.700
+The corresponding NoThinking ratios were 83.80%, 84.15%, and 56.25%.
+
+583
+01:33:57.700 --> 01:34:10.612
+These results show a routing signal aligned with difficulty at the aggregate dataset level, but they do not justify calling it "perfect difficulty awareness" on every problem or claiming that accuracy improved universally.
+
+584
+01:34:10.612 --> 01:34:25.287
+After the report's selected measurement point, the run continued to step 410 and 36.92 cumulative hours before W&B marked it as crashed; the configured 10 epochs / 3,140 steps were not completed.
+
+585
+01:34:25.287 --> 01:34:41.325
+Although step 300 contains a checkpoint-timing event, the checkpoint is not distributed with the book, and there is no independent evidence confirming that it was successfully evaluated with run_eval_verl_hf.sh or used to rerun MMLU.
+
+586
+01:34:41.325 --> 01:34:52.275
+The historical source commit is 9e588202…; future reproductions are pinned to its direct child commit 0033ad172…
+
+587
+01:34:52.275 --> 01:35:05.137
+The three entry-point files are unchanged, but the -fl- path generated by the training script is incompatible with the -fl4096 path hard-coded in the evaluation script and must be corrected manually.
+
+588
+01:35:05.137 --> 01:35:20.250
+AdaptThink complements prompt distillation to form a "fast-slow dual system": distillation reduces the proportion of tasks that require thinking, while AdaptThink optimizes the triggering strategy for the remaining tasks, jointly improving thinking efficiency.
+
+589
+01:35:20.404 --> 01:35:30.379
+Experiment 8-11 intermediate difficulty, two stars: : GeneralPoints—A "Memory and Generalization" Comparison in Single-Turn RL
+
+590
+01:35:30.329 --> 01:35:40.066
+As illustrated in Figure 8-12: GeneralPoints Experimental Architecture (Training and Testing Design for GP-L and GP-VL Variants).
+
+591
+01:35:40.066 --> 01:35:48.366
+GeneralPoints is an arithmetic reasoning card game proposed by Chu et al., specifically designed to evaluate model generalization.
+
+592
+01:35:48.366 --> 01:36:01.391
+The objective resembles the "24 Game": use each of the four numbers shown on the cards exactly once, combining them with addition, subtraction, multiplication, and division to reach the target number 24.
+
+593
+01:36:01.391 --> 01:36:13.241
+The experiment designs two variants: the text-only GP-L and the image-based GP-VL, allowing us to examine rule generalization and visual generalization within the same framework.
+
+594
+01:36:13.241 --> 01:36:32.904
+Rule Variant: During training, J/Q/K are all counted as 10; during testing, they are counted as 11/12/13 respectively, ensuring the test set contains unseen number combinations (operations involving 11, 12, 13) to strictly evaluate generalization.
+
+595
+01:36:32.904 --> 01:36:44.641
+Visual Variant: Training uses black suits (♠♣), testing uses red suits (♥♦), to evaluate robustness to changes in visual appearance.
+
+596
+01:36:44.641 --> 01:37:07.254
+Using Llama-3.2-Vision-11B, the experiment follows the standard post-training pipeline: first, SFT initialization gives the model basic instruction-following ability; then, under the same computational budget, the model undergoes additional SFT and RL training in separate branches, with PPO and a value network used for RL.
+
+597
+01:37:07.254 --> 01:37:19.366
+Both branches are trained on data using the single rule J/Q/K=10 and evaluated on in-distribution (ID) and out-of-distribution (OOD) test sets.
+
+598
+01:37:19.366 --> 01:37:23.154
+The results show a clear difference in this controlled setting.
+
+599
+01:37:23.154 --> 01:37:47.666
+Rule OOD: RL improves by +3.5 percentage points on GP-L (11.5%→15.0%), while SFT decreases by 8.1 percentage points (11.5%→3.4%); on GP-VL, RL improves by +3.0 percentage points, while SFT decreases by 5.6 percentage points.
+
+600
+01:37:47.666 --> 01:38:04.529
+Visual OOD: RL improves by +17.6 percentage points on GP-VL (23.6%→41.2%), while SFT decreases by 9.9 percentage points (23.6%→13.7%).
+
+601
+01:38:04.529 --> 01:38:26.141
+Tracking visual recognition accuracy reveals that RL improves the underlying visual encoder through outcome-oriented optimization, and this improvement is highly correlated with overall performance gains; in contrast, SFT overfits to the token patterns in the thinking process, neglecting the learning of visual tokens, leading to a decrease in recognition accuracy.
+
+602
+01:38:26.141 --> 01:38:44.804
+The experiment also shows that RL required SFT initialization in this setting: with a Llama-3.2-Vision-11B-scale base model and strict structured-output requirements, end-to-end RL without SFT failed completely because the base model could not produce scoreable structured outputs.
+
+603
+01:38:44.804 --> 01:38:57.041
+This is specific to the setting, not a universal law; a sufficiently strong base model can skip SFT and succeed with direct RL (see the earlier discussion of DeepSeek-R1-Zero).
+
+604
+01:38:57.041 --> 01:39:15.466
+Another noteworthy finding is that, in this experiment, more verification iterations produced better measured generalization: 10 iterations yielded +5.99% versus +0.48% for one iteration, making test-time computation an important factor in the observed gain.
+
+605
+01:39:15.466 --> 01:39:21.366
+Why did SFT degrade under this experiment's distribution shift while RL performed better?
+
+606
+01:39:21.366 --> 01:39:33.554
+One explanation consistent with the observations is that the limited SFT data reinforced the fixed pattern "treat J/Q/K as 10," which remained active when J changed to 11.
+
+607
+01:39:33.554 --> 01:39:44.229
+The outcome-trained RL branch was more likely to reinforce a strategy of recalculating until it reached the correct result, allowing the same procedure to apply after the rule changed.
+
+608
+01:39:44.229 --> 01:39:54.666
+This explains the experiment's memorization-versus-generalization contrast; it does not imply that SFT can only memorize or that RL must learn a general algorithm.
+
+609
+01:39:54.820 --> 01:40:10.582
+The core contribution of this experiment is its systematic quantification, within the limited GeneralPoints setting, of SFT's overfitting tendency and RL's better out-of-distribution performance, with the same pattern observed in both text-only and vision-language variants.
+
+610
+01:40:10.532 --> 01:40:18.982
+In this setting, SFT stabilized the format and RL explored strategies on that foundation, making the two methods complementary.
+
+611
+01:40:18.982 --> 01:40:24.045
+RL Algorithms: From 16 Rollouts to One Parameter Update.
+
+612
+01:40:24.045 --> 01:40:33.507
+GRPO (Group Relative Policy Optimization), proposed by DeepSeek, is one of the most widely used RL training algorithms today.
+
+613
+01:40:33.507 --> 01:40:36.070
+An example makes it concrete.
+
+614
+01:40:36.070 --> 01:40:47.982
+Suppose SWE-bench contains this task: parser.py in some Python project raises an IndexError on empty input, and the Agent must fix the code without modifying the tests.
+
+615
+01:40:47.982 --> 01:40:51.657
+The training system goes through the four steps below.
+
+616
+01:40:51.657 --> 01:40:55.645
+Step 1: Let the policy model try repeatedly.
+
+617
+01:40:55.645 --> 01:40:59.857
+The policy model is the language model currently being trained.
+
+618
+01:40:59.857 --> 01:41:09.957
+The system copies the same initial code and the same problem description into 16 mutually isolated sandboxes and lets the model solve it 16 times independently.
+
+619
+01:41:09.957 --> 01:41:17.907
+Each attempt covers the full "read the code → edit the files → run the tests → submit the result"; that entire process is one rollout.
+
+620
+01:41:17.907 --> 01:41:34.695
+The problem and the initial environment are identical, but sampling is stochastic, so the 16 attempts may take different paths: some correctly add the boundary check, some merely catch the exception and paper over the problem, some edit the wrong file, and some try to modify the tests.
+
+621
+01:41:34.695 --> 01:41:37.745
+Step 2: Compute the reward.
+
+622
+01:41:37.745 --> 01:41:44.195
+After each rollout ends, a verifier applies the patch in a clean environment and runs the tests.
+
+623
+01:41:44.195 --> 01:41:55.420
+Suppose 4 of the 16 attempts pass all tests without touching the test files, and the other 12 fail; then the first 4 receive reward 1 and the other 12 receive reward 0.
+
+624
+01:41:55.420 --> 01:42:04.895
+In a coding task like this, "computing the reward" is nothing mysterious—it is just using tests and rules to judge whether the fix is actually correct.
+
+625
+01:42:04.895 --> 01:42:11.832
+Only for open-ended tasks with no definitive test do you need human preference or a reward model to do the judging.
+
+626
+01:42:11.832 --> 01:42:15.595
+Step 3: Compute the relative advantage.
+
+627
+01:42:15.595 --> 01:42:24.545
+A reward only says whether a single trajectory succeeded or failed; the relative advantage says how good it is compared with the other attempts in the same group.
+
+628
+01:42:24.545 --> 01:42:35.445
+This group's average success rate is 4/16: the 4 that passed are above the group average and get a positive advantage; the 12 that failed are below it and get a negative advantage.
+
+629
+01:42:35.445 --> 01:42:39.495
+This within-group comparison is the core of GRPO.
+
+630
+01:42:39.495 --> 01:42:49.320
+If all 16 fail, or all 16 succeed, every reward is identical, there is no way to tell which is better, and the relative advantage vanishes.
+
+631
+01:42:49.320 --> 01:42:58.845
+RLVP's path signals, process rewards, and partial-progress rewards exist precisely to restore meaningful differences within such groups.
+
+632
+01:42:58.845 --> 01:43:02.995
+Step 4: Update the policy by gradient descent.
+
+633
+01:43:02.995 --> 01:43:21.057
+The training program turns the relative advantages into a training loss, computes gradients, and has an optimizer (AdamW, Muon, and the like) perform gradient descent, raising the probability of the choices the model made in positive-advantage trajectories and lowering it in negative-advantage ones.
+
+634
+01:43:21.057 --> 01:43:42.932
+It does not memorize some successful patch verbatim; it adjusts gradually across many tasks and rollouts, so that when a similar bug appears later, "reproduce the problem, check the boundary condition, change the implementation, and run the tests" is more likely to occur, while "swallow the exception, edit the tests, submit without verifying" is less likely.
+
+635
+01:43:42.932 --> 01:43:52.270
+As illustrated in Figure 8-13: 16 Rollouts, Verification, and Relative Advantage on the Same SWE-bench Task.
+
+636
+01:43:52.420 --> 01:44:11.682
+These four steps together make up one training iteration, that is, one step: step k generates a batch of rollouts with the current policy, completes the reward, advantage, and gradient computations, and has the optimizer update the parameters; step k+1 then rolls out again with the updated policy.
+
+637
+01:44:11.632 --> 01:44:16.682
+Training for 100 steps means repeating this loop about 100 times.
+
+638
+01:44:16.682 --> 01:44:25.932
+A given RL training framework may count its internal minibatch updates separately, so when reading training logs you still need to confirm how it defines a step.
+
+639
+01:44:25.932 --> 01:44:28.545
+A rough time estimate helps.
+
+640
+01:44:28.545 --> 01:44:38.807
+A complex Agent rollout generates dozens of tool-calling turns, and even with 16 running in parallel the wall-clock time of a rollout stage is set by the slowest one.
+
+641
+01:44:38.807 --> 01:45:00.270
+Suppose the slowest rollout takes about 2,000 seconds and the subsequent gradient descent and optimizer update take about 600 seconds; then one step takes roughly 2{,}000+600=2{,}600 seconds, about 43 minutes, and 100 consecutive steps come to nearly 72 hours.
+
+642
+01:45:00.270 --> 01:45:06.557
+PPO and GRPO both follow this loop; they differ mainly in what they compare against.
+
+643
+01:45:06.557 --> 01:45:13.032
+GRPO directly compares multiple rollouts of the same problem and needs no separate value model.
+
+644
+01:45:13.032 --> 01:45:26.870
+PPO trains a value model that estimates "how well one typically does" at each step of a trajectory, then judges whether the current action beats that expectation, which suits long trajectories that need fine-grained credit assignment.
+
+645
+01:45:26.870 --> 01:45:33.820
+Both limit the size of a single update so that a small batch of samples cannot suddenly change the model too much.
+
+646
+01:45:33.820 --> 01:45:45.107
+DPO is different: it learns directly from pre-collected "better response—worse response" preference pairs and never has the current policy generate this group of rollouts online.
+
+647
+01:45:45.107 --> 01:45:59.332
+Among this chapter's cases, AdaptThink uses a custom constrained objective; GeneralPoints and V-IRL use PPO with a value model; SimpleVLA-RL and RLVP use GRPO; ReTool uses PPO.
+
+648
+01:45:59.332 --> 01:46:11.070
+The algorithm decides how trajectories are compared and parameters updated; the reward decides what counts as success; the environment and the data decide which problems the model gets to experience.
+
+649
+01:46:11.070 --> 01:46:15.382
+Why LLM RL Usually Prefers On-Policy Data.
+
+650
+01:46:15.382 --> 01:46:18.995
+First separate two terms that are easily conflated.
+
+651
+01:46:18.995 --> 01:46:25.095
+Online means only that data is continually produced through interaction with an environment during training.
+
+652
+01:46:25.095 --> 01:46:37.445
+On-policy requires the behavior policy \mu that generates rollouts to be identical, or sufficiently close, to the policy \pi_\theta currently being optimized.
+
+653
+01:46:37.445 --> 01:46:47.082
+An asynchronous cluster may generate data continuously yet still become off-policy in the statistical sense if its rollout workers lag several checkpoints behind.
+
+654
+01:46:47.082 --> 01:46:55.045
+Replaying old trajectories or using trajectories generated entirely by an older model or a teacher is more clearly off-policy.
+
+655
+01:46:55.045 --> 01:47:02.857
+The PPO/GRPO recipes in this chapter generally aim to roll out again from the latest policy at every step.
+
+656
+01:47:02.857 --> 01:47:16.720
+When PPO performs several minibatch epochs on the same batch, however, the later epochs already drift away from the old_policy that generated the data—precisely why PPO uses a probability ratio and clipping.
+
+657
+01:47:16.720 --> 01:47:24.070
+Policy gradients seek to estimate expected reward under the current policy \pi_\theta.
+
+658
+01:47:24.070 --> 01:47:30.320
+If data was sampled from another policy \mu, the correction uses an importance ratio:
+
+659
+01:47:30.320 --> 01:47:43.895
+\rho_t=\frac{\pi_\theta(a_t\mid s_t)}{\mu(a_t\mid s_t)
+
+660
+01:47:43.895 --> 01:48:00.657
+=\exp\left(\log\pi_\theta(a_t\mid s_t)-\log\mu(a_t\mid s_t)\right).
+
+661
+01:48:00.820 --> 01:48:12.507
+Genuinely fresh on-policy rollouts satisfy \pi_\theta=\mu before any parameter update, so \rho_t=1.
+
+662
+01:48:12.457 --> 01:48:21.045
+This focuses training on "the states the current model actually enters" and avoids paying a high-variance correction for distribution mismatch.
+
+663
+01:48:21.045 --> 01:48:34.682
+Off-policy data has its own advantages—old data can be reused, sampling and training can run asynchronously, and throughput is higher—but the staler the policy, the heavier the tail of the rho sub t distribution.
+
+664
+01:48:34.682 --> 01:48:46.645
+For long autoregressive sequences, a strict prefix or trajectory correction also multiplies many per-token ratios together, so a small bias can accumulate into an enormous or vanishing weight.
+
+665
+01:48:46.645 --> 01:48:58.270
+PPO's clipping limits outlier updates but cannot losslessly restore lost distribution coverage: clip too much and gradients are discarded, clip too little and a handful of samples dominate.
+
+666
+01:48:58.270 --> 01:49:08.907
+On-policy is better" is therefore not a universal theorem; in today's LLM policy gradients it usually means lower distribution bias and more stable optimization.
+
+667
+01:49:08.907 --> 01:49:20.307
+Empirical work on stabilizing large-model RL likewise finds that reducing policy staleness and training–inference discrepancy is an important condition for the surrogate objective to remain valid.
+
+668
+01:49:20.307 --> 01:49:25.070
+Why Training Is Sensitive to Sampler/Trainer Numerical Mismatch.
+
+669
+01:49:25.070 --> 01:49:38.507
+Large-scale LLM RL typically generates rollouts with an inference engine such as vLLM/SGLang and then recomputes log probabilities and gradients with a training engine such as FSDP/Megatron.
+
+670
+01:49:38.507 --> 01:49:52.807
+Even when both sides load the same weights, differences in floating-point precision, reduction order, tensor-parallel layout, batch size, KV cache, and fused kernels can make the log probability of the same token differ slightly.
+
+671
+01:49:52.807 --> 01:50:06.207
+As a result, rho sub t—which should equal 1 before the update—has already drifted away from 1: the system nominally synchronized the weights, but numerically it turned on-policy training into off-policy training.
+
+672
+01:50:06.207 --> 01:50:13.882
+Controlled experiments have shown that a tiny token-level training–inference discrepancy is on its own enough to trigger training collapse.
+
+673
+01:50:13.882 --> 01:50:29.120
+The sensitivity comes from an amplification chain: a small log-probability error → an exponentiated probability-ratio deviation → accumulation over a long prefix → changed clipping/advantage weighting → a changed gradient direction and effective sample count.
+
+674
+01:50:29.120 --> 01:50:52.132
+For example, if the log ratios of 4,000 tokens all deviate by 10^{-3} in the same direction, the trajectory-level ratio accumulates to e^4\approx54.6; real errors are not necessarily of the same sign, but the example shows why long sequences amplify errors that "look tiny on every single token.
+
+675
+01:50:52.132 --> 01:51:01.720
+A minute probability difference on an early token can also change which token is actually sampled, causing the entire subsequent state trajectory to diverge.
+
+676
+01:51:01.720 --> 01:51:16.170
+The end result is not merely "the same prompt occasionally produces a different answer": importance ratios can spike, large numbers of tokens can be clipped, and gradients or response lengths can jump, after which reward and entropy collapse together.
+
+677
+01:51:16.170 --> 01:51:28.370
+Changing the batch size alters how the computation is reduced and breaks numerical batch invariance; this too has been directly observed to turn nominally on-policy RL into implicit off-policy RL.
+
+678
+01:51:28.370 --> 01:51:35.007
+Either matching the sampling and training numerics or applying an explicit off-policy correction improves stability.
+
+679
+01:51:35.007 --> 01:51:40.470
+Engineering should treat this as a core problem rather than ordinary floating-point noise:
+
+680
+01:51:40.636 --> 01:51:57.711
+Before any parameter update, compare the sampler's and the trainer's token log probabilities on the same batch of trajectories, and monitor the mean, quantiles, maximum, approximate KL, and clipped fraction of rho sub t; this is the most direct on-policy unit test.
+
+681
+01:51:57.661 --> 01:52:15.386
+What must be synchronized is not only the weights, but also the LoRA adapter, tokenizer, chat template, model revision, and positional-encoding configuration; the rollout should store the behavior log probability from generation time, rather than passing off the current model's numbers after the fact.
+
+682
+01:52:15.386 --> 01:52:33.636
+Align the precision, parallel layout, and key compute kernels of sampling and training as far as possible; where that is impossible, treat the difference explicitly as off-policy, apply importance correction, and monitor the effective sample size, instead of assuming that PPO clipping will automatically compensate.
+
+683
+01:52:33.636 --> 01:52:40.686
+Keep rollouts fresh, and limit both the number of update epochs per batch of data and the asynchronous staleness.
+
+684
+01:52:40.686 --> 01:52:47.886
+Reusing old data buys throughput, but it should be a measured bias–efficiency trade-off, not a free speedup.
+
+685
+01:52:47.886 --> 01:52:52.023
+RL Environments: From Evaluation to Simulation.
+
+686
+01:52:52.023 --> 01:53:00.561
+The bottleneck in RL training is often not the algorithm but whether the environment is realistic, resettable, and parallelizable enough.
+
+687
+01:53:00.561 --> 01:53:23.261
+A real Agent's phone calls, payments, or file modifications can be expensive and irreversible, and one mistake cannot be made good by unlimited retries; Chapter 7's evaluation environment can supply the verifier, but training additionally requires the Agent to fail repeatedly, to absorb the side effects of its actions, and to stay stable across millions of interactions.
+
+688
+01:53:23.261 --> 01:53:29.786
+Environment engineering is therefore a precondition for RL, not an afterthought once training is done.
+
+689
+01:53:29.786 --> 01:53:33.148
+Environment: The Training Ground for the Model.
+
+690
+01:53:33.148 --> 01:53:40.973
+RL is fundamentally "learning by trial and error," and trial and error needs somewhere to happen—the simulation environment.
+
+691
+01:53:40.973 --> 01:53:47.398
+The model runs tasks in the environment over and over, collects feedback, and adjusts its policy.
+
+692
+01:53:47.398 --> 01:53:56.411
+The environment's fidelity—how closely it resembles the real deployment scenario—directly determines whether the resulting policy is usable at all:
+
+693
+01:53:56.411 --> 01:54:00.348
+A distorted environment guarantees a useless policy.
+
+694
+01:54:00.348 --> 01:54:12.736
+If the simulated customer always answers from a fixed script and its error messages do not match production, the model learns a test-taking strategy that only works in simulation and falls apart on the first real deployment.
+
+695
+01:54:12.736 --> 01:54:21.036
+This is the most common way RL projects fail—not a bad algorithm, but a practice ground that is not the same as the exam hall.
+
+696
+01:54:21.036 --> 01:54:26.648
+Building a high-fidelity environment is often more expensive and harder than the training itself.
+
+697
+01:54:26.648 --> 01:54:35.311
+An environment that is massively parallel, reproducible, and realistic in its feedback usually takes far more engineering than tuning the model.
+
+698
+01:54:35.311 --> 01:54:56.998
+The tool-calling experiments later in this chapter (AWorld's MCP sandbox, ReTool's code-interpreter sandbox) invest heavily in the environment precisely because real APIs have rate limits, will ban accounts, and have side effects, which makes them unusable for training directly—you have to build a stable, controllable, replayable "shadow world" first.
+
+699
+01:54:56.998 --> 01:55:00.623
+The other half of the environment is the reward function.
+
+700
+01:55:00.623 --> 01:55:09.798
+The environment must not only simulate how the world changes but also judge how well the Agent did, which is the input to the reward design discussed later.
+
+701
+01:55:09.798 --> 01:55:18.161
+In a nutshell: before you start tuning algorithms, ask yourself—does my simulation environment truly resemble the real world?
+
+702
+01:55:18.161 --> 01:55:23.098
+The answer matters far more than choosing between PPO and GRPO.
+
+703
+01:55:23.098 --> 01:55:25.723
+What If You Can't Build an Environment?
+
+704
+01:55:25.723 --> 01:55:28.336
+Let the Model Play the Environment.
+
+705
+01:55:28.492 --> 01:55:45.017
+But there is a more fundamental problem: in many scenarios a high-fidelity environment is not merely expensive, it cannot be built at all—real APIs have side effects and cannot be called at random, real users cannot be experimented on, and the physical world cannot be fast-forwarded.
+
+706
+01:55:44.967 --> 01:55:50.704
+If you cannot even stand up a usable "shadow world," is RL simply off the table?
+
+707
+01:55:50.704 --> 01:56:00.804
+An increasingly mainstream idea is to use a model to simulate the environment—have an LLM play the environment and generate the feedback the Agent's interactions require.
+
+708
+01:56:00.804 --> 01:56:03.279
+This route has two levels.
+
+709
+01:56:03.279 --> 01:56:08.367
+Level one: the model synthesizes the return values of tool calls.
+
+710
+01:56:08.367 --> 01:56:10.467
+Take ZeroSearch
+
+711
+01:56:10.467 --> 01:56:15.317
+Level two: the model simulates the whole environment's dynamics.
+
+712
+01:56:15.317 --> 01:56:23.479
+Not just the return value of a single tool, but "what the world looks like after an action is taken" can also be handed to a model.
+
+713
+01:56:23.479 --> 01:56:40.479
+DreamGym distills environment dynamics into a reasoning-style "experience model": given the current state and the Agent's action, it reasons step by step to the state transition and the feedback signal, and can thus synthesize rollouts in bulk for online RL without touching the real environment.
+
+714
+01:56:40.479 --> 01:56:55.904
+Training for customer-service and sales Agents commonly uses an LLM to play the user (a user simulator), and the τ-bench family of evaluations is built on exactly this idea—the same model simulator can serve as both exam hall and practice ground.
+
+715
+01:56:55.904 --> 01:57:06.967
+But the risk of this route must be stated plainly: the simulator's knowledge of the world is the ceiling on training, and the simulator's systematic biases will be adopted wholesale by the policy.
+
+716
+01:57:06.967 --> 01:57:24.892
+If the simulated customer is more patient than real users, or the simulated search engine never returns junk, what the student learns is a strategy that only holds in "the world as the model imagines it"; worse, RL will actively seek out and exploit the simulator's flaws, which is reward hacking.
+
+717
+01:57:24.892 --> 01:57:39.229
+The prudent engineering answer is therefore a hybrid: let model simulation carry most of the interaction volume, supplement it with interactions in the real environment, and use those real interactions to periodically calibrate the simulator's bias.
+
+718
+01:57:39.229 --> 01:57:44.104
+Environments, Task Distribution, and Evaluation Isolation.
+
+719
+01:57:44.104 --> 01:57:55.904
+The environment itself determines what RL can learn: it must be resettable, parallelizable, and reproducible, and it must return a trustworthy verification result after each state transition.
+
+720
+01:57:55.904 --> 01:58:10.879
+Training tasks come from the same source as the SFT data synthesis above—distill task blueprints from real business logs, then, once identifying information is stripped, regenerate fictional people, orders, files, and states.
+
+721
+01:58:10.879 --> 01:58:23.879
+The isolation requirements are the same, with one addition specific to RL: the training and evaluation environments may share the task generator and the verification code, but they must not share the same set of tasks.
+
+722
+01:58:23.879 --> 01:58:30.017
+SWE-Gym, τ²-bench, and AndroidWorld all illustrate this
+
+723
+01:58:30.017 --> 01:58:41.842
+The order for environment engineering is therefore: task blueprint → resettable simulator → deterministic verifier → training/evaluation isolation → calibration with a small amount of real interaction.
+
+724
+01:58:41.842 --> 01:58:54.042
+SFT data synthesis appeared earlier because it constructs stable demonstrations; the environment here serves RL, letting the current policy fail repeatedly and explore paths beyond the demonstrations.
+
+725
+01:58:54.042 --> 01:58:59.042
+A deterministic verifier being "cheap" is not the same as being free.
+
+726
+01:58:59.042 --> 01:59:12.904
+A Lean kernel, a test runner, or container execution can make CPU verification far slower than GPU generation; throughput is then set by the number of parallel verifier workers, not by adding more GPUs.
+
+727
+01:59:12.904 --> 01:59:17.979
+From Single-Turn to Multi-Turn: Task Scenarios and Credit Assignment.
+
+728
+01:59:17.979 --> 01:59:21.217
+The Core Challenge of Multi-Turn Tasks.
+
+729
+01:59:21.217 --> 01:59:28.129
+As illustrated in Figure 8-14: Comparison of Single-Turn RL and Multi-Turn RL.
+
+730
+01:59:28.129 --> 01:59:34.129
+As illustrated in Figure 8-15: Credit Assignment in Multi-Turn Interactions.
+
+731
+01:59:34.300 --> 01:59:39.125
+Going from single-turn to multi-turn is a qualitative jump in complexity.
+
+732
+01:59:39.075 --> 01:59:54.787
+The policy must not only choose the best action now but also consider the value of future states; it must handle not only immediate feedback but also credit assignment under delayed rewards—deciding which step in a multi-step sequence contributed most to the final outcome.
+
+733
+01:59:54.787 --> 02:00:07.937
+Suppose a customer-service Agent takes 10 turns of dialogue to resolve a user's problem and finally earns a positive rating—should the credit go to the precise question it asked in turn 2, or to the patient explanation in turn 7?
+
+734
+02:00:07.937 --> 02:00:23.700
+The multi-turn interaction discussed here is exactly the ReAct loop described in Chapters 1 and 4—each turn is one think → act → observe iteration, and the delayed reward comes from the structural constraint that "how good the final outcome is can only be judged several turns later.
+
+735
+02:00:23.700 --> 02:00:31.375
+Experiment 8-12 advanced difficulty, three stars: : V-IRL-VL—Multi-Turn Visual Navigation
+
+736
+02:00:31.375 --> 02:00:44.162
+V-IRL has the Agent navigate continuously through real urban street scenes: training uses New York routes, while testing transfers to different cities and changes both the phrasing of directions and the visual appearance.
+
+737
+02:00:44.162 --> 02:00:56.812
+RL clearly outperforms SFT on both rule OOD and visual OOD, showing that in multi-turn tasks the policy must learn to re-plan from the current observation rather than reproduce training trajectories.
+
+738
+02:00:56.812 --> 02:01:04.950
+The experiment uses PPO with a value network, and step-by-step feedback is observed to ease long-horizon credit assignment.
+
+739
+02:01:04.950 --> 02:01:15.050
+Experiment 8-13 advanced difficulty, three stars: : SimpleVLA-RL—Open Exploration Under Outcome Rewards [Extended Experiment]
+
+740
+02:01:15.050 --> 02:01:21.962
+SimpleVLA-RL uses only success/failure outcome rewards on LIBERO robotics tasks.
+
+741
+02:01:21.962 --> 02:01:36.212
+Each task gets just one demonstration trajectory for SFT cold start; RL then lifts the success rate from 17.3% to 91.7% and discovers a "pushcut" action that never appeared in the demonstrations.
+
+742
+02:01:36.212 --> 02:01:47.475
+It contrasts with V-IRL: when process signals are easy to define they accelerate learning, but when the optimal path is unknown a sparse outcome reward preserves far more room for exploration.
+
+743
+02:01:47.475 --> 02:01:51.312
+Tool Calling: Bringing the Environment Into the Agent.
+
+744
+02:01:51.312 --> 02:02:04.937
+Once a multi-turn task connects to external tools, actions are no longer just "move or answer" but searching, executing code, editing files, querying databases, and composing several APIs.
+
+745
+02:02:04.937 --> 02:02:12.825
+Tool calling therefore pushes credit assignment, environment engineering, and safety constraints to the foreground all at once.
+
+746
+02:02:12.825 --> 02:02:18.325
+As illustrated in Figure 8-16: Tool Calling RL Reward Loop.
+
+747
+02:02:18.325 --> 02:02:28.687
+Search-R1 represents the retrieval-augmented route: the model decides on its own when to search and what to search for, and uses the returned results to continue reasoning.
+
+748
+02:02:28.687 --> 02:02:39.587
+ReTool instead embeds a code interpreter into the thinking loop, so the model must learn when to execute code, how to read the feedback, and how to correct itself from error messages.
+
+749
+02:02:39.587 --> 02:02:49.850
+AWorld-train provides an MCP multi-tool sandbox, which further introduces tool selection, dependency management, state reset, and replayability.
+
+750
+02:02:49.850 --> 02:03:06.150
+Tool trajectories have one crucial implementation detail: the tokens returned by the environment are not generated by the policy, so when computing the policy gradient those feedback tokens should be masked, and gradients propagated only through the model's own thinking and its tool-call arguments.
+
+751
+02:03:06.150 --> 02:03:12.162
+Otherwise the model is trained to predict sandbox output instead of learning how to use tools.
+
+752
+02:03:12.162 --> 02:03:20.462
+Experiment 8-14 advanced difficulty, three stars: : ReTool—Code Interpreter Enhanced Math Problem Solving
+
+753
+02:03:20.462 --> 02:03:28.600
+As illustrated in Figure 8-17: ReTool Interleaving Text-Code Thinking and Sandbox Execution Feedback Loop.
+
+754
+02:03:28.600 --> 02:03:37.275
+After an SFT warm-up, ReTool trains with PPO on interleaved text reasoning, code execution, and interpreter feedback.
+
+755
+02:03:37.275 --> 02:03:46.750
+It shows how tool feedback changes the thinking strategy: the model gradually learns to execute proactively, read errors, and correct itself.
+
+756
+02:03:46.750 --> 02:03:54.437
+The training data comes from DAPO-Math-17k, but the optimization algorithm is still standard PPO.
+
+757
+02:03:54.604 --> 02:04:08.704
+On AIME 2024, training raised accuracy from about 25% to 67.0%; compared with pure-text RL, code feedback let the model learn precise calculation and error correction faster.
+
+758
+02:04:08.654 --> 02:04:14.716
+Detailed training dynamics and sandbox configuration are in the experiment's companion notes.
+
+759
+02:04:14.716 --> 02:04:22.741
+Experiment 8-15 advanced difficulty, three stars: : AWorld-train—Learning to Use Tools in a Sandbox
+
+760
+02:04:22.741 --> 02:04:30.654
+As illustrated in Figure 8-18: AWorld-train MCP Sandbox Training Architecture and Tool Ecosystem.
+
+761
+02:04:30.654 --> 02:04:39.666
+AWorld-train uses an MCP server sandbox that provides web, document, multimedia, code, and knowledge-retrieval tools.
+
+762
+02:04:39.666 --> 02:04:53.491
+The point of this open-ended experiment is not to push GAIA numbers but to get a resettable, replayable multi-tool training loop running end to end, and to observe whether tool-call success rates and composition strategies improve with training.
+
+763
+02:04:53.491 --> 02:05:10.066
+These scenarios together make the same point: the difficulty in training multi-turn Agents is not "whether there is a fancier optimizer," but whether environment feedback is reliable, whether the action chain is verifiable, and how the final reward should be attributed to intermediate decisions.
+
+764
+02:05:10.066 --> 02:05:14.529
+Reward Design: Turning Task Goals into Learning Signals.
+
+765
+02:05:14.529 --> 02:05:24.216
+The single-turn, multi-turn and tool-calling scenarios above established what to train; this section answers how the environment should tell the model whether it did well.
+
+766
+02:05:24.216 --> 02:05:33.566
+Reward design unfolds along three complementary dimensions: where the reward comes from, when it is given, and how much information it must express.
+
+767
+02:05:33.566 --> 02:05:39.416
+A fourth question follows: when the outcome is correct, was the path also acceptable?
+
+768
+02:05:39.416 --> 02:05:44.704
+Where the Reward Comes From: Rules, Human Preference and Model Judgment.
+
+769
+02:05:44.704 --> 02:05:55.554
+The most reliable source is a verifiable reward (RLVR): judge the result directly with test cases, database assertions, state diffs or format checks.
+
+770
+02:05:55.554 --> 02:06:03.366
+Mathematical answers, code tests and structured tool calls are all good places to start from a binary outcome reward.
+
+771
+02:06:03.366 --> 02:06:10.604
+The more deterministic the rule, the cheaper and more reproducible the reward, and the harder it is for the model to game.
+
+772
+02:06:10.604 --> 02:06:13.391
+RLHF is background here.
+
+773
+02:06:13.391 --> 02:06:23.116
+The basic InstructGPT pipeline is: humans compare responses, a reward model is trained, and PPO then optimizes the policy.
+
+774
+02:06:23.116 --> 02:06:34.479
+The reward model is only a proxy for preference, and over-optimizing it leads to reward hacking, which is why a KL penalty is normally used to anchor the policy near the SFT reference.
+
+775
+02:06:34.479 --> 02:06:40.879
+DPO skips the explicit reward model and optimizes offline from preference pairs directly.
+
+776
+02:06:40.879 --> 02:06:45.241
+These methods are not the main line of Agent RL in this chapter.
+
+777
+02:06:45.412 --> 02:06:50.624
+When the goal cannot be fully reduced to rules, model judgment is an option.
+
+778
+02:06:50.574 --> 02:07:04.112
+A generative reward model (GRM) emits not just a score but a diagnosis of what went well and what needs to change; it can serve as a reward source, and its diagnoses can be turned into distillation or preference data.
+
+779
+02:07:04.112 --> 02:07:17.699
+The core idea of DeepSeek-GRM is to have the model first induce evaluation principles for the task, then evaluate the trajectory against those principles, and finally check the evaluation itself against verifiable facts.
+
+780
+02:07:17.699 --> 02:07:26.162
+The resulting feedback is more transparent, but it still needs sampled human calibration so the judge does not develop biases of its own.
+
+781
+02:07:26.162 --> 02:07:30.237
+Two easily confused notions are worth separating here.
+
+782
+02:07:30.237 --> 02:07:35.574
+Reward hacking means exploiting a rule or an implementation hole to score highly.
+
+783
+02:07:35.574 --> 02:07:43.424
+Reward seeking means the model first builds an internal picture of what the grader will look at, then adjusts its behavior to that guess.
+
+784
+02:07:43.424 --> 02:07:58.162
+The latter need not tamper with tests or fabricate results, yet on long-horizon tasks it can lead the model to set itself a very shallow check, stop as soon as it passes, and deliver something that satisfies the proxy metric but not the real intent.
+
+785
+02:07:58.162 --> 02:08:10.724
+So "it passed the grader" cannot be equated with "the task is done": the grader is a proxy for intent, and the harder you train, the more likely the model is to treat the proxy as the goal itself.
+
+786
+02:08:10.724 --> 02:08:14.324
+When the Reward Is Given: Outcome or Process.
+
+787
+02:08:14.324 --> 02:08:20.749
+An outcome reward (ORM) judges only at the end of the episode whether the task was completed.
+
+788
+02:08:20.749 --> 02:08:35.462
+It is the simplest and gives the policy the most freedom to explore; when there is no agreed standard for the intermediate path and the optimal solution has not yet been found by humans, SimpleVLA-RL's sparse success/failure reward is the right starting point.
+
+789
+02:08:35.462 --> 02:08:45.749
+Sparse feedback makes it hard for the model to localize a specific mistake in a multi-step trajectory, which is one long-standing reason RL sample efficiency is limited.
+
+790
+02:08:45.749 --> 02:08:59.574
+On long-horizon coding or cowork tasks, the "is it done" judgment should also be handed to hidden tests, state assertions or an external termination hook that the model cannot write — never to the model's own claim of completion.
+
+791
+02:08:59.574 --> 02:09:10.437
+Premature completion" is a concrete example: when the model says the task is done, the harness runs acceptance tests the model cannot see, in an isolated workspace.
+
+792
+02:09:10.437 --> 02:09:15.024
+Passing earns positive reward, failing earns negative reward.
+
+793
+02:09:15.024 --> 02:09:24.887
+Those tests must read real files or environment state rather than checking whether the model said "done", or the model will learn to promise verification without performing it.
+
+794
+02:09:24.887 --> 02:09:40.824
+During evaluation, keep a boundary set of unfinished tasks separate from a held-out set of genuinely finished ones: the former shows the premature-stop rate, the latter shows whether the model can still close out normally — otherwise you train a model that never dares to finish.
+
+795
+02:09:40.824 --> 02:09:52.237
+A process reward (PRM) gives feedback at intermediate steps, checking things like authentication, tool arguments, the number of passing tests or navigation actions.
+
+796
+02:09:52.237 --> 02:09:59.312
+OpenAI's Let's Verify Step by Step showed the value of step-by-step verification in mathematical reasoning.
+
+797
+02:09:59.312 --> 02:10:08.924
+Process rewards ease long-horizon credit assignment, but they can confine the model to the path the designer had in mind, and they cost more to label and validate.
+
+798
+02:10:08.924 --> 02:10:27.712
+V-IRL-VL (Experiment 8-12) uses step-by-step navigation feedback while SimpleVLA-RL (Experiment 8-13) keeps only the endpoint reward, and together they form a controlled contrast: dense feedback buys convergence speed, sparse feedback buys exploration space.
+
+799
+02:10:27.712 --> 02:10:37.624
+In practice, establish a reliable baseline with outcome rewards first, and only then add process signals for intermediate events that are genuinely verifiable.
+
+800
+02:10:37.624 --> 02:10:57.687
+Multi-turn LLM RL usually sets the discount factor \gamma=1; PPO's value network or turn-level advantage attributes endpoint feedback back to earlier actions, while GRPO spreads a trajectory-level advantage across the generated tokens, so signal dilution deserves particular care on long trajectories.
+
+801
+02:10:57.844 --> 02:11:04.194
+How Much Information the Reward Must Express: Scalar, Vector, Generative Diagnosis.
+
+802
+02:11:04.144 --> 02:11:08.769
+The density of a reward and its representation are two different things.
+
+803
+02:11:08.769 --> 02:11:26.794
+A scalar answers only "how good overall"; a semi-scalar gives a brief reason and then a score; a vector scores separately along dimensions such as accuracy, completeness, cost and safety; a generative reward produces a natural-language diagnosis that can be sampled several times and aggregated.
+
+804
+02:11:26.794 --> 02:11:29.619
+The selection rule is straightforward:
+
+805
+02:11:29.619 --> 02:11:34.331
+A definite answer or test exists: prefer a binary scalar;
+
+806
+02:11:34.331 --> 02:11:40.731
+Several mutually independent quality goals: use a vector, or weight the dimensions into a scalar;
+
+807
+02:11:40.731 --> 02:11:48.831
+Open-ended and hard to enumerate as rules: use generative diagnosis, but pair it with fact-checking and sampled human review.
+
+808
+02:11:48.831 --> 02:11:53.769
+Do not stack unverifiable dimensions in the name of a "richer" reward.
+
+809
+02:11:53.769 --> 02:11:59.044
+Every additional evaluation dimension adds one more way for the policy to game it.
+
+810
+02:11:59.044 --> 02:12:08.081
+Confirm first that the signal produces meaningful within-group variation across a handful of rollouts, and only then decide whether it belongs in training.
+
+811
+02:12:08.081 --> 02:12:12.944
+A Correct Outcome Is Not Enough: Path Constraints and RLVP.
+
+812
+02:12:12.944 --> 02:12:20.019
+An outcome reward settles whether the job got done, but it cannot express whether it was done the way it was supposed to be.
+
+813
+02:12:20.019 --> 02:12:27.831
+A real Agent may achieve surface success by editing the test file, skipping authentication or running a destructive command.
+
+814
+02:12:27.831 --> 02:12:36.569
+The principle behind RLVP (Reinforcement Learning with Verified Penalty) is: reward the outcome, penalize the path.
+
+815
+02:12:36.569 --> 02:12:49.631
+It targets machine-decidable, outcome-neutral constraints that have no bearing on final success or failure, and it is not a substitute for independent checks on semantic intent, delivery completeness and early-stopping behavior.
+
+816
+02:12:49.631 --> 02:13:01.656
+Real environments are typically asymmetric verifiers: detecting "a bad action was taken" is cheap and reliable, whereas proving "this step made meaningful progress toward the goal" is hard.
+
+817
+02:13:01.656 --> 02:13:13.181
+Write the total reward as R=O+\beta\Phi, where O is the task outcome and \Phi is a path signal computed per action by deterministic rules.
+
+818
+02:13:13.181 --> 02:13:27.331
+Deduct points for verifiable violations, and give a small partial reward for verifiable compliant actions or reachable sub-goals; normalize the two channels before combining them so the path signal cannot drown out the main objective.
+
+819
+02:13:27.331 --> 02:13:33.856
+None of this changes PPO or GRPO — it changes only the reward seen at each step.
+
+820
+02:13:33.856 --> 02:13:41.456
+At the implementation level, split the verifier output into two channels and hand them to the existing policy optimizer:
+
+821
+02:13:41.456 --> 02:13:50.756
+Here is the trajectory representation tracking the sequence of user prompts, model decisions, and environment observations across execution steps.
+
+822
+02:13:50.756 --> 02:13:59.481
+Which actions are permitted, which sub-goals are reachable, what the hidden tests are and how evidence is recorded all depend on the specific environment.
+
+823
+02:13:59.481 --> 02:14:08.431
+The text here only explains how the outcome reward and the path constraint merge, so that one environment's rules are not mistaken for a general algorithm.
+
+824
+02:14:08.431 --> 02:14:15.669
+The point of RLVP is not that "denser rewards are better" but whether within-group variation can be restored.
+
+825
+02:14:15.669 --> 02:14:22.556
+A pure outcome reward produces zero variance and no gradient in both all-fail and all-succeed groups.
+
+826
+02:14:22.556 --> 02:14:33.081
+Violating actions are usually easy to detect, so a penalty almost always restores the variance; a progress reward only works when partial progress is actually reachable.
+
+827
+02:14:33.081 --> 02:14:49.206
+Four design rules follow: penalize specific actions, never "insufficient effort"; always keep the outcome reward so the model does not learn to do nothing; pair every penalty with a reachable compliant path where possible; and make the rules deterministic and hard to game.
+
+828
+02:14:49.206 --> 02:14:59.644
+If the base policy would never sample the compliant action at all, seed that path with a few demonstrations first, and taper the path shaping once compliant behavior is stable.
+
+829
+02:14:59.644 --> 02:15:07.331
+Put differently: the penalty is the half that is usually reachable, and the progress reward is the half gated by reachability.
+
+830
+02:15:07.331 --> 02:15:15.906
+Experiment 8-16 advanced difficulty, three stars: : RLVP — Reward the Outcome, Penalize the Path
+
+831
+02:15:16.060 --> 02:15:24.085
+Add an outcome reward O and a path signal \Phi on top of GRPO and compare against a pure outcome reward.
+
+832
+02:15:24.035 --> 02:15:41.685
+On TerminalBench, violations drop from 3.71 to 0.66 while the success rate is essentially unchanged; on miniF2F, a reachable partial reward cuts the iterations needed to reach a 0.9 success rate from 7.0 to 4.4.
+
+833
+02:15:41.685 --> 02:15:49.610
+In software repair, where no rollout passes any test, the progress signal is unreachable and adding it brings no benefit.
+
+834
+02:15:49.610 --> 02:15:55.322
+The lesson: test whether the signal is reachable before deciding to add a reward dimension.
+
+835
+02:15:55.322 --> 02:16:02.935
+These numbers come from controlled proxy environments and cannot be extrapolated directly into equivalent gains for a production Agent.
+
+836
+02:16:02.935 --> 02:16:16.535
+The safer conclusion is mechanistic: as long as the path signal distinguishes behaviors within the same group of rollouts, and the rules are hard for the policy to game, it fills in exactly the information the endpoint reward cannot see.
+
+837
+02:16:16.535 --> 02:16:24.722
+Real deployments additionally need hidden verification, trajectory monitoring and external termination conditions built into the harness.
+
+838
+02:16:24.722 --> 02:16:28.372
+Distillation: Improving Sample Efficiency.
+
+839
+02:16:28.372 --> 02:16:36.610
+The experiments above have systematically shown RL's core value in Agent training, but every one of them paid a steep sample cost.
+
+840
+02:16:36.610 --> 02:16:47.797
+Sample efficiency" here means something specific: how many effective parameter updates each expensive environment interaction buys, not merely training steps or GPU hours.
+
+841
+02:16:47.797 --> 02:16:58.147
+ReTool's RL training took more than 200 times as long as its SFT (9 days versus 1 hour), which makes reducing environment sampling especially valuable.
+
+842
+02:16:58.147 --> 02:17:07.872
+RL's low sample efficiency comes from high variance and the difficulty of reusing on-policy data, but the more fundamental cause is that feedback is too sparse.
+
+843
+02:17:07.872 --> 02:17:21.197
+Mainstream model-free RL typically yields a single success/failure scalar at the end of one rollout; the reason for an intermediate mistake, a missing field, or a hint about the procedure carries no direct learning signal.
+
+844
+02:17:21.197 --> 02:17:37.247
+When a customer-service script says "I need the last four digits of the credit card," the model can only trial-and-error its way there from a final 0/1 outcome, perhaps taking hundreds of interactions to stumble onto that step—whereas a human remembers it after hearing it once.
+
+845
+02:17:37.247 --> 02:17:48.022
+Distillation turns one rollout into a dense supervisory signal, letting a single trajectory contribute a large number of gradients without exploring any additional environment trajectories.
+
+846
+02:17:48.022 --> 02:17:52.310
+That is the key to how distillation improves sample efficiency.
+
+847
+02:17:52.310 --> 02:17:57.347
+On-Policy Distillation: Making One Rollout Produce Dense Supervision.
+
+848
+02:17:57.347 --> 02:18:04.785
+On-Policy Distillation was systematically organized and popularized by Thinking Machines Lab in 2025.
+
+849
+02:18:04.785 --> 02:18:12.535
+Here, "policy" refers to who generates the state prefixes on which the student learns, not who supplies the supervision:
+
+850
+02:18:12.535 --> 02:18:25.185
+Method: SFT / off-policy distillation; Who samples the trajectory/state?: Human or teacher; Main supervision per trajectory: Dense token-level supervision from labeled answers.
+
+851
+02:18:25.185 --> 02:18:36.385
+Method: On-policy RL; Who samples the trajectory/state?: Current student; Main supervision per trajectory: Usually sparse outcome or process rewards.
+
+852
+02:18:36.385 --> 02:18:48.222
+Method: On-Policy Distillation; Who samples the trajectory/state?: Current student; Main supervision per trajectory: Dense teacher token distributions on student prefixes.
+
+853
+02:18:48.222 --> 02:18:53.447
+SFT supervision is dense but mainly covers states that a teacher would visit.
+
+854
+02:18:53.447 --> 02:19:06.935
+If the deployed student makes an early mistake that the teacher would not make, it enters a prefix absent from the training data; every subsequent prediction is then made in an unfamiliar state, and errors can compound along a long sequence.
+
+855
+02:19:06.935 --> 02:19:17.860
+On-policy RL trains directly on the student's own state distribution and is therefore more relevant, but it often receives only a success/failure signal at the end of the trajectory.
+
+856
+02:19:17.860 --> 02:19:28.122
+On-Policy Distillation combines the two: the student decides where it goes, and the teacher supplies the full next-token distribution at the state the student has actually reached.
+
+857
+02:19:28.276 --> 02:19:36.626
+A rollout of length T therefore no longer produces only one 0/1 signal but roughly T sets of token-level supervision.
+
+858
+02:19:36.576 --> 02:19:45.026
+It follows the student's real errors more closely than off-policy SFT and supplies denser, lower-variance feedback than pure RL.
+
+859
+02:19:45.026 --> 02:19:50.713
+Teacher inference adds compute but does not require a second set of environment trajectories.
+
+860
+02:19:50.713 --> 02:20:02.151
+It still cannot create capability from nothing: the student must at least enter meaningful states the teacher can correct, and the teacher's policy cannot lie too far outside the student's effective support.
+
+861
+02:20:02.151 --> 02:20:14.776
+If the base model lacks even the target language, domain concepts, or basic actions, first use Mid-training or off-policy demonstrations for a cold start, then switch to on-policy distillation.
+
+862
+02:20:14.776 --> 02:20:18.888
+This also shows why the preceding numerical issue matters.
+
+863
+02:20:18.888 --> 02:20:25.463
+On-Policy Distillation optimizes the teacher KL on states visited by the student's current policy.
+
+864
+02:20:25.463 --> 02:20:38.676
+If the rollout engine actually samples from \mu while the trainer computes another \pi_\theta, the training states are already off-policy even though no PPO ratio is used explicitly.
+
+865
+02:20:38.676 --> 02:20:50.238
+Implementations should still verify sampler/trainer log-probability agreement before an update; otherwise nominal On-Policy Distillation degenerates into training with a distribution mismatch.
+
+866
+02:20:50.238 --> 02:20:58.326
+Concretely, the student's predicted distribution is pulled toward the teacher's, usually by minimizing the KL divergence between them.
+
+867
+02:20:58.326 --> 02:21:12.638
+For instance, when the student generates "first query the API, then parse the return value…," the teacher can give a distribution at the current position of 80% "query," 15% "call," and 5% for everything else.
+
+868
+02:21:12.638 --> 02:21:25.926
+Compared with a binary end-of-task reward, token-level alignment provides a far denser, lower-variance learning signal; the cost is the teacher's inference, which pays off especially well when environment interaction is expensive.
+
+869
+02:21:25.926 --> 02:21:30.013
+The basic pseudocode for on-policy distillation is:
+
+870
+02:21:30.013 --> 02:21:39.313
+Here is the trajectory representation tracking the sequence of user prompts, model decisions, and environment observations across execution steps.
+
+871
+02:21:39.484 --> 02:21:47.021
+On tasks such as mathematics, reaching comparable performance takes roughly one tenth the training steps of pure RL.
+
+872
+02:21:46.971 --> 02:22:08.521
+In multi-turn Agents, where the success signal arrives later and more sparsely, the teacher's token-level distribution can guide intermediate decisions directly—but only if the simulation environment is realistic enough that the states the student explores stay close to the deployment distribution; otherwise the teacher's scores on unfamiliar, off-distribution states are unreliable too.
+
+873
+02:22:08.521 --> 02:22:14.971
+The principle that "dense signals beat sparse signals" has also been verified in a pure Agent setting.
+
+874
+02:22:14.971 --> 02:22:31.359
+The author and collaborators once compared DPO, four RL variants, and On-Policy Distillation on a "sense of time" task: the first group was limited by sparse rewards, objective mismatch, rollout-shape mismatch, and policy collapse, respectively.
+
+875
+02:22:31.359 --> 02:22:47.721
+Switching to a frozen Qwen3-32B teacher and aligning token by token on the student's own multi-turn trajectories, training converged smoothly, and pass rates across the four conditions were 23 to 47 percentage points above the same-source SFT baseline.
+
+876
+02:22:47.721 --> 02:22:56.384
+This suggests the bottleneck is often not that the reward function is insufficiently sophisticated, but that each interaction supplies too little signal.
+
+877
+02:22:56.384 --> 02:22:59.009
+What If There Is No Stronger Teacher?
+
+878
+02:22:59.009 --> 02:23:01.784
+On-Policy Self-Distillation.
+
+879
+02:23:01.784 --> 02:23:11.171
+On-Policy Distillation's power comes from the teacher, and that saddles it with a hard prerequisite: there must be a teacher model clearly stronger than the student.
+
+880
+02:23:11.171 --> 02:23:13.921
+In many settings that does not hold.
+
+881
+02:23:13.921 --> 02:23:20.834
+If you are training a domain-specific model where every existing model falls short, there is no teacher available.
+
+882
+02:23:20.834 --> 02:23:25.246
+Can we still benefit from dense supervision without a stronger teacher?
+
+883
+02:23:25.246 --> 02:23:30.509
+One ingenious way through is On-Policy Self-Distillation (OPSD)
+
+884
+02:23:30.509 --> 02:23:35.334
+OPSD can be read as a constrained variant of the pseudocode above:
+
+885
+02:23:35.334 --> 02:23:44.634
+Here is the trajectory representation tracking the sequence of user prompts, model decisions, and environment observations across execution steps.
+
+886
+02:23:44.634 --> 02:23:57.284
+privileged_state may only be constructed on the training side and must not leak to the deployed Agent; retention_regularizer stands for a retention set or style constraint, not some fixed hyperparameter.
+
+887
+02:23:57.284 --> 02:24:03.534
+The training pipeline must also check data permissions, answer masking, and the risk of forgetting.
+
+888
+02:24:03.534 --> 02:24:15.671
+Compared with RLVR, OPSD does not require the reward to be automatically verifiable: the privileged information can be a reference answer, a human demonstration, or domain documentation.
+
+889
+02:24:15.671 --> 02:24:24.946
+It uses that information in place of a stronger external teacher while keeping the sample-efficiency advantage of "on-policy sampling plus token-level supervision.
+
+890
+02:24:24.946 --> 02:24:42.484
+But it does not create new knowledge out of nothing—if the model still cannot explain the process even while holding the answer, self-distillation yields no extra signal; naive OPSD can also make the model lose its original reasoning style, requiring additional regularization to stabilize.
+
+891
+02:24:42.484 --> 02:24:45.284
+From Bad Cases to Post-Training.
+
+892
+02:24:45.284 --> 02:24:55.046
+This section returns to the question left open in Chapter 7: how an evaluation dataset built from production bad cases actually becomes an input to post-training.
+
+893
+02:24:55.046 --> 02:25:01.734
+The end of Chapter 7 compared the evaluation environment and its verifiers to the cornerstones of post-training.
+
+894
+02:25:01.734 --> 02:25:11.396
+Failure-attribution records, end-to-end regression tasks, trajectory-prefix regression tasks, and rubric scores each map to a different training use:
+
+895
+02:25:11.396 --> 02:25:13.709
+Table 8-5.
+
+896
+02:25:13.709 --> 02:25:18.684
+Mapping Chapter 7 evaluation data to Chapter 8 training uses
+
+897
+02:25:18.684 --> 02:25:33.734
+Chapter 7 evaluation data: End-to-end regression task with a verifier; Chapter 8 training use: RL rollout tasks and verifiable rewards (RLVR); the sampling pool for rejection-sampling fine-tuning (RFT).
+
+898
+02:25:33.734 --> 02:25:47.809
+Chapter 7 evaluation data: Trajectory-prefix regression task; Chapter 8 training use: DPO preference pairs, SFT demonstrations for decision boundaries, and teacher states for On-Policy Distillation.
+
+899
+02:25:47.809 --> 02:26:02.234
+Chapter 7 evaluation data: Failure-attribution record (first erroneous step and error category); Chapter 8 training use: Negative labels for process supervision (PRM); rules for RLVP path penalties.
+
+900
+02:26:02.404 --> 02:26:16.054
+Chapter 7 evaluation data: Multi-dimensional rubric scores and human gold set; Chapter 8 training use: Dimensions of vector rewards; training and calibration data for generative reward models (GRM).
+
+901
+02:26:16.004 --> 02:26:19.829
+Case 1: Coding Agent premature completion.
+
+902
+02:26:19.829 --> 02:26:22.529
+From bad case to attribution.
+
+903
+02:26:22.529 --> 02:26:38.279
+One of the most common and most stubborn Coding Agent failures is premature completion: declaring "done" before the tests have run; wrapping up after fixing two of the three features the user asked for; announcing "this task is impossible" after two failures.
+
+904
+02:26:38.279 --> 02:26:55.679
+In Chapter 7's error taxonomy this belongs to "task completeness and logical judgment," and all three production signals catch it: user corrections ("you never ran the tests"), thumbs-down, and post-hoc audits (a trajectory that claims completion with no test tool call anywhere in it).
+
+905
+02:26:55.679 --> 02:27:10.141
+The attribution record places the first error at the decision boundary where the Agent was "about to declare completion"—up to that point, reading and editing code may all have been fine; what was wrong was the step of "concluding without evidence.
+
+906
+02:27:10.141 --> 02:27:20.616
+The reward seeking discussed earlier in the reward-design section (setting up a shallow check that just barely passes, then finishing early) describes exactly this behavior.
+
+907
+02:27:20.616 --> 02:27:23.079
+Constructing the training data.
+
+908
+02:27:23.079 --> 02:27:31.291
+End-to-end regression task: write "acceptance tests must pass before completion is declared" as a verifiable reward.
+
+909
+02:27:31.291 --> 02:27:39.066
+The tests are invisible to the model and run only when it claims to be done; passing scores +1, failing −1.
+
+910
+02:27:39.066 --> 02:27:48.954
+This is the direct application of "leave the judgment to hidden tests the model cannot write" from the reward-design section, and it is this case's optional RL branch.
+
+911
+02:27:48.954 --> 02:28:07.416
+Trajectory-prefix regression task: cut at the "about to declare completion" decision boundary to build preference pairs—the rejected sample is the premature-completion behavior, and the chosen sample is the desired "run the tests first, check the acceptance conditions one by one, and only then conclude.
+
+912
+02:28:07.416 --> 02:28:17.454
+The chosen samples are generated by a teacher model and then filtered by a rule-based verifier (rejection sampling), yielding a batch of DPO training pairs.
+
+913
+02:28:17.454 --> 02:28:28.654
+If there are too few bad cases, data augmentation (varying the task type, the missing verification item, the completion phrasing) can produce hundreds of preference pairs.
+
+914
+02:28:28.654 --> 02:28:40.466
+Mix them into general task data at a small ratio for LoRA fine-tuning, so that "always verify before wrapping up" does not become a new overfit and the risk of catastrophic forgetting stays low.
+
+915
+02:28:40.466 --> 02:28:45.716
+Evaluation: the boundary set and the retention set are both indispensable.
+
+916
+02:28:45.716 --> 02:29:04.766
+Post-training validation uses Chapter 7's evaluation datasets: the trajectory-prefix boundary set checks "when the task is not finished, does the model choose to keep verifying rather than declare completion"; equally important is the retention set—when the task really is finished, the model should declare completion normally.
+
+917
+02:29:04.766 --> 02:29:16.041
+Watching only the first metric trains the model into an over-corrected state that never dares to finish: the model keeps verifying indefinitely, and latency and cost spiral out of control.
+
+918
+02:29:16.041 --> 02:29:30.304
+This is the parameter-level version of the same principle Chapter 7 kept stressing, that "a change must not break existing behavior"; evaluation should also spot-check general capability to confirm the LoRA patch has not damaged anything else.
+
+919
+02:29:30.304 --> 02:29:39.104
+Experiment 8-17 intermediate difficulty, two stars: : From a "Premature Completion" Bad Case to a DPO Fix
+
+920
+02:29:39.104 --> 02:29:53.766
+Goal: run the complete chain from a production bad case to a parameter update—failure attribution → trajectory-prefix regression task → DPO preference pairs → LoRA training of a 7B model → dual validation on a boundary set and a retention set.
+
+921
+02:29:53.932 --> 02:30:24.244
+Data construction: the companion repository provides 24 realistic premature-completion bad cases covering four failure types (claiming completion without running tests, completing only part of a multi-goal request, unmet acceptance conditions, and giving up after errors by declaring the task impossible, including nastier reward-hacking variants such as deleting the failing test), plus a held-out evaluation set strictly isolated from the training data (12 boundary cases + 8 retention cases).
+
+922
+02:30:24.244 --> 02:30:26.719
+This is a teaching experiment.
+
+923
+02:30:26.719 --> 02:30:41.657
+In production, the preference pairs must cover more task families, the retention set must cover more "normal wrap-up" scenarios, and you must watch for new forms of reward hacking: the model may learn to say it verified without actually verifying.
+
+924
+02:30:41.657 --> 02:30:50.357
+That is precisely why the end-to-end dataset's reward must rely on hidden tests the model cannot write, rather than on the model's own claims.
+
+925
+02:30:50.357 --> 02:30:53.819
+Case 2: Chinese quotation marks.
+
+926
+02:30:53.819 --> 02:30:59.844
+A user reports that "straight quotes in Chinese articles should be normalized to curly quotes.
+
+927
+02:30:59.844 --> 02:31:15.369
+That sentence describes an expectation but gives no directly trainable rule: the same quotation mark plays completely different roles in Chinese prose, quoted English, Markdown inline code, code blocks, code comments, JSON, and paths.
+
+928
+02:31:15.369 --> 02:31:38.857
+The correct fix is a scope-sensitive minimal edit: quotations in Chinese prose may be converted to “”, with nested quotations following Chinese punctuation rules; quoted English, executable code, JSON/schemas, paths, identifiers, and anything inside Markdown backticks must be preserved verbatim; and when the scope cannot be determined, the original text should be left alone.
+
+929
+02:31:38.857 --> 02:31:41.319
+Constructing the training data.
+
+930
+02:31:41.319 --> 02:31:44.294
+Write the quotation rules as a Skill.
+
+931
+02:31:44.294 --> 02:32:00.269
+Positive examples cover Chinese paragraphs, nested quotations, and Chinese prose inside code comments; negative examples cover quoted English, string and character literals, JSON, paths, inline code, and whole code blocks.
+
+932
+02:32:00.269 --> 02:32:08.207
+What this teaches the model is "determine the scope first, then make the minimal edit," not "replace every straight quote you see.
+
+933
+02:32:08.207 --> 02:32:15.832
+Experiment 8-18 intermediate difficulty, two stars: : Scope-Sensitive Chinese Curly-Quote SFT
+
+934
+02:32:15.832 --> 02:32:32.569
+Goal: verify whether LoRA SFT can make the model accurately "curl the quotes that should be curled and leave protected quotes untouched" in documents mixing Chinese, English, Markdown, code, and JSON, and hold that boundary on unseen context combinations.
+
+935
+02:32:32.569 --> 02:32:41.932
+Setup: Qwen/Qwen3-8B as the base, trained with bf16 LoRA for 2 epochs (256 updates).
+
+936
+02:32:41.932 --> 02:32:58.369
+The scope rules in SKILL.md serve simultaneously as the label-generation spec, the quality gate, and the regression specification; the model is only responsible for choosing the scope and producing the minimal edit, and the production-side parser and syntax checks are not removed.
+
+937
+02:32:58.369 --> 02:33:13.394
+Data construction: 1,024 training samples, 256 held-out samples, and 256 boundary samples are rendered across 16 fragment categories, 10 article genres, and 9 programming languages.
+
+938
+02:33:13.394 --> 02:33:31.657
+Samples store the source and target text in pairs; Chinese prose and Chinese code comments provide the positive examples that need conversion, while quoted English, string literals, JSON, paths, inline code, code blocks, and nested structures provide the negative examples that must be protected.
+
+939
+02:33:31.657 --> 02:33:35.169
+Case 3: Frequent file-edit failures.
+
+940
+02:33:35.169 --> 02:33:48.819
+As described in Chapter 5, Coding Agents commonly use a tool like edit_file(path, old_string, new_string): the model transcribes the old_string it wants replaced into the tool arguments.
+
+941
+02:33:48.819 --> 02:34:00.782
+Edit tools usually match by exact string, so a single difference in a space, a newline, a backslash, a Unicode combining character, or a low-frequency token returns a failure.
+
+942
+02:34:00.782 --> 02:34:03.482
+From bad case to attribution.
+
+943
+02:34:03.482 --> 02:34:16.507
+Compare failed trajectories layer by layer along this chain: original file bytes → tool return → Harness serialization → model context → model token output → decoded string → JSON/tool-call parsing → tool matching.
+
+944
+02:34:16.660 --> 02:34:33.010
+If the file read or the tool return already altered the bytes, attribute it to the tool; if serialization, escaping, or prompt assembly changed the content, attribute it to the Harness; if encoding and then decoding with the tokenizer changes it, attribute it to the tokenizer.
+
+945
+02:34:32.960 --> 02:34:46.760
+Only when the context the model received matches the original string exactly and the model's output is the first place in the chain where a difference appears can it be classified as a precise-copying problem attributable to the model and become a post-training candidate.
+
+946
+02:34:46.760 --> 02:34:49.222
+Constructing the training data.
+
+947
+02:34:49.222 --> 02:35:05.060
+Abstract the copying task into three verifiable tasks: verbatim restatement; selecting the exactly identical target among several similar strings of equal length; and transcribing a given string in full into the old_string JSON argument of a tool call.
+
+948
+02:35:05.060 --> 02:35:13.897
+Samples deliberately include the spaces, real newlines, backslashes, and Unicode characters that most often corrupt real edits.
+
+949
+02:35:13.897 --> 02:35:21.497
+Experiment 8-19 intermediate difficulty, two stars: : Exact-Copy SFT for Special Strings
+
+950
+02:35:21.497 --> 02:35:36.485
+Goal: given that the difference has been confirmed to come from the model's transcription error, test whether LoRA SFT improves the model's exact transcription of random strings, and use an independent tokenizer audit to rule out artifacts caused by tokenization.
+
+951
+02:35:36.485 --> 02:35:43.897
+Setup: Qwen/Qwen3-8B as the base, trained with bf16 LoRA for 2 epochs.
+
+952
+02:35:43.897 --> 02:35:51.297
+The training script supplies token-level supervision only on the target string or the old_string JSON field.
+
+953
+02:35:51.297 --> 02:36:09.572
+Results: byte-exact accuracy on the model's held-out set rose from the base model's 37.5% to 78.9%, with 80.1% on an independent boundary set; the mean position of the first diverging byte was 54.0 and 54.2 respectively.
+
+954
+02:36:09.572 --> 02:36:23.035
+Separately, 512 probes drawn from the held-out and boundary sets were used to compare three open-source tokenizers, and the lossless round-trip rate for both Qwen3 and Qwen2.5 was 80.1%.
+
+955
+02:36:23.035 --> 02:36:29.435
+The 80.1% therefore reflects both the model's copying ability and the tokenizer ceiling.
+
+956
+02:36:29.435 --> 02:36:32.297
+Post-Training Practical Takeaways.
+
+957
+02:36:32.297 --> 02:36:50.922
+This chapter has come a long way from pre-training's "predict the next token": Mid-training fills knowledge and foundational capability gaps on the target distribution; SFT learns formats and protocols efficiently; and outcome-oriented RL improved out-of-distribution generalization in this chapter's controlled experiments.
+
+958
+02:36:50.922 --> 02:37:03.797
+Multi-turn tasks introduce the credit-assignment problem, reward design extends from outcome rewards to path signals that "reward the outcome and constrain the process," and tool use brings combinatorial explosion.
+
+959
+02:37:03.797 --> 02:37:15.497
+A single thread runs through all of it—what the model learns depends on what the training signal taught it, and the quality of that signal is determined mainly by the data and the environment, not by the algorithm.
+
+960
+02:37:15.497 --> 02:37:24.285
+The following common pitfalls are worth watching for; recognizing them usually saves more wasted resources than mastering technical details:
+
+961
+02:37:24.436 --> 02:37:39.748
+Stuffing a knowledge base into SFT, or handing all knowledge to parameters—large bodies of stable domain knowledge and foundational capabilities can be written into parameters with Mid-training, after which SFT teaches the model how to access and express them.
+
+962
+02:37:39.698 --> 02:37:46.323
+Facts that need updates, citations, access control, or deletion belong in RAG.
+
+963
+02:37:46.323 --> 02:37:57.036
+Introducing RL before the format is stable—if the model cannot reliably produce the JSON the reward computation needs, the training signal becomes sparse or distorted.
+
+964
+02:37:57.036 --> 02:38:13.986
+The acceptable parse-failure rate depends on the task and the reward design, and no fixed threshold should be treated as universal; set a format-stability bar with a small-scale evaluation first, and stabilize the output with SFT or constrained decoding before applying RL if needed.
+
+965
+02:38:13.986 --> 02:38:26.311
+Treating a nominal context window as an effective one—allowing 128K input through positional encoding does not mean the model can still retrieve, reason, and plan at 128K.
+
+966
+02:38:26.311 --> 02:38:37.423
+Complete the current-length capability gates before expanding, retain short data and earlier-stage replay at every stage, and check degradation with a capability × length matrix.
+
+967
+02:38:37.423 --> 02:38:47.923
+Applying RL while pass@k is still near zero—all-failure rollouts contain no positive trajectory, and GRPO also loses within-group advantage.
+
+968
+02:38:47.923 --> 02:38:58.548
+First use Mid-training to add capability, SFT or distillation to widen effective support, or a reachable curriculum and partial rewards aligned with the final goal.
+
+969
+02:38:58.548 --> 02:39:08.461
+Poorly designed reward functions leading to reward hacking—the model learns to exploit loopholes in the reward for a high score instead of actually completing the task.
+
+970
+02:39:08.461 --> 02:39:12.598
+Evaluate the final goal, not an intermediate proxy.
+
+971
+02:39:12.598 --> 02:39:23.161
+Ignoring simulation fidelity—if the simulation is too simplistic or the environment's responses are unrealistic, the resulting policy fails in real scenarios.
+
+972
+02:39:23.161 --> 02:39:27.973
+Building a high-fidelity simulation can cost more than the training itself.
+
+973
+02:39:27.973 --> 02:39:36.098
+Over-training that degrades generalization—falling training loss with worsening validation means the model is memorizing details.
+
+974
+02:39:36.098 --> 02:39:49.236
+Mid-training can forget general capabilities, SFT can overfit demonstrations, and RL can overfit the current reward and task distribution; all three require independent retention sets and early stopping.
+
+975
+02:39:49.236 --> 02:40:00.336
+Value-function collapse and insufficient exploration—inaccurate value estimates in PPO bias the advantage computation, showing up as violently oscillating training curves.
+
+976
+02:40:00.336 --> 02:40:05.498
+Too low a temperature or too little randomness traps the Agent in a local optimum.
+
+977
+02:40:05.498 --> 02:40:18.423
+Treating training–inference numerical mismatch as harmless noise—if the sampler/trainer probability ratio already differs from 1 before an update, nominal on-policy training has silently become off-policy.
+
+978
+02:40:18.423 --> 02:40:25.536
+Monitor log-probability differences, approximate KL, clipping fraction, and policy staleness.
+
+979
+02:40:25.536 --> 02:40:34.298
+Underestimating RL's compute cost—a task that works well with SFT may need 10–100 times the training time under RL.
+
+980
+02:40:34.298 --> 02:40:39.998
+If the test distribution closely matches training, SFT may already be enough.
+
+981
+02:40:39.998 --> 02:40:53.298
+Low-quality training data—Mid-training absorbs incorrect associations from the corpus, SFT learns demonstration noise directly, and a systematically biased RL reward amplifies the policy in the wrong direction.
+
+982
+02:40:53.298 --> 02:41:15.836
+Core principle: validate the key assumptions with small-scale experiments before committing large-scale resources—use a small Mid-training corpus to inspect knowledge, capability, and forgetting curves; a small SFT set to test format stability; and a small rollout batch to inspect pass@k, reward variation, and sampler/trainer numerical agreement.
+
+983
+02:41:15.836 --> 02:41:19.798
+Failing fast is more acceptable than failing at scale.
+
+984
+02:41:19.948 --> 02:41:28.623
+Synergy with RAG and ICL (in-context learning): the three are not mutually exclusive alternatives but act in different places.
+
+985
+02:41:28.573 --> 02:41:50.735
+ICL uses examples, rules, and current state for zero-parameter, immediate adaptation, though latency and cost rise as the context grows; RAG puts facts and evidence in external knowledge that can be updated dynamically and traced; post-training writes high-dimensional perception, generation style, and implicit decision policies into parameters.
+
+986
+02:41:50.735 --> 02:42:00.798
+The choice depends not only on whether the task is stable over the long term but, more importantly, on whether the capability can be adequately expressed in external symbols.
+
+987
+02:42:00.798 --> 02:42:17.073
+Capabilities such as medical image recognition or a natural tone of voice often still require parameter updates even in a continuously changing domain; conversely, a long-stable transfer-approval rule should be guaranteed deterministically by code rather than left to the model's memory.
+
+988
+02:42:17.073 --> 02:42:40.648
+Robust systems generally combine these methods: manage dynamic facts and evidence with RAG, experiment quickly with language-describable strategies via ICL, encode deterministic processes and hard constraints in program code, absorb stable domain knowledge and foundational capabilities with Mid-training, and shape behavior that external rules cannot fully express with SFT and RL.
+
+989
+02:42:40.648 --> 02:42:46.698
+Distillation can also transfer the behavior of a capable large model into a cheaper small one.
+
+990
+02:42:46.698 --> 02:42:48.585
+Chapter Summary.
+
+991
+02:42:48.585 --> 02:42:59.035
+Mid-training, SFT, and RL are not interchangeable strengths of "fine-tuning"; they address the foundation, protocol, and policy, respectively.
+
+992
+02:42:59.035 --> 02:43:09.723
+Mid-training should also turn a nominal context extension into an effective context that retains short-range capabilities through a length curriculum, mixed data, and staged gates.
+
+993
+02:43:09.723 --> 02:43:16.923
+If pass@k remains near zero under reasonable sampling, use Mid-training to add knowledge and capability.
+
+994
+02:43:16.923 --> 02:43:24.185
+If the model occasionally succeeds but produces unparseable output, use SFT to stabilize the format.
+
+995
+02:43:24.185 --> 02:43:33.298
+Only when the current policy generates scoreable trajectories with reward variation can RL efficiently reallocate probability and explore strategies.
+
+996
+02:43:33.298 --> 02:43:45.148
+SFT memorizes, RL generalizes" summarizes a tendency observed in this chapter's controlled experiments, not a law independent of the data, model, reward, and environment.
+
+997
+02:43:45.148 --> 02:43:50.973
+Two further judgments run through the whole chapter and are worth remembering more than any algorithm.
+
+998
+02:43:50.973 --> 02:44:06.623
+First, data and environment matter more than algorithms: the Mid-training corpus determines what gaps are repaired in the foundation, SFT demonstrations determine whether the protocol is stable, and the environment and reward determine what RL can explore and reinforce.
+
+999
+02:44:06.623 --> 02:44:15.060
+When a real environment cannot be built, using a model to simulate it is viable, but the simulator's bias remains the ceiling on training.
+
+1000
+02:44:15.060 --> 02:44:22.123
+In many scenarios, once the foundation and demonstration data are good enough, RL is unnecessary.
+
+1001
+02:44:22.123 --> 02:44:28.385
+Second, RL's main bottlenecks today are sample efficiency and distribution consistency.
+
+1002
+02:44:28.385 --> 02:44:40.585
+On-Policy Distillation expands one rollout's terminal scalar into token-level supervision on states the student actually visits, while RLVP turns wasted environment feedback into a learnable signal.
+
+1003
+02:44:40.585 --> 02:44:46.298
+Truly on-policy rollouts also reduce the bias and variance of importance correction.
+
+1004
+02:44:46.298 --> 02:44:54.998
+Training–inference numerical mismatch breaks that premise, so sampler/trainer consistency deserves the same attention as the reward curve.
+
+1005
+02:44:54.998 --> 02:45:00.523
+This chapter answers how updating parameters can enable continuous Agent evolution.
+
+1006
+02:45:00.523 --> 02:45:10.535
+In the next chapter, we will see that parameters are only one of four carriers of Agent self-evolution: knowledge, instructions, programs, and parameters.
+
+1007
+02:45:10.535 --> 02:45:12.473
+Thought Questions.
+
+1008
+02:45:12.628 --> 02:45:26.928
+intermediate difficulty, two stars:  Catastrophic forgetting—where fine-tuning for a specific task destroys the model's original general capabilities, such as general tool calling—is particularly troublesome in Agent scenarios.
+
+1009
+02:45:26.878 --> 02:45:34.578
+Compared with full-parameter fine-tuning, LoRA freezes the base weights and carries a lower risk of forgetting, but it is not immune.
+
+1010
+02:45:34.578 --> 02:45:39.353
+What strategies can further mitigate capability forgetting during fine-tuning?
+
+1011
+02:45:39.353 --> 02:45:50.865
+intermediate difficulty, two stars:  Post-training solidifies capabilities into model weights, or “muscle memory,” while in-context learning places knowledge in the input at inference time.
+
+1012
+02:45:50.865 --> 02:45:58.078
+Some capabilities, such as domain knowledge, can be learned through post-training or supplied through few-shot examples.
+
+1013
+02:45:58.078 --> 02:46:02.940
+What criteria would you use to decide which path a capability should take?
+
+1014
+02:46:02.940 --> 02:46:10.815
+intermediate difficulty, two stars:  Model distillation allows a small model to learn the behavior of a large model.
+
+1015
+02:46:10.815 --> 02:46:27.878
+By capability level, the models being distilled can be divided roughly into three tiers—Chat models (single-turn dialogue and direct answers), Reasoning models (long chains of thought before answering), and Agentic models (multi-turn tool calls and interaction with the environment).
+
+1016
+02:46:27.878 --> 02:46:31.615
+What different challenges arise in distilling each type?
+
+1017
+02:46:31.615 --> 02:46:49.615
+Hint: Begin with “what exactly is being distilled”—the style of the output, the complete reasoning trajectory, or the policy for interacting with the environment; which tokens in the trajectory should be learned and which environmental returns should not; and how delayed and sparse the success/failure signals are.
+
+1018
+02:46:49.615 --> 02:47:04.903
+advanced difficulty, three stars:  In multi-turn Agent interactions, the credit-assignment problem is more severe than in single-turn scenarios—a final success or failure is difficult to attribute to a decision made in turn 3 rather than turn 7.
+
+1019
+02:47:04.903 --> 02:47:08.378
+How would you design a reward-allocation strategy?
+
+1020
+02:47:08.378 --> 02:47:24.615
+advanced difficulty, three stars:  If you had a fixed budget, such as 10 dollars,000, to improve a customer-service Agent, how would you allocate it among context and knowledge, Prompt/Skills, programmatic constraints, and parameter training?
+
+1021
+02:47:24.615 --> 02:47:27.440
+What factors would determine your decision?
+
+1022
+02:47:27.440 --> 02:47:37.828
+advanced difficulty, three stars:  Autonomous model learning under scarce samples and without a clear reward function is regarded by some as the ultimate goal of post-training.
+
+1023
+02:47:37.828 --> 02:47:41.540
+How far are current RL training methods from this goal?
+
+1024
+02:47:41.540 --> 02:47:44.990
+Where is the next breakthrough most likely to come from?
+
+1025
+02:47:44.990 --> 02:47:51.615
+intermediate difficulty, two stars:  This chapter notes that LoRA fine-tuning is not expensive.
+
+1026
+02:47:51.615 --> 02:48:03.403
+Could a dedicated LoRA therefore be trained for every user or client company, writing user memory or enterprise knowledge into parameters rather than storing it in an external knowledge base as in Chapter 3?
+
+1027
+02:48:03.403 --> 02:48:11.790
+When would “writing memory into parameters” have an advantage over “storing memory in a knowledge base,” and when would it be counterproductive?
+
+1028
+02:48:11.790 --> 02:48:19.803
+advanced difficulty, three stars:  On-Policy Distillation relies on a stronger teacher model to supervise the student.
+
+1029
+02:48:19.803 --> 02:48:32.153
+OpenAI's Weak-to-Strong Generalization research, however, offered a counterintuitive finding: supervision from a weak model can sometimes unlock capabilities latent but inactive in a stronger model.
+
+1030
+02:48:32.153 --> 02:48:39.265
+If applied to Agent training, could this enable reverse distillation in which “a small model teaches a large model”?
+
+1031
+02:48:39.265 --> 02:48:52.065
+intermediate difficulty, two stars:  A Process Reward Model (PRM) evaluates each reasoning step, whereas an Outcome Reward Model (ORM) considers only the final result.
+
+1032
+02:48:52.065 --> 02:49:00.678
+Which deserves more reward: “a correct process that leads to a wrong result,” or “a wrong process that happens to produce the correct result”?
+
+1033
+02:49:00.678 --> 02:49:05.303
+How would you balance the two in multi-step Agent tool-calling scenarios?
+
+1034
+02:49:05.452 --> 02:49:19.739
+advanced difficulty, three stars:  The evaluation datasets discussed in this chapter, such as SWE-Bench Verified, τ²-bench, and AndroidWorld, can be used both for evaluation and post-training.
+
+1035
+02:49:19.689 --> 02:49:25.039
+But once an evaluation set is used for training, it is no longer independent.
+
+1036
+02:49:25.039 --> 02:49:30.414
+Does this violate the fundamental principle that training and test sets must remain separate?
+
+1037
+02:49:30.414 --> 02:49:40.714
+Dynamic parameter generation in τ²-bench and parameterized templates in AndroidWorld mitigate the problem to some extent, but their template structures remain fixed.
+
+1038
+02:49:40.714 --> 02:49:47.252
+How can the training value of evaluation data be fully exploited while preserving evaluation independence?
+
+1039
+02:49:47.252 --> 02:49:54.514
+advanced difficulty, three stars:  For a target task, the base model has a very low pass@1.
+
+1040
+02:49:54.514 --> 02:50:05.814
+How would you combine pass@k, parse success, partial-progress rate, and failure attribution to decide whether to start with Mid-training or SFT, or move directly to RL?
+
+1041
+02:50:05.814 --> 02:50:10.464
+What conditions should these metrics satisfy before switching stages?
+
+1042
+02:50:10.464 --> 02:50:31.502
+advanced difficulty, three stars:  ReTool's training dynamics show (see Experiment 8-14) that a few extremely long responses can significantly extend the entire training cycle—most rollouts in a batch have already been generated, but the system must wait for the longest responses to finish, leaving cluster GPU utilization low.
+
+1043
+02:50:31.502 --> 02:50:37.889
+How can resource utilization be improved in training clusters under such long-tail response conditions?
+
+1044
+02:50:37.889 --> 02:50:55.839
+advanced difficulty, three stars:  When training an Agent against LLM-simulated environments—such as a simulated search engine or simulated users—the target of the Agent's exploitation shifts from “the rules of the real environment” to “the biases and loopholes of the simulator itself.
+
+1045
+02:50:55.839 --> 02:51:02.114
+What concrete reward hacking behaviors can arise in this kind of training, and how should they be prevented?
+

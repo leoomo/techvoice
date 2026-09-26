@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>深入理解 AI Agent - 中英双语有声听力平台</title>
+  <meta name="description" content="《深入理解 AI Agent：设计原理与工程实践》（AI Agents in Depth）全书 21 小时中英双语对照听力平台。涵盖上下文工程、工具系统、代码生成、多 Agent 协作等核心原理。">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Left Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="book-brand">
+          <div class="book-badge-icon">🤖</div>
+          <div class="book-title-group">
+            <h2>深入理解 AI Agent</h2>
+            <p>AI AGENTS IN DEPTH</p>
+          </div>
+        </div>
+        <div class="author-meta">
+          <span>李博杰 著 • 21h 精校有声</span>
+          <button class="btn-about" id="btn-open-about" data-i18n="reader_about_btn">关于本书</button>
+        </div>
+      </div>
+
+      <!-- Chapter Navigation List -->
+      <nav class="chapter-nav" id="chapter-nav-list">
+        <!-- Rendered by JS -->
+      </nav>
+
+      <!-- Sidebar Footer / Sponsor Card -->
+      <div class="sidebar-footer">
+        <div class="sponsor-mini-card" id="btn-sidebar-sponsor">
+          <div class="sponsor-mini-left">
+            <span class="sponsor-icon">☕</span>
+            <div>
+              <div class="sponsor-mini-title" data-i18n="reader_sponsor_title">赞赏支持作者</div>
+              <div class="sponsor-mini-sub" data-i18n="reader_sponsor_sub">请喝一杯咖啡 · 助力开源</div>
+            </div>
+          </div>
+          <span style="color: #f59e0b; font-size: 14px;">❤</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Top App Bar -->
+      <header class="top-bar">
+        <div class="top-bar-left">
+          <a href="index.html" class="btn-icon" style="color: var(--text-accent); border-color: rgba(56, 189, 248, 0.4);" title="返回图书库首页">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            <span data-i18n="reader_back_lib">图书库</span>
+          </a>
+          <button class="sidebar-toggle-btn" id="btn-sidebar-toggle" title="展开/收起目录">☰</button>
+          <span class="current-chapter-title" id="current-chapter-title">Introduction: Practice Precedes Naming</span>
+        </div>
+
+        <div class="top-bar-right">
+          <!-- View Mode Switcher -->
+          <div class="view-mode-group">
+            <button class="view-btn active" data-mode="bilingual" data-i18n="reader_view_bilingual" title="中英双语对照">中英双语</button>
+            <button class="view-btn" data-mode="en" data-i18n="reader_view_en" title="纯英文沉浸式听力">纯英文</button>
+            <button class="view-btn" data-mode="zh" data-i18n="reader_view_zh" title="纯中文速览">纯中文</button>
+          </div>
+
+          <!-- Language Switcher Toggle -->
+          <button class="btn-icon" id="btn-lang-toggle" title="Switch Language / 切换语言">
+            <span>🌐</span>
+            <span id="lang-switch-text" style="font-size: 11px; font-weight: 700;">EN</span>
+          </button>
+
+          <!-- GitHub Repo Link -->
+          <a href="https://github.com/bojieli/ai-agent-book" target="_blank" rel="noopener noreferrer" class="btn-icon" title="查看 GitHub 开源仓库">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+            </svg>
+            <span>GitHub</span>
+          </a>
+
+          <!-- Shortcuts Button -->
+          <button class="btn-icon" id="btn-shortcuts" title="快捷键 (Shortcuts)">⌨️</button>
+
+          <!-- Theme Toggle -->
+          <button class="btn-icon" id="btn-theme-toggle" title="切换深色/浅色模式">☀️</button>
+
+          <!-- Sponsor Modal Button -->
+          <button class="btn-icon btn-sponsor" id="btn-open-sponsor" data-i18n="reader_sponsor_btn" title="赞赏支持作者">☕ 赞赏支持</button>
+        </div>
+      </header>
+
+      <!-- Sticky Audio Player -->
+      <section class="player-container">
+        <!-- Hidden Audio Element -->
+        <audio id="audio-element" preload="metadata"></audio>
+
+        <div class="player-main-row">
+          <!-- Playback Controls -->
+          <div class="playback-controls">
+            <button class="btn-control" id="btn-prev-cue" title="上一句 (↑)">⏮</button>
+            <button class="btn-control" id="btn-rewind" title="快退 5 秒 (←)">⏪ 5s</button>
+            <button class="btn-control btn-play" id="btn-play" title="播放 / 暂停 (Space)">
+              <span id="play-icon">▶</span>
+            </button>
+            <button class="btn-control" id="btn-forward" title="快进 5 秒 (→)">5s ⏩</button>
+            <button class="btn-control" id="btn-next-cue" title="下一句 (↓)">⏭</button>
+            <button class="btn-control btn-repeat" id="btn-repeat" title="单句循环跟读 (R)">🔁</button>
+          </div>
+
+          <!-- Progress Bar & Time -->
+          <div class="progress-area">
+            <span class="time-display" id="time-current">00:00</span>
+            <input type="range" class="seek-bar" id="seek-bar" min="0" max="100" value="0" step="0.1">
+            <span class="time-display" id="time-total">00:00</span>
+          </div>
+
+          <!-- Speed & Auto Scroll Tools -->
+          <div class="tool-controls">
+            <select class="speed-select" id="speed-select" title="播放速度">
+              <option value="0.75">0.75x</option>
+              <option value="1.0" selected>1.0x</option>
+              <option value="1.25">1.25x</option>
+              <option value="1.5">1.5x</option>
+              <option value="1.75">1.75x</option>
+            </select>
+            <button class="btn-toggle-tool active" id="btn-autoscroll" title="字幕平滑跟随滚屏">自动跟随: ON</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Transcript Main Scroll Area -->
+      <section class="transcript-container" id="transcript-list">
+        <!-- Rendered by JS -->
+      </section>
+    </main>
+  </div>
+
+  <!-- Modal: Sponsor / Donation -->
+  <div class="modal-overlay" id="modal-sponsor">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title" data-i18n="reader_modal_sponsor_title">☕ 赞赏支持作者与开源项目</h3>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin-bottom: 12px;" data-i18n="reader_modal_sponsor_desc">
+          感谢你对《深入理解 AI Agent：设计原理与工程实践》开源听力项目的喜爱与支持！
+          本项目包含全书 12 个章节、21 小时的高清神经美音语音合成与中英双语对齐，旨在帮助全球开发者攻克大模型与 Agent 核心工程技术，同时提升专业技术英语听力。
+        </p>
+
+        <!-- QR Codes -->
+        <div class="sponsor-qr-row">
+          <div class="qr-box">
+            <img src="assets/qr_wechat.svg" alt="微信赞赏码" id="img-qr-wechat">
+          </div>
+          <div class="qr-box">
+            <img src="assets/qr_alipay.svg" alt="支付宝赞赏码" id="img-qr-alipay">
+          </div>
+        </div>
+
+        <p style="text-align: center; font-size: 12px; color: var(--text-muted); margin-bottom: 16px;" data-i18n="sponsor_scan_hint">
+          💡 微信 / 支付宝扫码支持 · 你的认可将激励我们持续打磨与维护开源社区成果！
+        </p>
+
+        <div class="sponsor-links-row">
+          <a href="https://github.com/bojieli/ai-agent-book" target="_blank" rel="noopener noreferrer" class="btn-icon" data-i18n="sponsor_star_btn">
+            ⭐ GitHub Star 支持
+          </a>
+          <a href="https://github.com/sponsors/bojieli" target="_blank" rel="noopener noreferrer" class="btn-icon" data-i18n="sponsor_btn">
+            💖 GitHub Sponsors
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: About Book -->
+  <div class="modal-overlay" id="modal-about">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title" data-i18n="reader_modal_about_title">📖 关于《深入理解 AI Agent》</h3>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <h4 style="color: var(--text-primary); margin-bottom: 8px;" data-i18n="reader_modal_about_author_title">作者简介</h4>
+        <p style="margin-bottom: 16px;" data-i18n-html="reader_modal_about_author_bio">
+          <b>李博杰 (Bojie Li)</b>：Pine AI 联合创始人兼首席科学家，中国科学院大学兼职讲师，曾任微软亚洲研究院首席研究员。在计算机系统与分布式 AI 领域深耕多年，领导构建了真实金融与法律级复杂 Agent 产品 Pine。
+        </p>
+
+        <h4 style="color: var(--text-primary); margin-bottom: 8px;" data-i18n="reader_modal_about_formula_title">全书核心公式</h4>
+        <div style="background: rgba(0,0,0,0.15); padding: 12px 16px; border-radius: 8px; font-family: var(--font-mono); margin-bottom: 16px; color: var(--text-accent);" data-i18n-html="reader_modal_about_formula_body">
+          Agent = LLM (大脑) + 上下文 (眼睛) + 工具 (手脚)<br>
+          Agent = Model + Harness (约束 + 验证 + 纠错)
+        </div>
+
+        <h4 style="color: var(--text-primary); margin-bottom: 8px;" data-i18n="reader_modal_about_res_title">配套资源与开源地址</h4>
+        <ul style="padding-left: 20px; margin-bottom: 16px;">
+          <li data-i18n-html="reader_modal_about_res_repo"><b>官方开源代码库</b>：<a href="https://github.com/bojieli/ai-agent-book" target="_blank" style="color: var(--text-accent);">github.com/bojieli/ai-agent-book</a></li>
+          <li data-i18n-html="reader_modal_about_res_en_epub"><b>精校英文电子书</b>：<a href="AI-Agents-in-Depth-en-Kindle-Inline.epub" style="color: var(--text-accent);" download>AI-Agents-in-Depth-en-Kindle-Inline.epub (22.9MB)</a></li>
+          <li data-i18n-html="reader_modal_about_res_zh_epub"><b>精编中文电子书</b>：<a href="AI-Agent-Book-zh-CN-Kindle-Inline.epub" style="color: var(--text-accent);" download>AI-Agent-Book-zh-CN-Kindle-Inline.epub (22.5MB)</a></li>
+          <li data-i18n-html="reader_modal_about_res_offline"><b>离线有声合集</b>：支持将根目录 <code>.mp3</code> 和 <code>.srt</code> / <code>.vtt</code> 文件导入手机本地播放器离线收听。</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Keyboard Shortcuts -->
+  <div class="modal-overlay" id="modal-shortcuts">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="modal-title" data-i18n="reader_shortcuts_title">⌨️ 键盘快捷键指南</h3>
+        <button class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="shortcut-list">
+          <div class="shortcut-item">
+            <span data-i18n="reader_modal_sc_play">播放 / 暂停</span>
+            <kbd>Space 空格</kbd>
+          </div>
+          <div class="shortcut-item">
+            <span data-i18n="reader_modal_sc_seek">快退 5 秒 / 快进 5 秒</span>
+            <span><kbd>←</kbd> <kbd>→</kbd></span>
+          </div>
+          <div class="shortcut-item">
+            <span data-i18n="reader_modal_sc_cues">跳转到上一句 / 下一句</span>
+            <span><kbd>↑</kbd> <kbd>↓</kbd></span>
+          </div>
+          <div class="shortcut-item">
+            <span data-i18n="reader_modal_sc_repeat">单句循环复读（A-B Loop）</span>
+            <kbd>R</kbd>
+          </div>
+          <div class="shortcut-item">
+            <span data-i18n="reader_modal_sc_mode">切换显示模式（双语 / 纯英文 / 纯中文）</span>
+            <kbd>L</kbd>
+          </div>
+          <div class="shortcut-item">
+            <span data-i18n="reader_modal_sc_close">关闭当前弹窗</span>
+            <kbd>Esc</kbd>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- i18n Engine -->
+  <script src="js/i18n.js"></script>
+
+  <!-- Chapter Bilingual Data Scripts (Preloaded for 100% offline & file:/// compatibility) -->
+  <script src="data/chapters_meta.js"></script>
+  <script src="data/introduction.js"></script>
+  <script src="data/chapter1.js"></script>
+  <script src="data/chapter2.js"></script>
+  <script src="data/chapter3.js"></script>
+  <script src="data/chapter4.js"></script>
+  <script src="data/chapter5.js"></script>
+  <script src="data/chapter6.js"></script>
+  <script src="data/chapter7.js"></script>
+  <script src="data/chapter8.js"></script>
+  <script src="data/chapter9.js"></script>
+  <script src="data/chapter10.js"></script>
+  <script src="data/afterword.js"></script>
+
+  <!-- Application Controller -->
+  <script src="js/app.js"></script>
+</body>
+</html>

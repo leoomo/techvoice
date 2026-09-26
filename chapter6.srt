@@ -1,0 +1,3116 @@
+1
+00:00:00,100 --> 00:00:05,650
+Chapter 6: Interaction: Expanding the Observation and Action Spaces.
+
+2
+00:00:05,600 --> 00:00:18,600
+Chapter 1 made a claim: when the underlying model is fixed, the most effective system-engineering lever for improving an Agent's task performance is usually to redefine or expand its observation space and action space.
+
+3
+00:00:18,600 --> 00:00:35,337
+Chapters 2 through 5 have explored this idea in practice—context engineering decides what goes into the observation, memory and knowledge bases stretch the observation across sessions, tools define what the Agent can do, and code generation lets it create new actions of its own.
+
+4
+00:00:35,337 --> 00:00:42,037
+But all of these expansions happened under one shared premise: the Agent and the world take turns speaking.
+
+5
+00:00:42,037 --> 00:00:52,025
+The user finishes a sentence, the Agent thinks for a while, calls a few tools, and replies; while it is thinking, the world is assumed to stand still.
+
+6
+00:00:52,025 --> 00:00:57,012
+The premise is so natural that it is rarely written down as an assumption at all.
+
+7
+00:00:57,012 --> 00:01:00,400
+This chapter removes exactly that premise.
+
+8
+00:01:00,400 --> 00:01:03,637
+Two Axes: Modality and Timing.
+
+9
+00:01:03,637 --> 00:01:09,262
+Both the observation space and the action space can be expanded along two dimensions.
+
+10
+00:01:09,262 --> 00:01:23,737
+Modality decides the form of observation and action: does the Agent only read text, or can it also hear sound, see the screen, and sense torque; can it only emit tokens, or also speak, click, and drive joints.
+
+11
+00:01:23,737 --> 00:01:39,187
+Timing decides the rhythm of observation and action: does the Agent go and fetch an observation, or does the world push it; must an action finish within one turn, or may it span turns, be interrupted midway, and be preempted by something more urgent.
+
+12
+00:01:39,187 --> 00:01:46,300
+The previous chapters expanded the content of these two spaces; this chapter expands their modality and timing:
+
+13
+00:01:46,300 --> 00:01:56,250
+Expanding the observation space: Context engineering, memory and knowledge bases; Expanding the action space: Tools, code generation.
+
+14
+00:01:56,250 --> 00:02:06,212
+Expanding the observation space: Voice, screen, physical sensors; Expanding the action space: Speaking, clicking, joint motion.
+
+15
+00:02:06,212 --> 00:02:16,562
+Expanding the observation space: The world pushes, continuous streams; Expanding the action space: Across turns, interruptible, preemptible.
+
+16
+00:02:16,562 --> 00:02:22,862
+Turn-taking is an interaction convention of the model and its interface, not a property of the environment.
+
+17
+00:02:22,862 --> 00:02:33,475
+Early tool-calling interfaces generally organized messages into synchronous rounds: a question was followed by an answer, and tool results had to be supplied before reasoning continued.
+
+18
+00:02:33,475 --> 00:02:45,950
+The real environment does not wait for the model to react: mail arrives while it is thinking, the user cuts in mid-sentence, a page changes between screenshots, and a cup is knocked over while the arm reaches for it.
+
+19
+00:02:45,950 --> 00:02:57,575
+This convention is changing too: as of September 2026, GPT-6 Astra offers native asynchronous tool calling and the ability to add user instructions mid-turn.
+
+20
+00:02:57,575 --> 00:03:04,150
+This chapter therefore covers both native support and compatibility with existing synchronous interfaces.
+
+21
+00:03:04,150 --> 00:03:21,037
+Scale: Seconds — days; Scenario: Async and event-driven; Change on the observation side: The world wakes the Agent (mail, timers, callbacks); Change on the action side: Actions span turns: start now, finish later on an event.
+
+22
+00:03:21,037 --> 00:03:36,837
+Scale: 10 ms — 1 s; Scenario: Voice; Change on the observation side: Listen while speaking, without waiting for a full sentence; Change on the action side: Think while speaking, interruptible, revisable midway.
+
+23
+00:03:36,837 --> 00:03:51,887
+Scale: Sub-second — seconds; Scenario: Computer Use; Change on the observation side: The screen keeps changing between frames; Change on the action side: After acting, reality must be re-confirmed against the plan.
+
+24
+00:03:51,887 --> 00:04:05,387
+Scale: Milliseconds; Scenario: Robotics; Change on the observation side: Sensors stream back continuously; Change on the action side: Actions are chunked: plan a little at a time, preemptible.
+
+25
+00:04:05,387 --> 00:04:09,450
+Async and Event-Driven: When the World Comes Looking for You.
+
+26
+00:04:09,604 --> 00:04:17,441
+The perception, execution, and collaboration tools discussed in Chapter 4 are all invoked proactively by the Agent.
+
+27
+00:04:17,391 --> 00:04:22,029
+How should an Agent respond to external events that may arrive at any time?
+
+28
+00:04:22,029 --> 00:04:25,929
+This requires an event-driven asynchronous architecture.
+
+29
+00:04:25,929 --> 00:04:35,954
+The two remaining tool classes from Chapter 1—event-trigger tools and user-communication tools—depend on this architecture, so they are discussed here as well.
+
+30
+00:04:35,954 --> 00:04:42,141
+The modality does not change in this section—it is still text; only the timing changes.
+
+31
+00:04:42,141 --> 00:04:47,079
+This is the first step out of the turn-based world of the previous five chapters.
+
+32
+00:04:47,079 --> 00:04:49,616
+Why Asynchrony is Needed.
+
+33
+00:04:49,616 --> 00:04:54,029
+Let's start with an analogy to explain why asynchrony is needed.
+
+34
+00:04:54,029 --> 00:05:01,954
+Synchronous means "do one thing before you can do the next," while asynchronous means "multiple things can happen concurrently.
+
+35
+00:05:01,954 --> 00:05:13,004
+A traditional synchronous Agent architecture is like a single checkout counter at a store—it can only handle one customer at a time, and only calls the next number after finishing with the current one.
+
+36
+00:05:13,004 --> 00:05:28,729
+A truly intelligent assistant is more like a flexible secretary—with multiple pending items on the desk (emails, phone calls, visitors), the secretary decides which to handle first based on urgency, and can pause and switch to a more urgent task mid-way.
+
+37
+00:05:28,729 --> 00:05:39,466
+In synchronous mode, the Agent either has to wait for a background task to complete before talking to the user, or wait for the conversation to end before processing a newly arrived event.
+
+38
+00:05:39,466 --> 00:05:44,579
+It cannot deliver the core capabilities a real assistant scenario requires:
+
+39
+00:05:44,579 --> 00:05:51,741
+Asynchronous execution is the norm—Many tasks require long runtimes and should not block user interaction.
+
+40
+00:05:51,741 --> 00:05:56,904
+Dynamic judgment of event priority—Not all events are equally important.
+
+41
+00:05:56,904 --> 00:06:08,554
+The Agent needs to intelligently choose a handling strategy: cancel the current operation (urgent), add it to a queue (routine), or process in parallel (independent lightweight query).
+
+42
+00:06:08,554 --> 00:06:15,304
+Smooth interruption and resumption—An interrupted conversation or task should be able to resume naturally.
+
+43
+00:06:15,304 --> 00:06:22,954
+When applying the asynchronous paradigm to an LLM, first check whether the model and API support this message timing.
+
+44
+00:06:22,954 --> 00:06:34,041
+Some interfaces require all tool results before work can continue; others already allow tools to remain pending while the model keeps working and accepts user updates during generation.
+
+45
+00:06:34,041 --> 00:06:42,416
+The former need event queues, task handles, and a compatibility layer; the latter can use native asynchronous protocols directly.
+
+46
+00:06:42,416 --> 00:06:49,241
+Both still require the application to manage event sources, tool lifecycles, and result ownership.
+
+47
+00:06:49,241 --> 00:06:55,541
+Using asyncio in the code alone does not establish that the model has native asynchronous capabilities.
+
+48
+00:06:55,541 --> 00:07:00,316
+To solve this, we need an event-driven asynchronous Agent architecture.
+
+49
+00:07:00,316 --> 00:07:13,366
+Technically, this means the system no longer actively and repeatedly checks for "new messages" (this is polling, which is inefficient), but instead automatically triggers processing logic when a new message arrives.
+
+50
+00:07:13,366 --> 00:07:23,841
+All inputs, outputs, thought processes, and external interactions are uniformly modeled as an event stream—a sequence of event records arranged on a timeline.
+
+51
+00:07:23,841 --> 00:07:35,204
+Figure 6-1 shows the overall architecture of an event-driven asynchronous Agent, illustrating the relationship between event sources, the event queue, and the Agent processing flow.
+
+52
+00:07:35,204 --> 00:07:41,141
+As illustrated in Figure 6-1: Event-Driven Asynchronous Agent Architecture.
+
+53
+00:07:41,141 --> 00:07:44,741
+Implementing Event-Driven Mechanisms in OpenClaw.
+
+54
+00:07:44,741 --> 00:07:52,579
+The open-source framework OpenClaw receives multi-channel messages through a Gateway control plane and routes them to the Agent runtime.
+
+55
+00:07:52,579 --> 00:07:56,279
+It provides three built-in event-driven mechanisms:
+
+56
+00:07:56,279 --> 00:08:05,179
+Hooks: Respond to events in the Agent's lifecycle, such as session creation and reset, similar to event triggers in GitHub Actions
+
+57
+00:08:05,179 --> 00:08:18,566
+Cron (scheduled-task scheduler): Execute periodic tasks according to cron expressions (a widely used syntax for scheduled tasks in Unix systems, e.g., 0 9   5 means 9 AM every Friday)
+
+58
+00:08:18,566 --> 00:08:25,041
+Heartbeat (Heartbeat Daemon): Wakes up the Agent every N minutes to check whether anything requires attention
+
+59
+00:08:25,204 --> 00:08:37,479
+These three mechanisms give OpenClaw Agents the appearance of autonomy—even with the user offline, the Agent can generate reports on schedule, check system status, and handle routine chores.
+
+60
+00:08:37,429 --> 00:08:44,179
+The Gateway already handles messages from built-in channels such as IM and the web interface in push fashion.
+
+61
+00:08:44,179 --> 00:08:59,891
+Of the three mechanisms, only Cron and Heartbeat let the Agent act without a user message, and both are time-driven: Heartbeat checks at fixed intervals, Cron fires at preset times, and Hooks originate inside the OpenClaw framework rather than outside it.
+
+62
+00:08:59,891 --> 00:09:09,366
+The real gap is third-party event sources beyond the built-in channels: a new email, an external API callback, or an urgent notification.
+
+63
+00:09:09,366 --> 00:09:18,179
+OpenClaw has no immediate ingress path for them, so the Agent cannot respond immediately and may only notice at the next Cron or Heartbeat tick.
+
+64
+00:09:18,179 --> 00:09:21,854
+This delay is unacceptable in many scenarios.
+
+65
+00:09:21,854 --> 00:09:38,254
+Take PineClaw (Pine AI's OpenClaw plugin) as an example: Pine AI is an AI assistant that makes real phone calls on behalf of the user, with typical scenarios including negotiating bills, canceling subscriptions, and handling insurance claims.
+
+66
+00:09:38,254 --> 00:09:49,291
+When a user initiates a Pine phone task through an OpenClaw Agent, Pine's voice AI will make the call on behalf of the user, but the user may need to intervene at any time during the call:
+
+67
+00:09:49,291 --> 00:10:02,254
+Real-time Identity Verification: The customer service representative asks to verify the account holder's identity, and Pine needs the user to immediately provide a security code or one-time password (OTP)
+
+68
+00:10:02,254 --> 00:10:12,366
+Three-Way Call Confirmation: The customer service representative asks to speak directly with the account holder, and Pine needs the user to answer the phone within seconds
+
+69
+00:10:12,366 --> 00:10:23,529
+Progress Sync and Decision Confirmation: At a critical point in the negotiation (e.g., the other party proposes a price reduction), Pine needs the user to confirm whether to accept
+
+70
+00:10:23,529 --> 00:10:34,141
+With Heartbeat's periodic polling, the user might not get the notification while the representative is still waiting for the verification code; the representative hangs up and the call fails.
+
+71
+00:10:34,141 --> 00:10:42,391
+PineClaw's solution is a Channel mechanism that establishes a real-time event path between OpenClaw's Gateway and the Pine API.
+
+72
+00:10:42,391 --> 00:10:51,816
+When a call connects, needs user input, or ends, the message is pushed immediately to the OpenClaw Agent, which handles it and notifies the user.
+
+73
+00:10:51,816 --> 00:11:05,879
+This case reveals the core value of an event-driven architecture for Agent frameworks: true "proactive service" requires not only that the Agent can periodically check for events, but also that events can actively notify the Agent.
+
+74
+00:11:05,879 --> 00:11:20,891
+Unifying all inputs—user messages, tool returns, external callbacks, scheduled triggers—into an event stream, and driving the Agent's thinking and actions through an event loop, is the architectural foundation for achieving this goal.
+
+75
+00:11:20,891 --> 00:11:36,979
+Under this architecture, we will first introduce the two tool categories directly related to events, as well as the virtual identity and isolated execution environment that support the Agent's independent actions, before discussing the specific design of the event handling mechanism.
+
+76
+00:11:36,979 --> 00:11:39,191
+Event-Triggered Tools.
+
+77
+00:11:39,191 --> 00:11:44,966
+Event-triggered tools are the entry points through which external events drive an Agent's actions.
+
+78
+00:11:44,966 --> 00:11:55,141
+Without them, an Agent can only operate in a continuous loop of thinking, calling tools, and finally outputting a result, then waiting for the user's next input.
+
+79
+00:11:55,141 --> 00:12:02,516
+To translate changes in the world into events an Agent can process, there are three common types of event-triggered tools.
+
+80
+00:12:02,668 --> 00:12:07,830
+Timers (set_timer) handle events tied to physical time.
+
+81
+00:12:07,780 --> 00:12:19,605
+If an email goes unanswered, the Agent should follow up after a while to ask about progress; if a call is placed outside the recipient's business hours, it should retry during the next business window.
+
+82
+00:12:19,605 --> 00:12:25,605
+Tools like OpenClaw and Claude Code therefore let an Agent wake itself at a specified time.
+
+83
+00:12:25,605 --> 00:12:39,868
+One-shot timers handle tasks with a specific time: if a user asks on Saturday to “call the bank's mortgage department for a status update,” the Agent sets “call the bank next Monday at 10:00 AM,” and the timer triggers the call.
+
+84
+00:12:39,868 --> 00:12:45,518
+Recurring timers handle periodic tasks, such as checking server health every hour.
+
+85
+00:12:45,518 --> 00:12:52,780
+Some external services cannot push progress updates and must be polled; the recurring timer provides that polling.
+
+86
+00:12:52,780 --> 00:13:00,255
+OpenClaw's Heartbeat is a systematized version of this mechanism and the basis of its “proactive service” capability.
+
+87
+00:13:00,255 --> 00:13:08,643
+Background Task Monitoring (monitor_shell) handles events from asynchronously executing tools or command-line tasks.
+
+88
+00:13:08,643 --> 00:13:15,168
+Some command-line tasks run in the background for a long time, and the Agent needs to track their progress.
+
+89
+00:13:15,168 --> 00:13:33,605
+If the Agent "stares at the command line," repeatedly calling a tool to poll for progress, it burns tokens; if it waits until the task has fully finished before thinking again, it misses critical problems as they unfold—and if the command hangs, it cannot intervene at all, stalling the whole task.
+
+90
+00:13:33,605 --> 00:13:43,518
+Claude Code solves this by introducing a monitor tool, allowing the Agent to monitor new command-line output, including output that contains specific keywords.
+
+91
+00:13:43,518 --> 00:13:53,880
+External Event Channels (connect_channel) push external events like new emails, API callbacks, or IM messages to the Agent in real time.
+
+92
+00:13:53,880 --> 00:13:59,255
+The Channel mechanism in PineClaw from the previous section is a typical implementation.
+
+93
+00:13:59,255 --> 00:14:10,130
+From a design perspective, event-triggered tools should define clear trigger conditions and filtering rules to prevent irrelevant events from waking the Agent and wasting computational resources.
+
+94
+00:14:10,130 --> 00:14:18,518
+The event payload should contain sufficient context information to minimize the number of additional queries the Agent needs to make after being woken up.
+
+95
+00:14:18,518 --> 00:14:21,155
+User Communication Tools.
+
+96
+00:14:21,155 --> 00:14:27,530
+User communication tools arise as communication channels between Agents and users diversify.
+
+97
+00:14:27,530 --> 00:14:40,705
+Many Agents, such as Claude Code and Manus, use a native ReAct loop: everything the Agent “says” (an assistant message) is sent directly to the user, who must open a specific session in the app to converse with it.
+
+98
+00:14:40,705 --> 00:14:44,980
+The session often exposes the Agent's tool-call process.
+
+99
+00:14:45,148 --> 00:14:47,710
+OpenClaw breaks this pattern.
+
+100
+00:14:47,660 --> 00:14:59,498
+Users do not need to think in terms of individual sessions or follow the details of tool calls; both user and Agent can send messages at any time instead of alternating one request with one response.
+
+101
+00:14:59,498 --> 00:15:06,885
+This gives OpenClaw what many describe as a “human-like presence”, communicating asynchronously like a secretary.
+
+102
+00:15:06,885 --> 00:15:17,885
+Rather than sending raw assistant messages, OpenClaw uses dedicated messaging tools whose messages can include images and files and can trigger push notifications based on urgency.
+
+103
+00:15:17,885 --> 00:15:28,473
+Beyond communicating with users through text, a growing number of Agents have multimodal communication capabilities, such as sending structured card messages or reminder emails.
+
+104
+00:15:28,473 --> 00:15:39,398
+Some Agents have begun experimenting with Generative UI—using HTML and similar means to generate interactive interfaces that present information to the user in a friendlier way.
+
+105
+00:15:39,398 --> 00:15:51,935
+At the design level, user communication tools should support asynchronous messaging (the user may not be online), provide read/unread status tracking, and keep messages consistent across channels.
+
+106
+00:15:51,935 --> 00:15:55,748
+Multi-channel User Communication and Re-engagement.
+
+107
+00:15:55,748 --> 00:16:04,123
+An Agent's response should not be limited to a single channel; the notification mechanism also serves as a user re-engagement mechanism.
+
+108
+00:16:04,123 --> 00:16:12,610
+Message sending extends to instant messaging, SMS, email, phone calls, push notifications, and other channels.
+
+109
+00:16:12,610 --> 00:16:24,935
+The Agent decides on the channel based on a combination of urgency, user status, content nature, and user preferences, ensuring important messages are not missed while avoiding redundant interruptions.
+
+110
+00:16:24,935 --> 00:16:32,635
+For long-running tasks, the Agent needs to proactively notify the user upon completion to bring the user's attention back.
+
+111
+00:16:32,635 --> 00:16:41,098
+For periodic tasks (like daily summaries or weekly reports), notifications can help users develop a regular interaction habit.
+
+112
+00:16:41,098 --> 00:16:45,923
+User communication tools solve the problem of "how to reach the user.
+
+113
+00:16:45,923 --> 00:16:58,860
+However, the identity the Agent assumes on these channels and the environment in which it performs actions on behalf of the user require a layer of identity and execution-environment infrastructure, which is the topic of the next section.
+
+114
+00:16:58,860 --> 00:17:03,060
+Virtual Identity and Isolated Execution Environment.
+
+115
+00:17:03,060 --> 00:17:11,285
+Chapter 4 opens with Samantha in Her as an example, illustrating how an Agent uses tools to interact with the real digital world.
+
+116
+00:17:11,285 --> 00:17:21,860
+Achieving such a general-purpose assistant forces a key architectural choice: should the Agent manage the user's personal accounts directly, or hold a virtual identity of its own?
+
+117
+00:17:21,860 --> 00:17:29,298
+Direct management looks convenient, but one Agent error or compromise exposes the user's entire digital identity.
+
+118
+00:17:29,298 --> 00:17:46,910
+The safer approach is to give the Agent an independent virtual identity—the way a secretary has their own office phone and mailbox—comprising dedicated communication accounts, storage, and computing environments, so the Agent can work on the user's behalf under a transparent, clearly declared identity.
+
+119
+00:17:46,910 --> 00:17:52,348
+This transparency does not weaken trust; it can make communication more authentic.
+
+120
+00:17:52,348 --> 00:17:56,735
+Virtual identities need isolated execution environments.
+
+121
+00:17:56,735 --> 00:18:08,373
+Virtual computers (VMs/containers) and virtual phones (Android emulators) give the Agent operating-system isolation and full desktop or mobile capabilities.
+
+122
+00:18:08,373 --> 00:18:17,335
+First, a virtual computer can run around the clock regardless of whether the user's device is online and without disrupting the apps the user is operating.
+
+123
+00:18:17,335 --> 00:18:23,823
+Second, an Agent error can at worst crash the virtual environment rather than the user's real device.
+
+124
+00:18:23,823 --> 00:18:29,848
+Finally, isolation prevents the Agent from freely accessing the user's local files.
+
+125
+00:18:30,004 --> 00:18:34,529
+An independent identity also presents two practical challenges.
+
+126
+00:18:34,479 --> 00:18:42,966
+First, there are anti-bot mechanisms: many websites use CAPTCHAs and IP reputation checks to block automated access.
+
+127
+00:18:42,966 --> 00:18:55,079
+Virtual environments using data center IPs are easily identified; in practice, normal access often requires configuring a residential proxy network (which uses real household IPs).
+
+128
+00:18:55,079 --> 00:19:13,041
+Second, access to the user's real accounts: when a task must log in as the user, use Human-in-the-Loop authentication—a VNC/RDP remote desktop where the user logs in personally, sees the full interface the Agent is operating, and understands why authentication is needed.
+
+129
+00:19:13,041 --> 00:19:21,454
+The session token is then reused within its validity period to avoid interrupting the user repeatedly, balancing autonomy and security.
+
+130
+00:19:21,454 --> 00:19:33,316
+Data exchange between the Agent and virtual environments uses a shared file system: volume mounts such as /workspace/shared connect the Agent, virtual computer, and virtual phone.
+
+131
+00:19:33,316 --> 00:19:38,354
+Data is passed by file-path reference rather than copied into context.
+
+132
+00:19:38,354 --> 00:19:49,416
+For example, a user uploads a CSV to the shared directory; the Agent in the virtual computer analyzes it and saves a chart there; the Agent returns only the chart's path.
+
+133
+00:19:49,416 --> 00:19:52,891
+Every handoff remains a lightweight path string.
+
+134
+00:19:52,891 --> 00:20:06,229
+Event-triggered tools allow the world to wake the Agent, user communication tools allow the Agent to reach the user, and virtual identities with isolated execution environments allow the Agent to act independently and auditably.
+
+135
+00:20:06,229 --> 00:20:14,041
+The remaining question is: when multiple events converge on the same Agent instance simultaneously, how should they be handled?
+
+136
+00:20:14,041 --> 00:20:16,466
+Event Handling Mechanism.
+
+137
+00:20:16,466 --> 00:20:27,579
+A single Agent instance may face multiple events concurrently: a new message from the user, a result from a tool, a timer expiring, a collaboration request from another Agent.
+
+138
+00:20:27,579 --> 00:20:33,954
+How these events are handled efficiently and correctly directly impacts performance and user experience.
+
+139
+00:20:33,954 --> 00:20:38,579
+The skeleton of this mechanism is the event loop from concurrent programming.
+
+140
+00:20:38,579 --> 00:21:01,354
+Think of an asynchronous Agent as a long-running loop: each round takes a batch of events off the input queue, appends them to the trajectory, invokes the LLM once, executes the tools it decides to call, then returns to the top of the loop to wait for the next batch of events—the same structure as a Go goroutine reading messages from a channel and processing them round by round inside a for { select { ...
+
+141
+00:21:01,354 --> 00:21:07,704
+In a traditional synchronous-interface implementation, events are consumed at the boundaries of each round.
+
+142
+00:21:07,704 --> 00:21:18,729
+While the LLM is reasoning or a tool is executing, new events wait in a queue until the round reaches a safe point—the end of a stretch of reasoning or the return of a tool call.
+
+143
+00:21:18,729 --> 00:21:28,729
+Native asynchrony allows new requirements to arrive while the model is still thinking or producing output, with the system choosing an appropriate moment to continue processing.
+
+144
+00:21:28,729 --> 00:21:32,429
+Both have boundaries, managed by different layers.
+
+145
+00:21:32,429 --> 00:21:45,379
+Cancelling a tool still requires its executor to respond to a cancellation signal, much like checking ctx.Done() in Go; receiving a “stop” message does not itself undo actions that have already occurred.
+
+146
+00:21:45,379 --> 00:22:03,466
+With this distinction in mind, we first use an event loop compatible with synchronous interfaces to explain three strategies: let events wait for the next natural safe point (queuing), create a safe point early (cancellation), or start another loop without waiting for the main loop's safe point (parallel processing).
+
+147
+00:22:03,466 --> 00:22:06,329
+We return to native steering later.
+
+148
+00:22:06,329 --> 00:22:08,666
+Structured Event Modeling.
+
+149
+00:22:08,666 --> 00:22:11,416
+Handling requires understanding.
+
+150
+00:22:11,416 --> 00:22:23,379
+A general-purpose Agent's input doesn't come only from the user—a third-party message is not sent by the user to the Agent, yet the Agent must understand it, weigh its importance, and decide whether to step in.
+
+151
+00:22:23,379 --> 00:22:28,554
+This requires modeling each input as a structured event rich with semantics:
+
+152
+00:22:28,554 --> 00:22:34,729
+Source (who): The user themselves, a contact, a stranger, a system notification
+
+153
+00:22:34,729 --> 00:22:46,379
+Channel (how): Phone call, SMS, instant message, email, social media, timer trigger, asynchronous tool call result, command-line monitoring status update
+
+154
+00:22:46,540 --> 00:22:53,027
+Content (what): Message text, emotional tone, urgency, whether a reply is needed
+
+155
+00:22:52,977 --> 00:23:01,065
+Context (background): Whether it's a reply to a previous conversation or a new communication, its relevance to the current task
+
+156
+00:23:01,065 --> 00:23:06,890
+Taking a customer refund request email as an example, the structured event looks like this:
+
+157
+00:23:06,890 --> 00:23:11,627
+Refer to the companion repository for the complete code implementation.
+
+158
+00:23:11,627 --> 00:23:27,540
+Only when these dimensions are clearly modeled as structured events can the Agent maintain a clear understanding in multi-party communication, avoiding mistaking user input for a tool result, or mistaking a tool result containing hidden instructions for a user command (prompt injection).
+
+159
+00:23:27,540 --> 00:23:46,240
+The complexity of multi-threaded context management also requires the Agent to understand the relationships between multiple conversation threads—how a message from a third party affects the user's mood, the user's role transitions across different conversations, and when to synthesize information from different threads to provide advice.
+
+160
+00:23:46,240 --> 00:23:59,902
+The trigger ecosystem of workflow platforms such as n8n makes the point: webhooks, timers, email, database changes, file watchers—each trigger is one of the Agent's "senses" for perceiving the world.
+
+161
+00:23:59,902 --> 00:24:14,565
+Once these heterogeneous events are modeled uniformly in a structured format, the Agent can handle stimuli from different sources in a consistent way; the urgency determination and processing strategies discussed below all rest on this unified modeling.
+
+162
+00:24:14,565 --> 00:24:18,302
+Dynamic Processing Strategy Based on Urgency.
+
+163
+00:24:18,302 --> 00:24:27,690
+Humans juggling multiple tasks adapt their strategy to urgency: an emergency makes them drop what they're doing; a routine to-do goes on the list for later.
+
+164
+00:24:27,690 --> 00:24:31,727
+An Agent's event handling should show the same intelligence.
+
+165
+00:24:31,727 --> 00:24:37,965
+As illustrated in Figure 6-2: Three Strategies for Asynchronous Event Processing.
+
+166
+00:24:37,965 --> 00:24:51,277
+Cancellation-Based Processing is used for urgent events; its essence is forcing a safe point early for the urgent event: proactively interrupting the current step to turn this instant into a boundary at which the new event can be consumed.
+
+167
+00:24:51,277 --> 00:25:22,665
+When an urgent event arrives (e.g., the user clicks "stop" or a supervisory system sends a high-priority instruction): (1) Stop the current operation—if the LLM is reasoning, immediately cancel the streaming response; if a synchronous tool is executing, send a cancel signal; (2) Drain the pending queue by removing all pending events; (3) Append those events together with the urgent event to the end of the trajectory; (4) Immediately re-invoke the LLM with the updated complete trajectory as
+
+168
+00:25:22,665 --> 00:25:25,452
+input to assess the situation.
+
+169
+00:25:25,452 --> 00:25:29,077
+For example, if the user inputs "Stop!
+
+170
+00:25:29,077 --> 00:25:41,590
+I said the wrong thing" while the Agent is about to perform a potentially erroneous operation, the Agent will immediately see this new input, reassess what the user intended, and thus avoid executing the wrong action.
+
+171
+00:25:41,590 --> 00:25:45,090
+Queued Processing is used for routine events.
+
+172
+00:25:45,090 --> 00:26:09,327
+When a non-urgent event arrives (e.g., an asynchronous tool returns a result or the user sends supplementary information): (1) Add the event to the end of the queue without interrupting the current operation; (2) Wait for the current operation to complete—let the LLM finish reasoning, let the synchronous tool finish executing; (3) When any tool call completes and returns a tool.result, check the queue.
+
+173
+00:26:09,327 --> 00:26:18,390
+If the queue is non-empty, append all events to the trajectory at once; (4) The LLM processes the updated trajectory comprehensively.
+
+174
+00:26:18,390 --> 00:26:29,590
+This enables batch processing, improving efficiency—for example, while the Agent is waiting for a search tool result, the user adds "only show results from the last month.
+
+175
+00:26:29,590 --> 00:26:39,502
+This supplementary information enters the queue, and when the search results return, both events are presented to the LLM together, avoiding unnecessary round trips.
+
+176
+00:26:39,652 --> 00:26:44,202
+Parallel Processing is used for independent, lightweight queries.
+
+177
+00:26:44,152 --> 00:26:51,739
+For example, while the Agent is analyzing a large amount of data, the user suddenly asks, "What's the weather like today?
+
+178
+00:26:51,739 --> 00:27:00,877
+Such queries have three characteristics: they are unrelated to the main task, require a quick response, and have low execution cost.
+
+179
+00:27:00,877 --> 00:27:10,114
+Neither cancellation-based (would interrupt the important main task) nor queued processing (would make the user wait too long) is suitable.
+
+180
+00:27:10,114 --> 00:27:21,964
+The system first assesses the query's independence and complexity, then executes it independently in a parallel reasoning session, calling necessary tools to generate a response and returning it immediately.
+
+181
+00:27:21,964 --> 00:27:32,064
+The query and response are appended to the main task's trajectory, clearly marked as "executed in parallel with the main task" to avoid confusing the LLM.
+
+182
+00:27:32,064 --> 00:27:34,364
+Urgency Determination.
+
+183
+00:27:34,364 --> 00:27:49,614
+Urgent events: User interrupt (user.interrupt), supervisor instruction (supervisor.instruction), inter-Agent interrupt (agent.interrupt), external triggers marked as urgent (e.g., system alerts, payment failures).
+
+184
+00:27:49,614 --> 00:28:02,839
+Non-urgent events: Regular user input (user.input), Agent input (agent.input), tool results (tool.result), timer triggers (timer.trigger), regular external triggers.
+
+185
+00:28:02,839 --> 00:28:18,814
+Hardcoded rules have limitations; the semantics of the event dictate the handling method—"Stop immediately!" uses cancellation-based processing, "What's the weather like today?" uses parallel processing, "Send the report in Chinese" uses queued processing.
+
+186
+00:28:18,814 --> 00:28:27,652
+It is recommended to use a lightweight classification LLM as an event router, quickly determining which strategy to adopt when an event arrives.
+
+187
+00:28:27,652 --> 00:28:39,189
+A cancellation point must be a position where the tool or the reasoning can wind down safely; an unfinished tool result is represented by an explicit placeholder and must never be faked as a success.
+
+188
+00:28:39,189 --> 00:28:48,389
+The following experiment, an event-driven email processing Agent, implements the event handling strategies discussed above into a runnable implementation.
+
+189
+00:28:48,556 --> 00:28:55,356
+Experiment 6-1 advanced difficulty, three stars: : Event-Driven Email Processing Agent
+
+190
+00:28:55,306 --> 00:29:01,943
+As illustrated in Figure 6-3: Experiment 6-1 Event-Driven Agent Architecture.
+
+191
+00:29:01,943 --> 00:29:08,281
+This experiment builds the simplest event-driven Agent: an Automated Email Processing Assistant.
+
+192
+00:29:08,281 --> 00:29:21,893
+The Agent monitors the email inbox, and whenever a new email arrives, it automatically triggers a processing workflow—classification, summarization, draft reply, and notifying the user if necessary.
+
+193
+00:29:21,893 --> 00:29:31,731
+This is the most intuitive introductory scenario for an event-driven Agent: an external event (new email arrival) triggers a complete Agent thinking cycle.
+
+194
+00:29:31,731 --> 00:29:43,118
+Experiment Objective: to understand the core idea of event-driven architecture—the Agent no longer waits passively for user input but acts on its own in response to external events.
+
+195
+00:29:43,118 --> 00:29:53,481
+Through this experiment, readers will master the basic closed loop of event source registration, the event queue, and "event arrives → Agent processes → result delivered".
+
+196
+00:29:53,481 --> 00:29:56,218
+Event Sources and Event Queue.
+
+197
+00:29:56,218 --> 00:30:00,818
+The system supports unified access for multiple event sources:
+
+198
+00:30:00,818 --> 00:30:10,806
+Email Events (on_email_received): Triggered when a new email arrives, either by periodically checking the inbox or receiving push notifications.
+
+199
+00:30:10,806 --> 00:30:20,968
+IM/SMS Messages (on_im_message, on_sms_message): Triggered by instant messages or SMS messages.
+
+200
+00:30:20,968 --> 00:30:31,731
+GitHub Events (on_github_pr_update, on_github_issue_update): Triggered by PR review comments or status changes.
+
+201
+00:30:31,731 --> 00:30:40,681
+Timer Triggers (on_timer_expire): Triggered by scheduled tasks (e.g., daily summaries, weekly report generation).
+
+202
+00:30:40,681 --> 00:30:46,743
+Webhooks (on_webhook_received): Generic callbacks from external systems.
+
+203
+00:30:46,743 --> 00:30:57,356
+System Events (on_user_inactive, on_process_timeout, on_resource_alert): Triggered by internal state changes.
+
+204
+00:30:57,356 --> 00:31:03,181
+All events enter a unified event queue and are processed sequentially in order of arrival.
+
+205
+00:31:03,181 --> 00:31:26,806
+Each event triggers an independent Agent thinking loop: the Agent reads the event content, calls relevant tools (e.g., querying the knowledge base, reading attachments, searching related email history), generates a processing result (classification labels, summaries, draft replies), and finally either notifies the user via notification tools or directly executes an action.
+
+206
+00:31:26,806 --> 00:31:32,143
+Validation Scenario: Configure the Agent to monitor a test mailbox.
+
+207
+00:31:32,143 --> 00:31:39,518
+Simulate receiving three emails—a meeting invitation, a customer complaint, and a marketing advertisement.
+
+208
+00:31:39,518 --> 00:31:59,481
+The Agent processes them sequentially: for the meeting invitation, it automatically checks for calendar conflicts and drafts an accept/decline reply; for the customer complaint, it extracts key information, marks it as high priority, and notifies the user to handle it; for the marketing advertisement, it automatically archives it.
+
+209
+00:31:59,481 --> 00:32:03,393
+The entire process requires no user intervention.
+
+210
+00:32:03,393 --> 00:32:11,706
+Experiment 6-1 demonstrates the simplest event-driven pattern—events enter a queue, and the Agent processes them sequentially.
+
+211
+00:32:11,706 --> 00:32:23,043
+However, when the Agent needs to respond to interruptions during long-running tool executions, or manage multiple concurrent tasks simultaneously, a simple event queue is insufficient.
+
+212
+00:32:23,043 --> 00:32:26,893
+Next, we discuss deeper engineering challenges.
+
+213
+00:32:26,893 --> 00:32:30,756
+Compatibility When Native Asynchrony Is Unavailable.
+
+214
+00:32:30,756 --> 00:32:38,718
+Experiment 6-1 handles only serial events: events enter the queue, and the Agent processes them one after another.
+
+215
+00:32:38,718 --> 00:32:47,943
+If the chosen model or interface does not support native asynchrony, a user interruption before a tool returns must be expressed within a synchronous format.
+
+216
+00:32:47,943 --> 00:32:55,118
+We introduce a compatibility approach here, then discuss GPT-6 Astra's native interface later.
+
+217
+00:32:55,118 --> 00:33:01,593
+Suppose the Agent is helping a user draft an email and has called a tool to search for contact information.
+
+218
+00:33:01,593 --> 00:33:07,768
+Before the search returns, the user says, “Wait, first check tomorrow's weather for me.
+
+219
+00:33:07,768 --> 00:33:17,643
+If the interface requires outstanding tool calls to receive their corresponding results first, the Agent cannot directly process this new message with a call still pending.
+
+220
+00:33:17,643 --> 00:33:24,868
+This restriction comes from the chosen combination of protocol and model; it is not a rule every LLM must follow.
+
+221
+00:33:24,868 --> 00:33:29,281
+An Asynchronous Implementation Compatible with a Synchronous Format.
+
+222
+00:33:29,452 --> 00:33:41,564
+The core idea is: Under normal conditions without interruptions, let the LLM see a standard synchronous trajectory; only when an interruption occurs, insert placeholders to fix the format.
+
+223
+00:33:41,514 --> 00:33:44,027
+Here are five key rules:
+
+224
+00:33:44,027 --> 00:33:50,214
+Rule 1: Promptly record completed assistant messages and tool-call items from the API.
+
+225
+00:33:50,214 --> 00:33:58,489
+Preserve server-managed reasoning state according to the provider's continuation protocol; do not assemble invisible reasoning text yourself.
+
+226
+00:33:58,489 --> 00:34:03,502
+Rule 2: Record the tool result only when the tool call is complete.
+
+227
+00:34:03,502 --> 00:34:08,402
+The trajectory is in a "partially completed" state during execution.
+
+228
+00:34:08,402 --> 00:34:13,564
+Rule 3: Interruptions during tool execution require placeholders.
+
+229
+00:34:13,564 --> 00:34:25,202
+Generate a placeholder response for the unfinished tool (e.g., "The tool is executing in the background, please prioritize the new event"), append the interruption event, and re-invoke the LLM.
+
+230
+00:34:25,202 --> 00:34:30,789
+From the LLM's perspective, the assistant message still has a paired tool result.
+
+231
+00:34:30,789 --> 00:34:44,314
+Rule 4: Without native steering or a supported mid-turn continuation interface, cancel unfinished generation, retain confirmed completed messages and tool state, append the new event, and send a new request.
+
+232
+00:34:44,314 --> 00:34:50,514
+Do not assume that partial output or hidden reasoning can be freely fed back as a valid prefix.
+
+233
+00:34:50,514 --> 00:34:55,539
+Rule 5: Non-interrupting events enter the queue for batch processing.
+
+234
+00:34:55,539 --> 00:35:00,052
+They are appended all at once only after the current cycle is complete.
+
+235
+00:35:00,052 --> 00:35:08,627
+Using the example of the Agent drafting an email when the user interrupts to ask about the weather, the operation of these five rules is as follows:
+
+236
+00:35:08,627 --> 00:35:17,577
+The Agent calls search_contacts to search for contact information, and the assistant message is immediately written to the trajectory (Rule 1).
+
+237
+00:35:17,577 --> 00:35:23,864
+Before the search tool returns results, the user sends "First check tomorrow's weather for me.
+
+238
+00:35:23,864 --> 00:35:40,814
+Since this is a user interruption, the system generates a placeholder tool result for the unfinished search_contacts ("The tool is executing in the background, please prioritize the new event", Rule 3), then appends the user's weather query to the trajectory and re-invokes the LLM.
+
+239
+00:35:40,814 --> 00:35:49,577
+At this point, the trajectory format seen by the LLM is completely valid—the assistant message and tool result are perfectly paired.
+
+240
+00:35:49,577 --> 00:35:58,764
+After the Agent answers the weather query, the original search_contacts result arrives and is appended to the trajectory as a new event (Rule 2).
+
+241
+00:35:58,764 --> 00:36:03,589
+The Agent reads the contact information and continues drafting the email.
+
+242
+00:36:03,589 --> 00:36:09,277
+This approach maintains the tool/result pairing required by a synchronous interface.
+
+243
+00:36:09,277 --> 00:36:15,277
+A placeholder explicitly marked “unfinished” is introduced only when an interruption is needed.
+
+244
+00:36:15,277 --> 00:36:21,877
+When the real background result arrives, it enters the trajectory as an event with a source and task ID.
+
+245
+00:36:21,877 --> 00:36:30,714
+For models that already support native asynchrony, the system can retain the task's pending state and pass the real result to the model when it arrives.
+
+246
+00:36:30,714 --> 00:36:41,527
+Placeholders also carry a semantic risk: the model may confuse “task started” with “task completed” and make a decision that depends on a result before that result arrives.
+
+247
+00:36:41,527 --> 00:36:49,927
+Clear task state and result validation should prevent this confusion, and evaluation should check for fabricated data that has not yet arrived.
+
+248
+00:36:49,927 --> 00:36:55,777
+A single failure does not justify attributing the cause to an undisclosed training process.
+
+249
+00:36:55,777 --> 00:36:59,714
+Expressing Asynchronous Semantics Through Task Handles.
+
+250
+00:36:59,714 --> 00:37:07,139
+Whether or not a native asynchronous protocol is used, tool-interface design can make asynchronous semantics explicit.
+
+251
+00:37:07,139 --> 00:37:14,864
+One approach especially useful for synchronous interfaces is to make “start task” a complete call with a real return value.
+
+252
+00:37:14,864 --> 00:37:20,177
+Traditional tool design implies a "call equals completion" semantics.
+
+253
+00:37:20,177 --> 00:37:28,714
+For example, the name phone_call suggests "calling will dial the phone and wait for the call to end, returning the call log.
+
+254
+00:37:28,714 --> 00:37:34,664
+Under the asynchronous paradigm, "initiation" and "completion" should be decoupled:
+
+255
+00:37:34,664 --> 00:37:45,502
+initiate_phone_call: Initiates a phone call, immediately returning a task identifier and initial status (e.g., "Call initiated, dialing...
+
+256
+00:37:45,502 --> 00:37:53,727
+Call progress is communicated via event notifications (phone_call_connected, phone_call_ended)
+
+257
+00:37:53,884 --> 00:37:59,571
+The key is that the tool's name and description themselves should convey asynchronous semantics.
+
+258
+00:37:59,521 --> 00:38:09,346
+When the model sees initiate_phone_call, its language understanding capabilities will naturally infer this is "initiating" rather than "completing.
+
+259
+00:38:09,346 --> 00:38:16,534
+The tool description should further reinforce this: "This tool initiates a phone call task handled by a sub-agent.
+
+260
+00:38:16,534 --> 00:38:23,571
+It returns the task ID immediately upon successful initiation, allowing you to continue with other matters.
+
+261
+00:38:23,571 --> 00:38:27,671
+A separate notification event will be sent when the call ends.
+
+262
+00:38:27,671 --> 00:38:31,409
+Overlooking Earlier Events in Queue-Based Processing.
+
+263
+00:38:31,409 --> 00:38:38,709
+When processing events in a batch, a model may respond only to the last event and overlook earlier requirements.
+
+264
+00:38:38,709 --> 00:38:46,909
+Native asynchrony addresses whether messages can arrive during execution; we must still check whether the model incorporates all updates.
+
+265
+00:38:46,909 --> 00:38:50,046
+Intervention can be applied at two levels:
+
+266
+00:38:50,046 --> 00:38:58,584
+Prompt Level: Inform the model, "When you receive multiple consecutive events, please ensure you comprehensively consider all the information.
+
+267
+00:38:58,584 --> 00:39:03,596
+Agent Status Bar Markers: Add explicit markers before each event:
+
+268
+00:39:03,596 --> 00:39:08,334
+Refer to the companion repository for the complete code implementation.
+
+269
+00:39:08,334 --> 00:39:18,096
+Add a summary at the end: "There are 4 unprocessed events above, including 1 tool result, 2 user messages, and 1 system reminder.
+
+270
+00:39:18,096 --> 00:39:21,721
+Please ensure your response covers all the information.
+
+271
+00:39:21,721 --> 00:39:30,396
+Experiment 6-2 advanced difficulty, three stars: : Asynchronous Agent with Parallel Execution and Interruption Capabilities
+
+272
+00:39:30,396 --> 00:39:37,509
+As illustrated in Figure 6-4: Experiment 6-2 Asynchronous Agent Interruption and Recovery.
+
+273
+00:39:37,509 --> 00:39:50,221
+Building on the simple event queue in Experiment 6-1, this experiment uses a runtime compatible with synchronous interfaces to implement parallel tool execution, execution cancellation, and state management.
+
+274
+00:39:50,221 --> 00:39:58,346
+The Agent must manage several concurrent tasks, handle interruptions and recovery, and make dynamic decisions from current state.
+
+275
+00:39:58,346 --> 00:40:02,721
+See Experiment 6-3 for the native Astra comparison.
+
+276
+00:40:02,721 --> 00:40:14,009
+Asynchronous Tool Execution: Supports asynchronous execution of time-consuming tools (at least 3-5 seconds), returning a placeholder immediately upon initiation.
+
+277
+00:40:14,009 --> 00:40:19,284
+Validation Scenario: The Agent executes a long-running terminal command.
+
+278
+00:40:19,284 --> 00:40:23,596
+During this time, the user asks, "What time is it now?
+
+279
+00:40:23,596 --> 00:40:30,171
+The Agent responds immediately, then presents the analysis result when the long-running command completes.
+
+280
+00:40:30,171 --> 00:40:37,059
+Event Queue and Batch Processing: Accumulates non-urgent events and appends them to the trajectory in a batch.
+
+281
+00:40:37,059 --> 00:40:41,859
+Validation Scenario: The Agent is executing a long task.
+
+282
+00:40:41,859 --> 00:40:49,234
+The user sends consecutive messages: "Remember to reply in Japanese" and "Format it as a webpage.
+
+283
+00:40:49,234 --> 00:40:56,096
+When the task completes, the Agent processes all events at once, generating a Japanese webpage.
+
+284
+00:40:56,096 --> 00:41:04,284
+Interruption Mechanism: A user's "stop" command immediately terminates the execution flow and cancels the asynchronous tool.
+
+285
+00:41:04,284 --> 00:41:09,084
+Validation Scenario: The Agent is executing a long task.
+
+286
+00:41:09,084 --> 00:41:11,671
+The user sends "Cancel.
+
+287
+00:41:11,671 --> 00:41:18,396
+The Agent stops immediately, and the trajectory records the interruption event and the cancellation operation.
+
+288
+00:41:18,396 --> 00:41:28,259
+Cancellation and Status Query for Parallel Tools: After an asynchronous tool completes, the real result is injected into the conversation via a new event.
+
+289
+00:41:28,259 --> 00:41:32,609
+Supports cancellation or progress query via task ID.
+
+290
+00:41:32,609 --> 00:41:39,059
+Validation Scenario: The user requests, "Run these three scripts simultaneously for me.
+
+291
+00:41:39,059 --> 00:41:43,746
+Whichever finishes first, check the progress of the remaining scripts.
+
+292
+00:41:43,746 --> 00:41:47,534
+If any hasn't exceeded 50%, cancel it.
+
+293
+00:41:47,534 --> 00:41:58,034
+The three scripts simulate analysis processes, outputting progress continuously at speeds of 3%, 2%, and 1% per second, respectively.
+
+294
+00:41:58,034 --> 00:42:02,859
+The Agent starts three asynchronous terminal commands simultaneously.
+
+295
+00:42:02,859 --> 00:42:15,421
+When the script at 3% per second finishes in about 33 seconds, the Agent queries the status of the remaining two terminals, finding one at about 66% and the other at about 33%.
+
+296
+00:42:15,421 --> 00:42:19,434
+It then cancels the one that hasn't exceeded 50%.
+
+297
+00:42:19,434 --> 00:42:24,984
+After both terminals complete, it integrates the results to generate a complete report.
+
+298
+00:42:24,984 --> 00:42:29,321
+Model-Native Asynchrony: GPT-6 Astra.
+
+299
+00:42:29,476 --> 00:42:38,651
+In the compatibility approach above, the runtime orders incoming events so that a model with a synchronous interface can participate in asynchronous tasks.
+
+300
+00:42:38,601 --> 00:42:48,751
+Another approach lets the model understand this interaction rhythm natively: it can do other work while a tool runs and adjust subsequent work when the user adds requirements midway.
+
+301
+00:42:48,751 --> 00:42:57,926
+GPT-6 Astra already supports Async tool calling and Mid-turn steering, illustrating this change (Figure 6-5).
+
+302
+00:42:57,926 --> 00:43:04,951
+As illustrated in Figure 6-5: Synchronous-Interface Compatibility and Model-Native Asynchrony.
+
+303
+00:43:04,951 --> 00:43:10,626
+Asynchronous tool calling separates “starting an action” from “obtaining its result.
+
+304
+00:43:10,626 --> 00:43:19,263
+After starting a slow query, an Agent can continue reasoning, call other tools, or handle parts that do not depend on the query result.
+
+305
+00:43:19,263 --> 00:43:28,001
+While looking up meeting venues, for example, it can prepare the agenda and checklist, then compare options when venue information arrives.
+
+306
+00:43:28,001 --> 00:43:36,101
+The key is to distinguish dependencies: keep independent work moving, and defer decisions that require the result until it arrives.
+
+307
+00:43:36,101 --> 00:43:41,126
+Mid-turn steering lets the user correct the direction while a task is underway.
+
+308
+00:43:41,126 --> 00:43:50,938
+While the Agent is still thinking or composing its answer, the user can add requirements such as “the budget has decreased” or “the number of attendees has changed.
+
+309
+00:43:50,938 --> 00:43:59,876
+The system retains completed work and brings the new constraints into subsequent processing, allowing the Agent to adjust its plan within the same task.
+
+310
+00:43:59,876 --> 00:44:08,926
+There may still be a delay between receiving an update and acting on it, but the user need not wait for an entire answer to finish before expressing the change.
+
+311
+00:44:08,926 --> 00:44:16,901
+These capabilities extend the timing of interaction: tool results and user requirements can both arrive as a task progresses.
+
+312
+00:44:16,901 --> 00:44:23,151
+The system must still distinguish their sources and remember which work is complete and which remains pending.
+
+313
+00:44:23,151 --> 00:44:34,088
+Changing a plan does not itself stop running tools or undo actions already taken; actual execution, cancellation, and state management remain the runtime's responsibility.
+
+314
+00:44:34,088 --> 00:44:38,063
+Not every model has native asynchronous capabilities.
+
+315
+00:44:38,063 --> 00:44:50,651
+When building an Agent, choose native interaction or a compatibility approach according to the model's support, then check whether the whole system correctly handles delayed results, mid-task changes, and task resumption.
+
+316
+00:44:50,651 --> 00:44:58,913
+Asynchronous training can improve these capabilities further, but developers can already build this kind of interaction using existing models.
+
+317
+00:44:58,913 --> 00:45:04,101
+From Receiving Asynchronous Messages to Handling Asynchronous Tasks Reliably.
+
+318
+00:45:04,101 --> 00:45:08,913
+Native asynchrony addresses whether messages can arrive during execution.
+
+319
+00:45:08,913 --> 00:45:14,613
+Reliability in complex tasks also depends on how the model uses those messages.
+
+320
+00:45:14,613 --> 00:45:17,376
+At least three things need checking:
+
+321
+00:45:17,524 --> 00:45:26,174
+Result ownership and pending state: Can the model associate a delayed result with the correct task and avoid inventing data when the result is absent?
+
+322
+00:45:26,124 --> 00:45:35,361
+Task resumption and action control: Can it return to the original task after handling new requirements and distinguish changing a plan from stopping execution?
+
+323
+00:45:35,361 --> 00:45:43,286
+Integrating multiple updates: Can it respect both budget and attendance constraints, rather than remembering only the last message?
+
+324
+00:45:43,286 --> 00:45:52,924
+These issues can be addressed through model training in asynchronous environments and through clearer task state, event sources, and execution feedback in the system.
+
+325
+00:45:52,924 --> 00:46:00,111
+Evaluation must cover both layers: whether the model understood the change and whether the system executed accordingly.
+
+326
+00:46:00,111 --> 00:46:07,486
+Experiment 6-3 advanced difficulty, three stars: : Model-Native Asynchrony and Mid-Turn Steering
+
+327
+00:46:07,486 --> 00:46:14,974
+Choose a venue for a meeting: after starting a slow query, the Agent completes preparation that does not depend on the result.
+
+328
+00:46:14,974 --> 00:46:19,399
+Meanwhile, the user adds budget and attendance requirements.
+
+329
+00:46:19,399 --> 00:46:24,874
+Once the query finishes, the Agent selects a venue according to all constraints.
+
+330
+00:46:24,874 --> 00:46:33,474
+Call the GPT-6 Astra API to compare synchronous tools, native asynchronous tools, and mid-turn steering.
+
+331
+00:46:33,474 --> 00:46:42,424
+Observe whether waiting blocks other work, whether new requirements enter subsequent plans, and whether the original task resumes when results arrive.
+
+332
+00:46:42,424 --> 00:46:50,261
+Then use a model without native support as a control to understand what model capabilities and runtime orchestration each address.
+
+333
+00:46:50,261 --> 00:47:00,636
+Asynchrony and event-driven execution let the world wake an Agent while a task is underway; native steering also lets the user submit updates before a full answer finishes.
+
+334
+00:47:00,636 --> 00:47:12,524
+The next three sections compress the timescale further: when the environment changes as fast as or faster than the model generates, receiving updates is not enough—the system must also react in time.
+
+335
+00:47:12,524 --> 00:47:16,474
+Voice: The Most Natural Human-Machine Interface.
+
+336
+00:47:16,474 --> 00:47:19,924
+Voice is not merely text turned into sound.
+
+337
+00:47:19,924 --> 00:47:31,086
+Speaking is roughly four times faster than typing and leaves the hands and eyes free, so it naturally places an Agent in a continuous input-output loop where the user may interrupt at any moment.
+
+338
+00:47:31,086 --> 00:47:37,611
+Dictation converts speech into text; a voice Agent lets the user collaborate with the Agent directly.
+
+339
+00:47:37,611 --> 00:47:41,574
+Both support the whisper-coding workflow introduced earlier.
+
+340
+00:47:41,574 --> 00:47:49,774
+This section covers two directions: the user speaking to an Agent, and an Agent speaking to the outside world on the user's behalf.
+
+341
+00:47:49,774 --> 00:48:02,361
+The voice model determines what the Agent can answer; the interaction architecture determines whether it can hear clearly, respond in time, hand over naturally, and complete confirmations and tool calls during a call.
+
+342
+00:48:02,361 --> 00:48:08,049
+We first examine interaction timing, then cognitive timing and expressive quality.
+
+343
+00:48:08,049 --> 00:48:12,149
+Interaction timing: from cascaded to full-duplex.
+
+344
+00:48:12,149 --> 00:48:20,961
+OpenAI's GPT-Live introduction describes three voice-interaction paradigms—cascaded, turn-based, and full-duplex.
+
+345
+00:48:20,961 --> 00:48:28,261
+They are not a simple old-to-new replacement; they trade latency, cost, and observability in different ways:
+
+346
+00:48:28,261 --> 00:48:44,449
+Paradigm: Cascaded; Core structure: VAD → ASR → LLM → TTS; Main advantage: Clear modules that are easy to replace and debug; Main limitation: Latency accumulates and paralinguistic information is lost at interfaces.
+
+347
+00:48:44,449 --> 00:49:02,349
+Paradigm: End-to-end Omni; Core structure: Native audio input and output with turn-based interaction; Main advantage: Lower latency and better preservation of tone, emotion, and ambient sound; Main limitation: Still turn-based; training and debugging cost more.
+
+348
+00:49:02,349 --> 00:49:21,424
+Paradigm: Full-duplex; Core structure: Native audio input and output with continuous listening, speaking, and decision-making; Main advantage: Overlapping speech, natural interruption, and continuous streams; Main limitation: Training, control, and evaluation are more complex.
+
+349
+00:49:21,424 --> 00:49:29,261
+The common thread is escaping the assumption that people must speak one at a time, and escaping VAD's guess about who has the floor.
+
+350
+00:49:29,261 --> 00:49:37,511
+Cascaded and Omni systems still divide interaction into turns; full-duplex makes turn ownership a continuous model decision.
+
+351
+00:49:37,511 --> 00:49:40,649
+Paradigm 1 · Cascaded pipeline.
+
+352
+00:49:40,804 --> 00:49:55,654
+Most commercial voice assistants still use a serial pipeline (Figure 6-6): VAD decides when the user has finished, ASR converts audio to text, the LLM understands and generates a reply, and TTS speaks it.
+
+353
+00:49:55,604 --> 00:50:02,204
+Modularity lets each component be optimized independently, but every boundary can add waiting time.
+
+354
+00:50:02,204 --> 00:50:07,579
+As illustrated in Figure 6-6: Serial voice Agent pipeline.
+
+355
+00:50:07,579 --> 00:50:17,279
+Module: VAD; Role: Decide whether speech has ended; Typical bottleneck: Silence thresholds add waiting and split turns incorrectly.
+
+356
+00:50:17,279 --> 00:50:26,341
+Module: ASR; Role: Convert audio to text; Typical bottleneck: Recognition latency and loss of context.
+
+357
+00:50:26,341 --> 00:50:35,904
+Module: LLM; Role: Understand, reason, and generate; Typical bottleneck: Time to first token; reasoning adds more waiting.
+
+358
+00:50:35,904 --> 00:50:44,704
+Module: TTS; Role: Convert text to speech; Typical bottleneck: First-packet synthesis and playback buffering.
+
+359
+00:50:44,704 --> 00:50:54,716
+For a short reply without reasoning, VAD, ASR, LLM, and TTS waiting time accumulates serially (Figure 6-7).
+
+360
+00:50:54,716 --> 00:51:00,879
+The real value depends on input length, model, hardware, network, and load.
+
+361
+00:51:00,879 --> 00:51:06,929
+As illustrated in Figure 6-7: Latency waterfall for a serial response.
+
+362
+00:51:06,929 --> 00:51:15,229
+Production queueing amplifies idle latency further (Figure 6-8), but capacity planning is outside this chapter's scope.
+
+363
+00:51:15,229 --> 00:51:20,116
+As illustrated in Figure 6-8: Queueing latency curve.
+
+364
+00:51:20,116 --> 00:51:26,691
+Experiment 6-4 introductory difficulty, one star: : Build a traditional voice Agent
+
+365
+00:51:26,691 --> 00:51:37,366
+Connect a microphone, Silero VAD, local Whisper, a streaming LLM, and Fish S1 TTS over WebSocket to establish the cascaded baseline.
+
+366
+00:51:37,366 --> 00:51:40,229
+From serial to streaming perception.
+
+367
+00:51:40,229 --> 00:51:49,341
+Figure 6-7 describes the fully serial case: VAD, ASR, LLM, and TTS run one after another.
+
+368
+00:51:49,341 --> 00:51:53,054
+This serial perception approach has three problems:
+
+369
+00:51:53,054 --> 00:51:58,416
+Accumulated latency: it must wait through silence before confirming the end.
+
+370
+00:51:58,416 --> 00:52:07,854
+Lost information: a binary speech/no-speech signal cannot express hesitation, emotion, backchannels, or ambient sound.
+
+371
+00:52:07,854 --> 00:52:15,304
+Broken context: email addresses, names, and proper nouns may be split across chunks and misrecognized.
+
+372
+00:52:15,304 --> 00:52:25,116
+To address this while keeping the modular split, one optimization is streaming perception, which lets each stage produce incremental results as early as possible:
+
+373
+00:52:25,116 --> 00:52:40,379
+Streaming ASR: once VAD detects that the user has started speaking, the ASR model is called at fixed intervals to produce a provisional transcript in a streaming fashion; once VAD detects that the user has finished, the final text is confirmed.
+
+374
+00:52:40,379 --> 00:52:47,204
+LLM speculative execution: the provisional transcript is sent to the LLM as soon as it exists.
+
+375
+00:52:47,204 --> 00:52:57,454
+If the final text matches the provisional transcript, the LLM is not called again; otherwise the earlier speculative thinking is cancelled and the LLM is called again.
+
+376
+00:52:57,454 --> 00:53:04,504
+Segmented LLM output: the first speakable sentence goes to TTS without waiting for the full reply.
+
+377
+00:53:04,504 --> 00:53:12,929
+Incremental TTS: audio chunks are returned continuously so later generation, synthesis, and playback overlap.
+
+378
+00:53:12,929 --> 00:53:16,941
+A truly streaming ASR needs model-level support.
+
+379
+00:53:16,941 --> 00:53:25,604
+Whisper's decoder is autoregressive, but its encoder expects a complete audio segment, so it cannot simply be equated with a streaming model.
+
+380
+00:53:25,604 --> 00:53:35,191
+An LLM-based streaming-audio model can emit text and semantic events from continuous audio, placing recognition and part of understanding in one model.
+
+381
+00:53:35,191 --> 00:53:43,641
+It keeps the conversation context from the beginning up to the present moment and can use world knowledge for brands, names, and proper nouns.
+
+382
+00:53:43,641 --> 00:53:50,441
+If the only goal is deciding whether the user has finished, endpointing can be built into the streaming recognizer.
+
+383
+00:53:50,441 --> 00:53:55,641
+The model combines semantics and silence to judge whether an utterance is complete.
+
+384
+00:53:55,641 --> 00:54:04,166
+Training labels must contain only information visible at decision time, or hindsight will produce a judgment that cannot be reproduced online.
+
+385
+00:54:04,166 --> 00:54:08,316
+The model can emit acoustic-event markers as well as words:
+
+386
+00:54:08,316 --> 00:54:14,466
+speak_start/end, interrupt: speech boundaries and interruption intent;
+
+387
+00:54:14,466 --> 00:54:17,829
+emotion: emotion and hesitation;
+
+388
+00:54:17,829 --> 00:54:23,091
+laugh, sigh, noise: paralinguistic and environmental sound.
+
+389
+00:54:23,091 --> 00:54:27,754
+Together with text tokens, these markers form one event stream.
+
+390
+00:54:27,754 --> 00:54:35,516
+The Agent can detect hesitation, interruption, and environmental changes without compressing every sound into plain text.
+
+391
+00:54:35,668 --> 00:54:43,955
+Experiment 6-5 introductory difficulty, one star: : Simulate streaming voice perception with Qwen2-Audio
+
+392
+00:54:43,905 --> 00:54:47,855
+Qwen2-Audio is not itself a streaming model.
+
+393
+00:54:47,855 --> 00:54:56,555
+This experiment simulates continuous perception with increasing audio prefixes and compares it with 600 ms VAD + Whisper.
+
+394
+00:54:56,555 --> 00:55:00,780
+Paradigm 2 · End-to-end omnimodal models (Omni).
+
+395
+00:55:00,780 --> 00:55:13,330
+Even with streaming perception, a cascade passes listening, thinking, and speaking through discrete interfaces; emotion, intonation, and ambient sound may be lost when audio becomes plain text.
+
+396
+00:55:13,330 --> 00:55:24,843
+The Omni approach uses one model to listen to audio, generate a reply, and speak it, which can preserve those signals, though at a higher training cost (Figure 6-9).
+
+397
+00:55:24,843 --> 00:55:34,230
+Compared with the cascaded pipeline of Paradigm 1, Omni's advantage shows up mainly in latency and in understanding and generating non-text information.
+
+398
+00:55:34,230 --> 00:55:39,368
+On the understanding side, Omni models can pick up on pauses in the voice.
+
+399
+00:55:39,368 --> 00:55:48,280
+On the generation side, Omni models can convey richer paralinguistic information—singing, or delivering a line in a distinctive tone.
+
+400
+00:55:48,280 --> 00:55:54,093
+Omni models still assume turn-taking and generally use VAD to assign the floor.
+
+401
+00:55:54,093 --> 00:56:00,843
+A mid-utterance pause while the user reads out a string of digits can therefore still be mistaken for the end of the turn.
+
+402
+00:56:00,843 --> 00:56:07,218
+As illustrated in Figure 6-9: End-to-end omnimodal speech-model comparison.
+
+403
+00:56:07,218 --> 00:56:17,205
+Experiment 6-6 intermediate difficulty, two stars: : Run MiniCPM-o 4.5 locally—end-to-end versus self-cascade
+
+404
+00:56:17,205 --> 00:56:28,518
+Run MiniCPM-o 4.5 locally with thinking mode disabled, comparing direct answers from audio against a self-cascade that first transcribes and then answers with the same model.
+
+405
+00:56:28,518 --> 00:56:35,080
+This measures whether audio information is preserved, not the “thinking while speaking” discussed later.
+
+406
+00:56:35,080 --> 00:56:38,943
+Paradigm 3 · Full-duplex interactive models.
+
+407
+00:56:38,943 --> 00:56:48,780
+Omni still divides conversation into “the user speaks” and “the model speaks,” but simultaneous interpreting and similar tasks require overlap.
+
+408
+00:56:48,780 --> 00:56:59,818
+A full-duplex model therefore does not presuppose turns: it listens and speaks continuously and repeatedly decides whether to continue, pause, interrupt, or call a tool.
+
+409
+00:56:59,818 --> 00:57:04,930
+Kyutai's Moshi (2024) was an early research example.
+
+410
+00:57:04,930 --> 00:57:12,905
+It models the user's and the model's audio streams in parallel, so overlapping speech and interruption can be natural behaviors.
+
+411
+00:57:12,905 --> 00:57:16,730
+Thinking Machines Lab calls this an Interaction Model
+
+412
+00:57:16,730 --> 00:57:29,955
+OpenAI's GPT-Live brings the full-duplex path to production scale: it continuously processes input and generates output, can wait, backchannel, be interrupted, and handle realtime translation.
+
+413
+00:57:29,955 --> 00:57:37,505
+Like the Interaction Model, it delegates complex work to a background model while the foreground model maintains the conversation.
+
+414
+00:57:37,505 --> 00:57:41,805
+Cognitive timing: realtime interaction and deep thinking.
+
+415
+00:57:41,805 --> 00:57:46,293
+Interaction quality and intelligence ceiling are different dimensions.
+
+416
+00:57:46,293 --> 00:57:53,143
+The foreground model must respond while the user is still engaged; the background model can spend longer thinking.
+
+417
+00:57:53,143 --> 00:57:57,793
+The following three designs are trade-offs, not a linear progression.
+
+418
+00:57:57,793 --> 00:58:06,230
+The first two can wrap a cascade or Omni model; the third instead unifies deep reasoning and realtime expression within the same model.
+
+419
+00:58:06,230 --> 00:58:11,393
+Solution 1: Fast thinking for fillers, slow thinking for answers.
+
+420
+00:58:11,393 --> 00:58:19,068
+Fast thinking can give a holding response within a few hundred milliseconds while slow thinking performs a deeper derivation in the background.
+
+421
+00:58:19,068 --> 00:58:30,243
+Simple questions may be processed twice, while hard questions can produce contradictions: the fast model recommends a purchase, then the slow model discovers that a key feature is missing.
+
+422
+00:58:30,243 --> 00:58:34,555
+The root cause is two independent instances thinking separately.
+
+423
+00:58:34,555 --> 00:58:41,618
+As illustrated in Figure 6-10: Fast/slow thinking architecture and design alternatives.
+
+424
+00:58:41,618 --> 00:58:47,155
+Solution 2: Fast thinking for interaction, slow thinking for advice.
+
+425
+00:58:47,308 --> 00:58:56,345
+The background model can send advice through a status bar or dedicated interface while the foreground model keeps the conversation alive and decides how to phrase it.
+
+426
+00:58:56,295 --> 00:59:06,245
+This is more stable than Solution 1, but communication is still indirect: the foreground can misunderstand the advice and cannot see the background's intermediate reasoning.
+
+427
+00:59:06,245 --> 00:59:11,833
+Before the background finishes, follow-up questions still rely on the foreground model.
+
+428
+00:59:11,833 --> 00:59:16,858
+It can naturally wait for a result, but it cannot truly think while speaking.
+
+429
+00:59:16,858 --> 00:59:21,670
+Solution 3: End-to-end unification of thinking and expression.
+
+430
+00:59:21,670 --> 00:59:26,795
+This design internalizes reasoning directly in an end-to-end audio model.
+
+431
+00:59:26,795 --> 00:59:41,145
+Step-Audio R1 uses two complementary mechanisms: Modality-Grounded Reasoning Distillation (MGRD) grounds thinking in acoustic features, while the MPS dual-brain architecture lets planning and expression proceed in parallel.
+
+432
+00:59:41,145 --> 00:59:46,045
+The first helps the model think correctly; the second helps it speak in time.
+
+433
+00:59:46,045 --> 00:59:53,045
+Ideally, the model infers emotion from pitch, rhythm, and intonation rather than only from the transcript.
+
+434
+00:59:53,045 --> 01:00:02,533
+MGRD selects reasoning traces that actually cite acoustic features, trains on them, and uses reinforcement learning to prevent guessing without thinking.
+
+435
+01:00:02,533 --> 01:00:12,420
+MPS lets the planning brain continuously emit thought segments; the expression brain combines each segment with the partial reply and immediately generates speech.
+
+436
+01:00:12,420 --> 01:00:19,845
+The pipeline runs in parallel, so the listener need not wait for the entire chain of reasoning before hearing the first sentence.
+
+437
+01:00:19,845 --> 01:00:25,295
+The trade-off between separated fast/slow thinking and end-to-end reasoning.
+
+438
+01:00:25,295 --> 01:00:33,558
+A unified model implements “thinking while speaking” most directly, but thinking and realtime expression must be retrained together.
+
+439
+01:00:33,558 --> 01:00:37,933
+A decoupled design makes it easier to swap the background brain.
+
+440
+01:00:37,933 --> 01:00:41,608
+These are trade-offs, not simple substitutes.
+
+441
+01:00:41,608 --> 01:00:53,583
+As frontier reasoning models advance rapidly, separating fast and slow thinking offers an important engineering advantage: it captures the gains from each new generation of slow models directly.
+
+442
+01:00:53,583 --> 01:01:04,970
+The fast foreground model only needs to listen, respond, and sustain the conversation with low latency, while the slow background model handles reasoning, planning, and tool use.
+
+443
+01:01:04,970 --> 01:01:14,083
+When a stronger reasoning model arrives, only the background model needs to be replaced; the entire realtime voice system need not be retrained.
+
+444
+01:01:14,083 --> 01:01:24,695
+A unified design binds reasoning and interaction to the same training cycle, so every upgrade must rebalance intelligence, response latency, and natural expression.
+
+445
+01:01:24,695 --> 01:01:35,420
+Fast/slow separation is therefore not merely a compromise on latency, but a modular choice that lets interaction capability and the intelligence ceiling evolve independently.
+
+446
+01:01:35,420 --> 01:01:40,158
+This separation does not necessarily sacrifice task performance.
+
+447
+01:01:40,158 --> 01:01:56,233
+As of August 2026, Pine AI's voice Agent, which uses a separated fast/slow architecture, ranked first on the τ³-Voice Leaderboard, ahead of realtime voice systems including Grok Voice and GPT-Realtime-2.
+
+448
+01:01:56,233 --> 01:02:06,933
+At minimum, this result shows that a decoupled architecture is not inherently inferior to end-to-end models on tasks that jointly test deep reasoning and realtime conversation.
+
+449
+01:02:07,084 --> 01:02:13,771
+The term “end-to-end model” needs one further clarification because it is commonly used in two senses.
+
+450
+01:02:13,721 --> 01:02:24,784
+The first is an end-to-end speech path, discussed in the preceding section: the model receives audio and produces audio directly instead of connecting multiple models through discrete text.
+
+451
+01:02:24,784 --> 01:02:37,384
+Both Omni and Interaction Models are end-to-end in this sense, but Omni models usually remain turn-based, whereas Interaction Models can listen and speak at the same time; their architectures differ substantially.
+
+452
+01:02:37,384 --> 01:02:51,459
+The second is an end-to-end cognitive architecture, discussed in this section: realtime interaction and deep reasoning either share state and are trained together within one model, or are split between a fast foreground model and a slow background model.
+
+453
+01:02:51,459 --> 01:02:54,109
+The two axes are independent.
+
+454
+01:02:54,109 --> 01:03:07,146
+A system can have an end-to-end speech path while retaining fast/slow separation in its cognitive architecture; Thinking Machines Lab's delegation of complex tasks to a background reasoner is one such combination.
+
+455
+01:03:07,146 --> 01:03:09,996
+More human-like speech synthesis.
+
+456
+01:03:09,996 --> 01:03:15,509
+Traditional TTS can sound artificial when it is too smooth and pauses too little.
+
+457
+01:03:15,509 --> 01:03:22,196
+Pauses, filler words, and occasional repetition signal uncertainty and thought in human speech.
+
+458
+01:03:22,196 --> 01:03:38,084
+The main LLM can emit control markers in addition to text, such as THINKING, EMO:happy, and SPEED:0.8x; TTS maps them to pauses, prosody, speaking rate, laughter, sighs, and other nonverbal audio.
+
+459
+01:03:38,084 --> 01:03:46,784
+The implementation can be a TTS trained to understand control markers, or voice cloning with reference clips for different emotions and styles.
+
+460
+01:03:46,784 --> 01:03:54,559
+Experiment 6-7 intermediate difficulty, two stars: : Control token-driven TTS with Fish Audio
+
+461
+01:03:54,559 --> 01:04:05,659
+Use Fish Audio S1 to build a multi-reference voice library and compare three configurations: no control markers, one reference clip, and multiple reference clips.
+
+462
+01:04:05,659 --> 01:04:11,821
+The execution layer selects matching emotion, speaking rate, and style from the markers.
+
+463
+01:04:11,821 --> 01:04:15,709
+Computer Use: GUI Automation Agents.
+
+464
+01:04:15,709 --> 01:04:22,834
+Voice pushed the timing axis down to the millisecond, but its observation is still a one-dimensional stream of sound.
+
+465
+01:04:22,834 --> 01:04:33,421
+Computer Use moves the same problem onto a two-dimensional screen: observation becomes continuously changing pixels, and action becomes clicks and keystrokes at coordinates.
+
+466
+01:04:33,421 --> 01:04:46,671
+Voice scenarios emphasize when to speak; Computer Use emphasizes where to click next—plus a question that does not exist in voice interaction at all: after an action executes, is reality still consistent with the plan?
+
+467
+01:04:46,671 --> 01:05:04,971
+Computer Use, also known as GUI automation, allows AI to use software like a human by observing the screen and operating the mouse and keyboard—for example, opening a browser to search for information, filling in data in a spreadsheet application, or adjusting configurations in system settings.
+
+468
+01:05:04,971 --> 01:05:09,434
+Its core is a Perceive-Think-Act loop (Figure 6-11
+
+469
+01:05:09,434 --> 01:05:12,884
+The Agent takes a screenshot of the current screen.
+
+470
+01:05:12,884 --> 01:05:19,834
+A multimodal model receives the screenshot and task instruction, and outputs a thought and a specific action.
+
+471
+01:05:19,834 --> 01:05:27,809
+The execution layer performs the action in the real environment (moving the mouse, clicking, typing text, etc.).
+
+472
+01:05:27,809 --> 01:05:34,096
+It waits for the interface to respond, takes another screenshot, and enters the next loop iteration.
+
+473
+01:05:34,096 --> 01:05:39,009
+It is important to distinguish understanding the interface from completing the task.
+
+474
+01:05:39,009 --> 01:05:45,696
+The former is closer to multimodal understanding and can be measured with one-shot screenshot question answering.
+
+475
+01:05:45,696 --> 01:05:56,559
+The latter requires the model to put understanding and action generation into a closed loop that handles page loading, state changes, mistakes, and irreversible consequences.
+
+476
+01:05:56,559 --> 01:06:05,934
+The challenge of Computer Use is therefore not merely answering correctly about a screenshot, but reconfirming after every step that reality still matches the plan.
+
+477
+01:06:05,934 --> 01:06:11,884
+As illustrated in Figure 6-11: Computer Use Agent's Perceive-Think-Act Loop.
+
+478
+01:06:11,884 --> 01:06:26,871
+There are three key design dimensions in this loop: Action Space (what operations the Agent can perform), Visual Grounding (how to find the target element in the screenshot), and Model Architecture (how to generate the correct action from the screenshot).
+
+479
+01:06:26,871 --> 01:06:29,196
+Action Space Design.
+
+480
+01:06:29,356 --> 01:06:37,656
+Anthropic's reference implementation divides a complete interaction capability into three types of tools (Figure 6-12).
+
+481
+01:06:37,606 --> 01:06:59,043
+This is a clear action-space design, but not a private protocol that model providers must follow: as long as the Harness can translate the same screenshots, action constraints, and execution results into messages and structured outputs supported by the target model, Claude, open-weight vision models, and self-hosted endpoints can all drive the same Perceive-Think-Act loop.
+
+482
+01:06:59,043 --> 01:07:04,518
+As illustrated in Figure 6-12: Computer Use Action Space.
+
+483
+01:07:04,518 --> 01:07:24,806
+GUI Operation Tool (computer tool): Mouse operations include moving (mouse_move), left/right/middle clicks, double-clicking or triple-clicking, dragging (left_click_drag), and more precise press/release actions (left_mouse_down and left_mouse_up).
+
+484
+01:07:24,806 --> 01:07:31,031
+Scrolling (scroll) supports four directions and can be combined with modifier keys.
+
+485
+01:07:31,031 --> 01:07:45,981
+Keyboard operations include typing character by character (type, with a 12ms interval between characters to simulate real typing), key combinations (key, e.g., Ctrl+C), and holding a key (hold_key).
+
+486
+01:07:45,981 --> 01:07:54,406
+Perception actions include taking a screenshot, retrieving the cursor position (cursor_position), and waiting (wait).
+
+487
+01:07:54,406 --> 01:08:01,993
+Command Execution Tool (bash tool): Provides a persistent bash terminal session with a 120-second timeout.
+
+488
+01:08:01,993 --> 01:08:13,243
+It uses a sentinel string to detect command completion and maintains environment state across multiple calls (e.g., after cd to a directory, the next call remains in that directory).
+
+489
+01:08:13,243 --> 01:08:24,943
+File Editing Tool (str_replace_editor): Enables safe editing through string matching and supports view, create, replace, insert, and undo operations.
+
+490
+01:08:24,943 --> 01:08:31,893
+It is more precise than overwriting an entire file and less likely to modify unrelated content accidentally.
+
+491
+01:08:31,893 --> 01:08:40,906
+Experiment 6-8 introductory difficulty, one star: : Running Computer Use (Anthropic Reference Path or Open-Model Path)
+
+492
+01:08:40,906 --> 01:08:44,493
+Path A uses the Anthropic Computer Use Demo.
+
+493
+01:08:44,493 --> 01:08:52,481
+Its container packages a complete Ubuntu desktop environment, including a browser, terminal, and other common tools.
+
+494
+01:08:52,481 --> 01:09:03,543
+The frontend receives a task, while the backend sends the instructions and screenshots to Claude and then executes the mouse, keyboard, terminal, or editing actions returned by the model.
+
+495
+01:09:03,543 --> 01:09:08,856
+Path B uses the example code in chapter6/computer-use-open-model.
+
+496
+01:09:08,856 --> 01:09:21,893
+By default, it drives browser-use with the open-weight Qwen3-VL 32B Instruct model through the hosted OpenRouter API, or through self-hosted vLLM/SGLang and similar systems.
+
+497
+01:09:21,893 --> 01:09:23,893
+Visual Grounding.
+
+498
+01:09:23,893 --> 01:09:31,581
+In each iteration of the loop, the model needs to accurately locate the target element in the screenshot—"Where is the search box?
+
+499
+01:09:31,581 --> 01:09:34,418
+What are the coordinates of the submit button?
+
+500
+01:09:34,418 --> 01:09:37,256
+This is the visual grounding problem.
+
+501
+01:09:37,256 --> 01:09:56,043
+Currently, there are two main approaches: one is to turn localization into a multiple-choice problem—first annotate the interface elements with numbers, and the model only needs to select one; the other is pure coordinate prediction—letting the model "look" at the screenshot and report coordinates directly, just like a human.
+
+502
+01:09:56,043 --> 01:10:13,593
+The multiple-choice approach has two implementation methods: pure visual annotation (the original Set-of-Mark, using a segmentation model to segment candidate regions in the image) and structured element indexing (DOM/Accessibility Tree, directly reading the interface's inherent structure).
+
+503
+01:10:13,593 --> 01:10:26,331
+The common advantage of the multiple-choice approach is that it transforms the open-ended problem of "find the button in the screenshot and predict its coordinates" into a closed-ended one of "choose one from the already annotated elements.
+
+504
+01:10:26,331 --> 01:10:42,043
+Just as multiple-choice questions are easier to answer correctly than fill-in-the-blank questions in an exam, the model only needs to say "click [123]" instead of "click the button at screen coordinates (350, 464).
+
+505
+01:10:42,043 --> 01:10:51,631
+Predicting coordinates directly is especially hard for a model—it takes extensive training to get right, and it is prone to error across different screen resolutions.
+
+506
+01:10:51,631 --> 01:10:55,143
+Set-of-Mark: Visual Annotation Method.
+
+507
+01:10:55,300 --> 01:11:06,462
+The original Set-of-Mark (SoM) was proposed by Microsoft Research in 2023, initially to unlock the visual grounding capabilities of GPT-4V.
+
+508
+01:11:06,412 --> 01:11:21,150
+It is a purely visual method: it uses image segmentation models (SAM, SEEM, etc.) to automatically segment candidate regions in the screenshot, overlays a numbered marker on each region, and the model sees an image with numbers.
+
+509
+01:11:21,150 --> 01:11:28,237
+The model only needs to report the number, and the system converts it into the center coordinates of the corresponding region.
+
+510
+01:11:28,237 --> 01:11:42,025
+The entire process does not require a DOM or any internal interface structure, so it is equally applicable to native desktop software and game interfaces—as long as the segmentation model can identify the candidate regions.
+
+511
+01:11:42,025 --> 01:11:47,637
+Structured Element Indexing: A Structured Implementation of the SoM Idea on the Web.
+
+512
+01:11:47,637 --> 01:11:53,325
+When the interface itself provides structured information, annotation can be more precise.
+
+513
+01:11:53,325 --> 01:12:04,362
+Before rendering, modern web pages define a complete element structure (the DOM tree) and semantic roles that identify buttons, input fields, and other controls.
+
+514
+01:12:04,362 --> 01:12:09,962
+Accessibility trees provide similar information for many desktop applications.
+
+515
+01:12:09,962 --> 01:12:17,650
+Web Agent systems such as browser-use take exactly this route: they enumerate and number interactive elements from the DOM.
+
+516
+01:12:17,650 --> 01:12:23,737
+This is a structured implementation of the SoM idea for the web (Figure 6-13).
+
+517
+01:12:23,737 --> 01:12:26,412
+The process has four steps:
+
+518
+01:12:26,412 --> 01:12:37,062
+Obtain the structured representation (DOM tree) and accessibility information for the page through the browser's debugging interface (CDP, Chrome DevTools Protocol)
+
+519
+01:12:37,062 --> 01:12:44,075
+Automatically detect which elements are interactive (buttons, input boxes, links, etc.)
+
+520
+01:12:44,075 --> 01:12:50,175
+Annotate each interactive element with a unique ID and draw bounding boxes on the screenshot
+
+521
+01:12:50,175 --> 01:12:55,862
+Simultaneously generate a text list describing the element corresponding to each ID
+
+522
+01:12:55,862 --> 01:13:00,600
+Refer to the companion repository for the complete code implementation.
+
+523
+01:13:00,600 --> 01:13:07,575
+The model only needs to output an ID, and the system automatically clicks the center of the corresponding element.
+
+524
+01:13:07,575 --> 01:13:20,925
+This approach does not save tokens because all annotation data must still be sent to the model, but it provides accurate, stable localization while avoiding the missed detections and false positives that segmentation models can introduce.
+
+525
+01:13:20,925 --> 01:13:28,975
+As illustrated in Figure 6-13: Set-of-Mark vs. Structured Element Indexing (browser-use implementation).
+
+526
+01:13:28,975 --> 01:13:31,400
+Pure Coordinate Prediction.
+
+527
+01:13:31,400 --> 01:13:36,900
+The third route skips annotation and asks the model to output coordinates directly.
+
+528
+01:13:36,900 --> 01:13:46,312
+Systems such as SeeClick and Claude's computer use rely on vision models trained on massive datasets of GUI screenshots paired with element positions.
+
+529
+01:13:46,312 --> 01:13:57,775
+These models learn to map natural-language descriptions (e.g., "click the submit button") directly to precise screenshot coordinates, relying on visual perception much like a human user.
+
+530
+01:13:57,940 --> 01:14:07,427
+In coordinate prediction schemes, the model's understanding of coordinates is highly dependent on the resolution used during training (Figure 6-14).
+
+531
+01:14:07,377 --> 01:14:19,877
+Claude was trained using XGA (1024×768), WXGA (1280×800), and FWXGA (1366×768).
+
+532
+01:14:19,877 --> 01:14:31,452
+If the input screenshot resolution does not match, the model's predicted coordinates will systematically shift—like measuring a distance on a small map and then applying it directly to a large map.
+
+533
+01:14:31,452 --> 01:14:46,477
+Therefore, a bidirectional coordinate scaling mechanism must be implemented at the tool layer, and the target resolution must be selected based on the aspect ratio to avoid non-uniform stretching that distorts the image and consequently biases coordinate judgment.
+
+534
+01:14:46,477 --> 01:15:05,902
+For example, if the actual screen resolution is 2560×1440 (16:9), the most suitable target among Claude's three supported options is FWXGA (1366×768), which has an aspect ratio closest to 16:9.
+
+535
+01:15:05,902 --> 01:15:32,240
+The screenshot is proportionally scaled to 1366×768 and fed to the model; after the model outputs the click coordinates (683, 384), they are inversely mapped to the real coordinates (683×2560/1366, 384×1440/768) ≈ (1280, 720).
+
+536
+01:15:32,240 --> 01:15:46,265
+Conversely, if a 16:9 image is forcibly stretched into the 4:3 1024×768, the image will be horizontally compressed, causing the model's predicted coordinates to systematically shift.
+
+537
+01:15:46,265 --> 01:15:53,177
+As illustrated in Figure 6-14: Resolution Matching and Bidirectional Coordinate Scaling.
+
+538
+01:15:53,177 --> 01:16:05,102
+The choice among the three routes can be summarized as follows: when structured information is available, prioritize DOM/accessibility-tree indexing for the most accurate and stable localization.
+
+539
+01:16:05,102 --> 01:16:18,577
+When it is unavailable—in native desktop software such as Photoshop, canvas/WebGL-rendered interfaces, or games—use either visual annotation (the original SoM route) or coordinate prediction.
+
+540
+01:16:18,577 --> 01:16:27,202
+Visual annotation turns localization into a multiple-choice problem, making it friendlier to general-purpose models without specialized training.
+
+541
+01:16:27,202 --> 01:16:35,015
+Coordinate prediction eliminates the annotation step and is more direct for models trained specifically on GUI localization.
+
+542
+01:16:35,015 --> 01:16:39,677
+Both approaches still struggle with small elements and dense interfaces.
+
+543
+01:16:39,677 --> 01:16:48,077
+Experiment 6-9 introductory difficulty, one star: : Using browser-use to Implement Automated Browser Operations
+
+544
+01:16:48,077 --> 01:16:56,677
+Use Playwright, a browser-automation framework, together with a multimodal model to implement natural-language-driven browser operations.
+
+545
+01:16:56,677 --> 01:17:03,327
+Enable SoM visualization and save a screenshot with annotated bounding boxes before every decision.
+
+546
+01:17:03,327 --> 01:17:12,377
+Test task “Open Google and query San Francisco weather”: after startup, the screenshot shows Google Search with numbered interactive elements.
+
+547
+01:17:12,377 --> 01:17:21,865
+The model selects the search box, enters “San Francisco weather today,” submits it, and extracts the temperature and conditions from the results page.
+
+548
+01:17:21,865 --> 01:17:26,127
+A Computer Use Agent That Can Watch Animations and Hear Sound.
+
+549
+01:17:26,127 --> 01:17:37,227
+So far, Computer Use perception has rested on an implicit assumption: the screen is static—take a screenshot, reason one step, click, and take the next screenshot.
+
+550
+01:17:37,227 --> 01:17:43,902
+Real screens play videos, flash short-lived notifications, and carry voices from meetings.
+
+551
+01:17:43,902 --> 01:17:52,215
+An Agent that opens its eyes only once every 3–5 seconds and has no ears cannot see or hear what happens between two frames.
+
+552
+01:17:52,215 --> 01:17:57,352
+What needs redesign is not the action interface but the observation interface.
+
+553
+01:17:57,352 --> 01:18:06,127
+An Agent–computer observation interface (AOI) converts continuous environmental observation into discrete events the model can handle.
+
+554
+01:18:06,127 --> 01:18:34,177
+Its key techniques are: screen keyframe capture, which uses a small model to judge whether the screen has changed meaningfully and only takes a screenshot on a significant change—when changes are frequent, capturing once per second already works well; volume-gated speech transcription, which invokes recognition when sound is present and feeds the recognized text into the context so the Agent can hear; and describing the screen as text, so the model turns each captured screenshot into a one-
+
+555
+01:18:34,177 --> 01:18:41,752
+sentence description that stays in the context after the original image leaves it, compressing multimodal interaction history.
+
+556
+01:18:41,908 --> 01:18:44,683
+World Models for Computer Use.
+
+557
+01:18:44,788 --> 01:18:57,725
+The observation interface of the previous section answers "what happened in between?": with keyframes, speech transcription and persistent text, the Agent no longer sees only two screenshots taken far apart.
+
+558
+01:18:57,675 --> 01:19:01,950
+But an observation interface does not remove planning latency.
+
+559
+01:19:01,950 --> 01:19:11,413
+The Agent is still running a serial "screenshot—think—click" loop, re-observing and reasoning about the next step after every single action.
+
+560
+01:19:11,413 --> 01:19:24,850
+The OSWorld-Human efficiency study shows that even when a task eventually succeeds, the Agent takes markedly more steps and waits markedly longer than a person does; reaching human-level accuracy is not the same as being practical.
+
+561
+01:19:24,850 --> 01:19:28,988
+People do not start thinking about the next step only after clicking.
+
+562
+01:19:28,988 --> 01:19:41,750
+They first predict what an action will do: if the actual change matches the expectation, they carry on with the existing plan; only when the page state departs from what was expected do they stop to observe and plan again.
+
+563
+01:19:41,750 --> 01:19:51,975
+A world model lets the Agent predict what the desktop may turn into before it acts, giving it this human-like "speculative execution" and improving efficiency substantially.
+
+564
+01:19:51,975 --> 01:19:55,400
+Desktop state is more than a grid of pixels.
+
+565
+01:19:55,400 --> 01:20:08,725
+It also includes windows, focus, scroll position, input-field contents, loading state, permissions and network responses; actions include clicking, typing, scrolling, dragging and waiting.
+
+566
+01:20:08,725 --> 01:20:19,863
+A world model usable for Computer Use must at minimum encode the current state, predict the state change a candidate action would cause, and hand that prediction to the planner to decide the next step:
+
+567
+01:20:19,863 --> 01:20:27,488
+Code statement: desktop state + click/type/scroll/wait ──> representation of the next state.
+
+568
+01:20:27,488 --> 01:20:39,750
+This lets the Agent compare the consequences of candidate actions before it actually clicks, prepare the next step while a page is loading, and recover from a dialog that flashed past by reasoning about the state difference.
+
+569
+01:20:39,750 --> 01:21:03,825
+If the task is "create a new Python file in VS Code and write hello world", the model can first predict the key state of the file tree and editor on success, and only then choose the click, type and save actions; if the task is to delete a file, it can predict inside an isolated virtual desktop whether an irreversible confirmation dialog will appear, and ask the user to confirm when necessary.
+
+570
+01:21:03,825 --> 01:21:12,900
+The point here is not to have the model generate a photorealistic future screenshot, but to predict the checkable state differences that completing the task requires.
+
+571
+01:21:12,900 --> 01:21:26,438
+In July 2026, Photon-1 from Induction Labs demonstrated one implementation of this route, completing the pretraining of a computer use world model with only 30,000 hours of H200 GPU time.
+
+572
+01:21:26,438 --> 01:21:44,788
+It compresses each frame into discrete latent tokens and autoregressively predicts the representation of the next state after an action, rather than generating screenshots pixel by pixel during pretraining; the image generator attached to it serves only to visualize the latent representations and is not a component required for inference.
+
+573
+01:21:44,788 --> 01:21:56,813
+Given a seed screenshot and the actions that follow, the model can "imagine" desktop states continuously, and then learn to output computer-use actions through online training on virtual machines.
+
+574
+01:21:56,813 --> 01:22:01,050
+Mobile: Ecosystem Barriers Are Harder Than Technology.
+
+575
+01:22:01,050 --> 01:22:04,988
+Computer Use is also expanding to mobile devices.
+
+576
+01:22:04,988 --> 01:22:22,650
+Mobile and desktop systems do differ technically: instead of relying on mouse coordinates and keyboard input, the mobile action space typically uses the system's accessibility-service API (e.g., Android's AccessibilityService) to read interface elements and issue clicks or enter text.
+
+577
+01:22:22,650 --> 01:22:28,925
+Interaction also shifts from a mouse pointer to touch gestures, changing the meaning of coordinates.
+
+578
+01:22:28,925 --> 01:22:39,375
+The same (x, y) position might indicate a tap, a long press, or the starting point of a swipe, so the action must also specify a gesture type.
+
+579
+01:22:39,375 --> 01:22:49,713
+Mobile benchmarks such as AndroidWorld, introduced in Chapter 7, evaluate an Agent's ability to complete tasks in real applications within this action space.
+
+580
+01:22:49,876 --> 01:22:57,388
+However, what truly hinders mobile Computer Use is often not these technical differences, but ecosystem barriers.
+
+581
+01:22:57,338 --> 01:23:11,288
+Some phone manufacturers have attempted to integrate AI assistants into consumer-grade phones so that the assistants can automatically operate everyday apps like WeChat, Taobao, and Alipay, but they quickly encountered platform restrictions.
+
+582
+01:23:11,288 --> 01:23:16,376
+This reveals a unique challenge for Computer Use: ecosystem barriers.
+
+583
+01:23:16,376 --> 01:23:21,438
+The fundamental reason behind these restrictions is a conflict of business models.
+
+584
+01:23:21,438 --> 01:23:36,151
+The core monetization logic of traditional internet applications is traffic and attention: users see ads while scrolling through feeds, are guided by recommendation algorithms when searching for products, and make impulse purchases while browsing pages.
+
+585
+01:23:36,151 --> 01:23:49,313
+When an Agent operates on the user's behalf, that monetization chain is bypassed entirely: the AI ignores ads, makes no impulse purchases, heads straight for the goal, finishes the task, and leaves.
+
+586
+01:23:49,313 --> 01:23:56,688
+For platforms that live on advertising and traffic, every Agent operation erodes the foundation of the business model.
+
+587
+01:23:56,688 --> 01:24:04,801
+This means that Computer Use faces not only technical countermeasures such as CAPTCHAs, but also a structural conflict of interest.
+
+588
+01:24:04,801 --> 01:24:12,926
+This conflict will be difficult to resolve in the short term and poses a greater obstacle to consumer adoption than purely technical problems.
+
+589
+01:24:12,926 --> 01:24:17,251
+Robot Manipulation: Tidying a Desk with XLeRobot.
+
+590
+01:24:17,251 --> 01:24:27,838
+Reading note: This section uses one task throughout—"put the red cup in the tray, put the yellow scrap paper in the bin, then observe again and confirm the state of the desk.
+
+591
+01:24:27,838 --> 01:24:44,288
+Experiments 6-10 and 6-12 run on real XLeRobot hardware and need an arm, calibration, an emergency stop and an on-site observer; experiments 6-11, 6-13 and 6-14 are the corresponding local-GPU experiments.
+
+592
+01:24:44,288 --> 01:24:52,426
+Hardware and simulation are reported separately, but the task goal, the action semantics and the success conditions stay the same.
+
+593
+01:24:52,426 --> 01:24:57,201
+Robot manipulation is much harder than answering questions about a picture.
+
+594
+01:24:57,201 --> 01:25:05,588
+The model has to understand the scene and then take actions continuously in the real world, where every action changes what the next moment looks like.
+
+595
+01:25:05,588 --> 01:25:19,901
+XLeRobot makes that difference concrete: the same arm can be teleoperated by a person through a keyboard, a gamepad or a VR device, or it can hand camera observations and a constrained set of action tools to an Agent to call on its own.
+
+596
+01:25:19,901 --> 01:25:31,563
+The hardware and the task stay fixed; only the operator changes—in the first case a human observes and corrects continuously, in the second the model and the control system must do the same work.
+
+597
+01:25:31,563 --> 01:25:35,763
+This section runs five experiments on "tidy the desk.
+
+598
+01:25:35,763 --> 01:25:47,538
+First a human teleoperates the real XLeRobot, measuring what the hardware can do under a sufficiently capable operator; then a simulator establishes the ideal control ceiling for the same task.
+
+599
+01:25:47,538 --> 01:26:03,926
+Next an Agent controls the real XLeRobot autonomously, showing how perception, planning and failure recovery affect the result; then the same tool contract goes into the simulator so that open-loop execution, step-by-step checking and world models can be compared in bulk.
+
+600
+01:26:03,926 --> 01:26:13,988
+Finally the background, object appearance, lighting and visual noise change, to see whether a visual policy learned in simulation adapts to a new environment.
+
+601
+01:26:13,988 --> 01:26:23,551
+The bottleneck here is usually not one more static question-answering benchmark, but whether the model can keep closing the loop under limited perception and control bandwidth.
+
+602
+01:26:23,551 --> 01:26:27,963
+A usable robot system has to answer at least four questions:
+
+603
+01:26:27,963 --> 01:26:30,713
+What task does the person want done?
+
+604
+01:26:30,713 --> 01:26:33,188
+Which subtask comes next?
+
+605
+01:26:33,188 --> 01:26:36,551
+What actions does the current skill actually emit?
+
+606
+01:26:36,551 --> 01:26:41,076
+After the action executes, does reality still match the plan?
+
+607
+01:26:41,236 --> 01:27:06,198
+This section places those four questions inside one XLeRobot control loop and shows what each of four techniques is responsible for: long-horizon planning decides whether the cup or the paper is handled first, a VLA or action primitive performs the grasp and the placement, a world model estimates the consequences of an action, and sim-to-real transfer handles the differences between training footage and the real camera and actuators.
+
+608
+01:27:06,198 --> 01:27:14,811
+Even when the high-level model already has enough knowledge and planning ability, losing any one of these feedback links can still leave the task unfinished.
+
+609
+01:27:14,811 --> 01:27:18,811
+The Division of Labour Between Hardware and Algorithms.
+
+610
+01:27:18,811 --> 01:27:30,061
+The first question XLeRobot is best suited to answer is this: when autonomous desk tidying fails, is it the arm that cannot do it, or the algorithm that is not using the arm well?
+
+611
+01:27:30,061 --> 01:27:50,411
+There is a fact that cannot be overlooked: an arm costing only a few hundred dollars, like XLeRobot, can already complete the kind of continuous multi-step desk task in this section through teleoperation—a person watches the camera feed, picks up the red cup and puts it in the tray, then puts the yellow scrap paper in the bin and confirms the state again.
+
+612
+01:27:50,411 --> 01:28:01,586
+That result is not merely "the hardware is barely feasible"; it is a clear piece of diagnostic evidence: for this task the hardware itself is not the bottleneck, the algorithm is.
+
+613
+01:28:01,586 --> 01:28:11,573
+The diagnostic method is direct: keep the camera, the arm, the gripper, the desk layout and the success conditions fixed, and let a human take over the loop.
+
+614
+01:28:11,573 --> 01:28:24,223
+A human continuously corrects object localization, action choice and timing, and handles failed grasps; the gap between an autonomous system and a person lies precisely in those closed-loop abilities.
+
+615
+01:28:24,223 --> 01:28:38,548
+The scope of the claim is of course this section's desk task: it shows the hardware has cleared the payload, precision and workspace thresholds this task requires, not that a few-hundred-dollar arm can handle every open environment or harder manipulation.
+
+616
+01:28:38,548 --> 01:28:45,561
+XLeRobot supports keyboard, Xbox controller, Switch Joy-Con and VR teleoperation.
+
+617
+01:28:45,561 --> 01:29:02,248
+A human operator naturally does many things an algorithm has to implement explicitly: slowing the gripper as it nears the cup, correcting the grasp point when the cup slides, observing again after failing to pinch the paper the first time, and checking the outcome once an object is in the target area.
+
+618
+01:29:02,248 --> 01:29:11,523
+Teleoperation is therefore not only a way to collect demonstrations but also a "fix the hardware, swap the operator" diagnostic experiment.
+
+619
+01:29:11,523 --> 01:29:19,298
+Experiment 6-10 introductory difficulty, one star: : Teleoperating a real XLeRobot to tidy a desk
+
+620
+01:29:19,298 --> 01:29:25,723
+Place a red cup, a tray, yellow scrap paper and a bin in the real XLeRobot workspace.
+
+621
+01:29:25,723 --> 01:29:37,948
+Using one calibrated teleoperation method, the operator performs the fixed task: "put the red cup in the tray, put the yellow scrap paper in the bin, then observe again and confirm the state of the desk.
+
+622
+01:29:37,948 --> 01:29:48,961
+Repeat for several rounds at minimum, recording the camera feed, operator input, arm state, action timing, failed grasps, retry counts and the final state.
+
+623
+01:29:48,961 --> 01:29:53,486
+Acceptance cannot rest on "the desk looks tidy at the end.
+
+624
+01:29:53,486 --> 01:30:05,873
+The red cup must be inside the tray, the yellow paper inside the bin, the arm back in a safe pose, with no collision, no out-of-bounds motion and no unconfirmed manual intervention along the way.
+
+625
+01:30:05,873 --> 01:30:14,586
+Teleoperation on real hardware gives the most convincing ceiling for the task, but it is not suited to varying object counts and positions in bulk.
+
+626
+01:30:14,586 --> 01:30:30,798
+To obtain a repeatable, statistically meaningful control, the next step moves the same "put objects where they belong" problem into a 2D desktop simulator, using an ideal controller to stand in for a strong operator who never misperceives and never picks the wrong action.
+
+627
+01:30:30,798 --> 01:30:39,311
+Experiment 6-11 introductory difficulty, one star: : Measuring the ideal control ceiling for the same task in simulation
+
+628
+01:30:39,460 --> 01:30:51,522
+In a 2D desktop simulator, randomly place the red cup, the yellow paper and their target areas, and let an ideal controller approach each object in turn, grasp it and move it to the right place.
+
+629
+01:30:51,472 --> 01:31:01,472
+It does not need to recognise images and never picks the wrong action, so it represents "what this task can at least achieve when perception and decision-making are both correct.
+
+630
+01:31:01,472 --> 01:31:12,047
+The experiment tracks task success rate, number of steps and path length, and varies initial object positions and task scale to see whether the ideal ceiling stays stable.
+
+631
+01:31:12,047 --> 01:31:22,085
+It uses the same success conditions as experiment 6-10, but measures results from an idealized simulation and does not imply the real XLeRobot has been run.
+
+632
+01:31:22,085 --> 01:31:34,072
+Together the two establish the reference lines for the autonomous control that follows: experiment 6-10 is a human loop on real hardware, experiment 6-11 an ideal loop in simulation.
+
+633
+01:31:34,072 --> 01:31:37,135
+The Basic Structure of Robot Control.
+
+634
+01:31:37,135 --> 01:31:41,060
+Robot systems usually separate work by timescale:
+
+635
+01:31:41,060 --> 01:31:50,847
+Layer: Task goal; Core question: What does the person want done; Output: "Put the cup and the paper away"; Typical timescale: Minutes.
+
+636
+01:31:50,847 --> 01:32:03,535
+Layer: Long-horizon planning; Core question: What comes first, what comes after; Output: Handle the cup, then the paper, then check; Typical timescale: Seconds to minutes.
+
+637
+01:32:03,535 --> 01:32:17,697
+Layer: Basic skills; Core question: Which state change to achieve now; Output: pick(red_cup), place(red_cup, tray); Typical timescale: About 1–3 s.
+
+638
+01:32:17,697 --> 01:32:32,035
+Layer: VLA / skill policy; Core question: How this skill actually moves; Output: A short motion or continuous trajectory of the XLeRobot gripper; Typical timescale: About 1–10 Hz inference.
+
+639
+01:32:32,035 --> 01:32:46,810
+Layer: Low-level control and safety; Core question: How to execute stably and in time; Output: Joint or end-effector commands, speed limits and emergency stop; Typical timescale: About 50–1000 Hz.
+
+640
+01:32:46,972 --> 01:32:51,722
+This is a common engineering split, not the only model architecture.
+
+641
+01:32:51,672 --> 01:32:59,847
+A VLA can take on part of the high-level judgement, and the planner can be a rule-based program, a VLM or an optimiser.
+
+642
+01:32:59,847 --> 01:33:16,634
+Whichever implementation you choose, "task order" and "the action right now" should stay separate; otherwise the high-level model's inference latency drags down low-level control, and high-frequency low-level control forces the high-level model to process a great deal of irrelevant detail.
+
+643
+01:33:16,634 --> 01:33:32,584
+For XLeRobot the model should not emit arbitrary joint angles directly; it only selects bounded skills such as pick, place, verify_state or stop, and a calibrated, speed-limited executor with timeouts turns those skills into real arm motion.
+
+644
+01:33:32,584 --> 01:33:36,234
+Long-Horizon Planning and Task Decomposition.
+
+645
+01:33:36,234 --> 01:33:42,772
+When the user says "tidy up the desk," the system cannot hand that sentence straight to an action model.
+
+646
+01:33:42,772 --> 01:33:53,197
+The planner first lists the objects and goals in the scene, then decides the order, and for each step writes down the start condition, the completion condition and the risk limits.
+
+647
+01:33:53,197 --> 01:33:54,972
+For example:
+
+648
+01:33:54,972 --> 01:33:59,947
+Code statement: handle the red cup → clear the yellow paper → check the desk.
+
+649
+01:33:59,947 --> 01:34:05,322
+Handle the red cup" then decomposes further into two actions and one check:
+
+650
+01:34:05,322 --> 01:34:13,172
+Code statement: pick(red_cup) → place(red_cup, tray) → verify_state().
+
+651
+01:34:13,172 --> 01:34:18,059
+Each completed skill provides a checkpoint where the outcome can be verified.
+
+652
+01:34:18,059 --> 01:34:31,209
+If a grasp fails, only that step is retried; if someone moves an object, or the user changes the goal, only the affected later steps need replanning—the old plan does not have to be redone from scratch.
+
+653
+01:34:31,209 --> 01:34:42,747
+The tools given to the agent should be equally simple: one call does one thing, the range of motion is fixed, there is a timeout, and observation happens again immediately after execution.
+
+654
+01:34:42,747 --> 01:34:53,022
+Experiment 6-12 intermediate difficulty, two stars: : Driving XLeRobot to tidy a desk autonomously with Gemini Robotics-ER 1.5
+
+655
+01:34:53,022 --> 01:35:03,772
+Keep the real XLeRobot, the desk layout, the task instruction and the success conditions of experiment 6-10 unchanged, and replace the human operator with an Agent.
+
+656
+01:35:03,772 --> 01:35:19,147
+An embodied reasoning model such as Gemini Robotics-ER 1.5 can handle observation and planning, exposing only five tools through a RoboCrew-style agent loop: observe_scene, pick, place, verify_state and stop.
+
+657
+01:35:19,147 --> 01:35:26,809
+The model first observes the desk, decides the order, then calls the calibrated XLeRobot grasp and place actions.
+
+658
+01:35:26,809 --> 01:35:41,309
+After every completed skill it must observe again and check the postcondition; on a failed grasp it may only retry the current skill, and it must call stop when the user says stop, when an object leaves the workspace, or when the state cannot be confirmed.
+
+659
+01:35:41,309 --> 01:35:48,522
+The model cannot emit arbitrary joint angles, nor skip a real check merely because it previously said "done.
+
+660
+01:35:48,522 --> 01:35:59,972
+The acceptance criteria are exactly those of experiment 6-10: cup in the tray, paper in the bin, arm back in a safe pose, no collision and no out-of-bounds motion.
+
+661
+01:35:59,972 --> 01:36:19,872
+The difference is that in the autonomous experiment the task semantics must come from the model's own observation, the real actions must come from tool calls, and the final state must be confirmed by a fresh observation; the human may only start the run, hit the emergency stop and supervise safety, never complete an action on the Agent's behalf midway.
+
+662
+01:36:19,872 --> 01:36:30,384
+Only then can experiments 6-10 and 6-12 be compared directly on "same hardware, same task—what is still missing between the human loop and the model loop.
+
+663
+01:36:30,384 --> 01:36:40,884
+Real-hardware experiments expose calibration error, camera occlusion and gripper failure, but they are poorly suited to repeating large numbers of faults safely and controllably.
+
+664
+01:36:40,884 --> 01:36:58,147
+The simulation experiments that follow keep these five tools and exactly the same task state, replacing only the real actuator with a desktop environment into which failures can be injected, in order to separate what open-loop execution, step-by-step checking and action prediction each contribute.
+
+665
+01:36:58,147 --> 01:37:00,172
+VLA Control.
+
+666
+01:37:00,172 --> 01:37:03,372
+VLA stands for Vision-Language-Action.
+
+667
+01:37:03,372 --> 01:37:09,859
+It takes the current frame and one skill instruction, then emits the action the robot should perform next:
+
+668
+01:37:10,012 --> 01:37:14,724
+Code statement: current observation + skill instruction → action.
+
+669
+01:37:14,674 --> 01:37:30,424
+In the XLeRobot case the high-level planner only submits pick(red_cup); the VLA or skill policy still has to decide, from the current frame, which direction to approach the cup from, when the gripper closes and along what trajectory the arm lifts.
+
+670
+01:37:30,424 --> 01:37:41,237
+After the execution layer finishes that short motion it photographs the desk again, and only once the cup is confirmed to be held may the planner submit place(red_cup, tray).
+
+671
+01:37:41,237 --> 01:37:49,449
+A tool call therefore defines the desired state change, while the VLA defines how to realise that change through continuous motion.
+
+672
+01:37:49,449 --> 01:38:03,012
+RT-2 and OpenVLA cut continuous actions into discrete tokens and emit them one at a time, like generating text; π₀ represents the other route, producing continuous, smooth action trajectories directly.
+
+673
+01:38:03,012 --> 01:38:12,224
+Neither is simply better: discrete tokens combine more easily with language models, while continuous trajectories usually express smooth motion better.
+
+674
+01:38:12,224 --> 01:38:17,749
+The real trade-off is how the action should be represented, not merely model size.
+
+675
+01:38:17,749 --> 01:38:27,062
+A large model can usually run inference only 1–10 times per second, whereas a traditional controller may update tens to thousands of times per second.
+
+676
+01:38:27,062 --> 01:38:40,237
+A common engineering answer is "action chunking": the model generates a short segment of future actions at once, a control thread executes that segment at a higher rate, and the model prepares the next segment in the background.
+
+677
+01:38:40,237 --> 01:38:44,587
+This hides part of the inference wait inside the execution time.
+
+678
+01:38:44,587 --> 01:38:57,899
+The cost is that the longer the segment, the smoother the motion but the fewer new frames the model sees during it; if the cup is knocked while XLeRobot reaches for it, the arm may still be executing actions generated from the old frame.
+
+679
+01:38:57,899 --> 01:39:04,749
+Action chunking is therefore a trade-off between smoothness and reaction speed, not free acceleration.
+
+680
+01:39:04,749 --> 01:39:07,074
+The Limits of VLAs.
+
+681
+01:39:07,074 --> 01:39:14,187
+Long-horizon planning + VLA" is a practical baseline, but several problems are easy to overlook:
+
+682
+01:39:14,187 --> 01:39:20,362
+Limited training data: robot demonstrations are far scarcer than internet text and images.
+
+683
+01:39:20,362 --> 01:39:26,849
+That a model has seen the word "cup" does not mean it has seen cups of every material and friction condition.
+
+684
+01:39:26,849 --> 01:39:37,799
+Imitation without consequence: behaviour cloning mainly learns "what the demonstrator did next," and never explicitly requires the model to answer "what will this action cause.
+
+685
+01:39:37,799 --> 01:39:49,287
+Robots differ: different robots have different degrees of freedom, coordinate frames, grippers and actuator latencies, so the same action does not necessarily transfer to another machine.
+
+686
+01:39:49,287 --> 01:39:59,887
+Observations go stale: once an action chunk starts executing, an object may be moved, occluded or knocked over while the model is still deciding from the previous frame.
+
+687
+01:39:59,887 --> 01:40:09,212
+So a language model knowing what a "cup" is does not mean it knows how friction, contact, liquid sloshing and a power cable will change the future state.
+
+688
+01:40:09,212 --> 01:40:17,199
+A VLA mainly answers "what should be done now"; another kind of model is needed to judge "what may happen afterwards.
+
+689
+01:40:17,199 --> 01:40:19,074
+World Models.
+
+690
+01:40:19,074 --> 01:40:23,562
+A world model can be understood as an "action-outcome predictor.
+
+691
+01:40:23,562 --> 01:40:29,374
+What it learns is: given the current state and some action, how the next state may change.
+
+692
+01:40:29,374 --> 01:40:34,112
+Refer to the companion repository for the complete code implementation.
+
+693
+01:40:34,112 --> 01:40:38,949
+A world model usable for robotics has to do at least three things well:
+
+694
+01:40:38,949 --> 01:40:41,324
+understand the current state;
+
+695
+01:40:41,324 --> 01:40:44,587
+predict the outcomes different actions may bring;
+
+696
+01:40:44,587 --> 01:40:49,037
+pass those predictions to the planner or controller to help them choose.
+
+697
+01:40:49,037 --> 01:40:58,062
+A VLM that can only describe video, or a model that can only generate frames, does not automatically become a reliable robot world model.
+
+698
+01:40:58,062 --> 01:41:04,112
+It must also know what the actions are and be able to predict their effect on objects and the environment.
+
+699
+01:41:04,112 --> 01:41:14,137
+V-JEPA 2 represents the route of predicting the future in an internal state, while World-Action Models explicitly learn the "action–future observation" relationship.
+
+700
+01:41:14,137 --> 01:41:18,924
+These models can work alongside a VLA; they need not replace it.
+
+701
+01:41:18,924 --> 01:41:23,762
+In practical systems a world model is typically used in three ways:
+
+702
+01:41:23,932 --> 01:41:31,282
+Before acting: compare candidates such as grasping, pushing or waiting, and prefer the lower-risk option;
+
+703
+01:41:31,232 --> 01:41:39,844
+During execution: compare the real observation against the prediction, and on divergence shorten the action, stop, or replan;
+
+704
+01:41:39,844 --> 01:41:49,207
+During training: learn state transitions from video, simulation data and failure trajectories, reducing trial and error on real hardware.
+
+705
+01:41:49,207 --> 01:42:02,807
+Back to the XLeRobot desk task: if the yellow paper is partly hidden under the red cup, the system can compare candidate skills such as "grab the paper first," "move the cup first" and "approach from another direction.
+
+706
+01:42:02,807 --> 01:42:14,519
+The world model does not need to generate photorealistic robot video; predicting which candidates are more likely to make the paper graspable and which might knock the cup over is already enough to help the planner rank them.
+
+707
+01:42:14,519 --> 01:42:24,457
+Once an action executes, the real camera observation remains the final truth; prediction can inform the choice but cannot replace checking that the task succeeded.
+
+708
+01:42:24,457 --> 01:42:31,619
+What a world model gives is not a definite answer but a comparable prediction of "if I do this, what may happen.
+
+709
+01:42:31,619 --> 01:42:40,919
+The further ahead it predicts, the larger the error usually grows, and a future frame that looks realistic may still violate real contact and friction.
+
+710
+01:42:40,919 --> 01:42:50,794
+Practical systems therefore still need short-horizon prediction, real-time observation, an estimate of uncertainty, and an independent hardware safety controller.
+
+711
+01:42:50,794 --> 01:43:00,594
+Generative world models can serve interactive simulation or visualisation, but "can generate video" must not be conflated with "can guide robot action.
+
+712
+01:43:00,594 --> 01:43:09,169
+Experiment 6-13 intermediate difficulty, two stars: : Comparing three autonomous desk-tidying loops in simulation
+
+713
+01:43:09,169 --> 01:43:26,282
+Put the task, object state, success conditions and five tools of experiment 6-12 into the desktop simulator unchanged, replacing only the real XLeRobot actuator with a controllable simulated one, and let grasps occasionally suffer recoverable transient failures.
+
+714
+01:43:26,282 --> 01:43:30,807
+This allows three strategies to be compared without changing the problem.
+
+715
+01:43:30,807 --> 01:43:50,332
+Open-loop execution generates the full action sequence once and never observes again midway; step-by-step checking re-reads the state after every pick and place and retries only the current skill on failure; predictive execution adds a short-horizon world model, comparing the expected outcomes of candidate skills before choosing the next step.
+
+716
+01:43:50,332 --> 01:44:01,719
+The experiment compares task success rate, tool-call overhead and failure-recovery ability, and checks that every final success is confirmed by a fresh verify_state observation.
+
+717
+01:44:01,719 --> 01:44:20,119
+The point is not to prove that a small simulated world model equals a real robot's physics model, but to verify a more basic relationship: an open-loop plan carries a single local failure all the way to the end of the task, step-by-step checking can recover, and action prediction can further help rank candidate skills.
+
+718
+01:44:20,119 --> 01:44:25,344
+Whether the task is truly finished must still be decided by environment feedback.
+
+719
+01:44:25,344 --> 01:44:28,319
+From Simulation to a Real Robot.
+
+720
+01:44:28,319 --> 01:44:37,732
+Even if experiment 6-13 is stable in the simulator, that does not imply the real XLeRobot of experiment 6-12 will succeed the same way.
+
+721
+01:44:37,732 --> 01:44:46,269
+Going from simulation to a real robot is not a matter of swapping in yet another controller, but of handling the differences between two environments.
+
+722
+01:44:46,269 --> 01:45:06,107
+Training may use teleoperation data, video data or simulated interaction data; in real deployment the same red cup, yellow paper, tray and bin appear against different backgrounds, lighting, camera positions and occlusion relationships, and the arm additionally meets different friction, sensor noise and actuator latency.
+
+723
+01:45:06,107 --> 01:45:12,007
+Once those differences are large enough, motions learned in simulation may fail in reality.
+
+724
+01:45:12,007 --> 01:45:20,257
+Experiment 6-14 advanced difficulty, three stars: : A cross-environment RGB test on the same desk task
+
+725
+01:45:20,428 --> 01:45:35,728
+Keep using the basic "move the object to its target" problem in simulation, treating each sample as one local decision within desk tidying: from the RGB frame, judge which direction to approach the object from, or whether it can already be grasped.
+
+726
+01:45:35,678 --> 01:45:49,003
+Train four visual policies with identical structure: one sees only a fixed scene, one varies the background, one varies object appearance, and the last varies background, appearance, lighting and noise together.
+
+727
+01:45:49,003 --> 01:45:58,353
+All policies are tested in the original environment and in the changed one, comparing action-decision accuracy before and after the visual conditions change.
+
+728
+01:45:58,353 --> 01:46:12,578
+The question here is not "is the simulator already equal to the real XLeRobot," but a narrower one: does actively widening the range of visual variation during training help the same cup–tray, paper–bin task adapt to a new camera view?
+
+729
+01:46:12,578 --> 01:46:20,978
+Even if the result improves, real deployment still requires real camera calibration, actuator testing and a complete safety loop.
+
+730
+01:46:20,978 --> 01:46:22,865
+Chapter Summary.
+
+731
+01:46:22,865 --> 01:46:38,703
+Viewed along the two axes of modality and execution timing, asynchrony and event-driven execution expand observation from “the Agent fetches it” to “the world pushes it,” and action from “finish within the turn” to “start now and finish through later events.
+
+732
+01:46:38,703 --> 01:46:49,028
+Voice compresses the scale to milliseconds, moving from turn-taking toward continuous listening and speaking while dividing realtime foreground interaction from deeper background thought.
+
+733
+01:46:49,028 --> 01:46:58,553
+Computer Use moves the loop to the screen, where the bottlenecks include efficiency, continuous visual understanding, and state confirmation after actions.
+
+734
+01:46:58,553 --> 01:47:07,953
+Robotics moves it into the physical world, where action chunking trades smoothness against responsiveness and completion must still be judged from a new observation.
+
+735
+01:47:07,953 --> 01:47:11,515
+The four sections share one control skeleton:
+
+736
+01:47:11,515 --> 01:47:16,253
+Refer to the companion repository for the complete code implementation.
+
+737
+01:47:16,253 --> 01:47:25,078
+They also share the same primitives—wake-up, safe points, cancellation, preemption, and fast/slow separation.
+
+738
+01:47:25,228 --> 01:47:36,953
+This chapter completes the last piece of the “building an Agent” part: the observation and action spaces have now been expanded in all three directions—content, modality, and timing.
+
+739
+01:47:36,903 --> 01:47:53,378
+Next, Chapter 7 asks how to determine whether the system was built correctly; Chapter 8 explains how post-training updates model parameters; and Chapter 9 organizes runtime trajectories, evaluation, and multiple update carriers into a continual-evolution loop.
+
+740
+01:47:53,378 --> 01:47:59,253
+Chapter 10 then moves from this complete single-Agent foundation to multi-Agent collaboration.
+
+741
+01:47:59,253 --> 01:48:01,190
+Thought Questions.
+
+742
+01:48:01,190 --> 01:48:10,728
+intermediate difficulty, two stars:  In an asynchronous Agent architecture, the priority strategy for the event queue must be determined at design time.
+
+743
+01:48:10,728 --> 01:48:23,365
+But if priority judgment itself requires semantic understanding (e.g., determining whether a new message is more urgent than the current task), who should make this judgment—a rules engine or another LLM call?
+
+744
+01:48:23,365 --> 01:48:25,590
+What are the costs of each?
+
+745
+01:48:25,590 --> 01:48:33,390
+intermediate difficulty, two stars:  In queue-based event processing, models tend to focus only on the last event.
+
+746
+01:48:33,390 --> 01:48:38,603
+This chapter mitigates this through Agent status bar markers and summarization.
+
+747
+01:48:38,603 --> 01:48:51,815
+But if the queue has 20 events backlogged (10 tool results + 5 user messages + 5 system alerts), how would you organize the presentation order and format of these events so that the model does not miss key information?
+
+748
+01:48:51,815 --> 01:49:10,203
+advanced difficulty, three stars:  When an Agent interacts with the external world on behalf of a user, it essentially faces an identity choice: use an independent virtual identity (dedicated email and phone number) to act as a third party, or directly operate the user's personal accounts as the user?
+
+749
+01:49:10,203 --> 01:49:23,790
+The former allows autonomous background operation, but third parties may not trust a non-human identity; the latter has more complete context and permissions but introduces authorization, trust, and security-boundary issues.
+
+750
+01:49:23,790 --> 01:49:27,515
+In what scenarios do you think each mode should be chosen?
+
+751
+01:49:27,515 --> 01:49:38,853
+intermediate difficulty, two stars:  The end-to-end model for voice Agents merges ASR-LLM-TTS into a single model, reducing latency but losing modularity.
+
+752
+01:49:38,853 --> 01:49:48,453
+If the end-to-end model makes an error in a specific stage (e.g., speech recognition), debugging and fixing it is much harder than in a serial pipeline.
+
+753
+01:49:48,453 --> 01:49:53,190
+How would you design an observability system for an end-to-end voice Agent?
+
+754
+01:49:53,190 --> 01:50:01,953
+introductory difficulty, one star:  Step-Audio R1 achieves "thinking while speaking" through the MPS dual-brain architecture.
+
+755
+01:50:01,953 --> 01:50:11,440
+However, humans, when "thinking while speaking," often say things before they have fully thought them through, self-correct, or use filler words.
+
+756
+01:50:11,440 --> 01:50:16,315
+Should an Agent's "thinking while speaking" mimic these human characteristics?
+
+757
+01:50:16,315 --> 01:50:37,328
+intermediate difficulty, two stars:  SoM (Set-of-Mark) and its structured variants (DOM element indexing) convert Computer Use's visual localization from open-ended coordinate prediction to closed-set ID selection, but they all require detecting and annotating UI elements first—whether via a segmentation model or the DOM.
+
+758
+01:50:37,328 --> 01:50:45,465
+If the interface contains non-standard controls or dynamically changing elements, the annotations may be incomplete or inaccurate.
+
+759
+01:50:45,465 --> 01:50:49,715
+In such cases, should we fall back to coordinate prediction?
+
+760
+01:50:49,715 --> 01:51:00,078
+intermediate difficulty, two stars:  Robot platforms like XLeRobot, costing a few hundred dollars, make teleoperation data collection inexpensive.
+
+761
+01:51:00,078 --> 01:51:05,803
+However, the quality of teleoperation data depends heavily on the operator's skill.
+
+762
+01:51:05,803 --> 01:51:11,403
+How would low-quality data from an unskilled operator affect the training of a VLA model?
+
+763
+01:51:11,403 --> 01:51:16,490
+How can low-quality data be automatically filtered during the data collection phase?
+
+764
+01:51:16,660 --> 01:51:25,585
+advanced difficulty, three stars:  This chapter covers three forms of interaction: voice, Computer Use, and robotics.
+
+765
+01:51:25,535 --> 01:51:38,497
+Interaction architectures can improve through end-to-end integration, modular cascades, or separation of foreground interaction from background reasoning, without requiring a corresponding increase in reasoning capability.
+
+766
+01:51:38,497 --> 01:51:48,247
+Over the next five years, should Agents prioritize stronger unified models or retain separate, replaceable models for fast interaction and deeper reasoning?
+
+767
+01:51:48,247 --> 01:51:55,122
+Discuss the trade-offs in latency, observability, the pace of model upgrades, and task risk.
+
+768
+01:51:55,122 --> 01:52:17,260
+intermediate difficulty, two stars:  DOM/Accessibility Tree element indexing works well on standard web applications, but an increasing number of software interfaces (Canvas/WebGL rendering, cross-platform custom-drawn controls) do not provide accessible structured information, relying solely on visual annotation or coordinate prediction.
+
+769
+01:52:17,260 --> 01:52:24,147
+Do you think Computer Use should bet on a purely visual approach, or maintain both structured and visual paths?
+
+770
+01:52:24,147 --> 01:52:28,085
+What are the costs and benefits of maintaining both paths?
+
+771
+01:52:28,085 --> 01:52:44,460
+intermediate difficulty, two stars:  VLA models use action chunking—as mentioned in the text, the model generates a short sequence of future actions at once, and a control thread executes them at a higher rate—to hide inference latency within execution time.
+
+772
+01:52:44,460 --> 01:52:53,747
+However, if the environment changes suddenly during execution (e.g., an object is moved), the pre-generated action sequence becomes invalid.
+
+773
+01:52:53,747 --> 01:53:00,510
+How can we balance the efficiency advantage of action chunking with the need for responsiveness to environmental changes?
+
+774
+01:53:00,510 --> 01:53:15,885
+advanced difficulty, three stars:  All three scenarios in this chapter—voice, Computer Use, and robotics—face latency in the "perceive-think-act" loop and need to divide responsibilities between deeper reasoning and timely interaction.
+
+775
+01:53:15,885 --> 01:53:27,735
+In voice, this manifests as "correcting after misspeaking"; in Computer Use, as "clicking first, then looking"; in robotics, as "taking a step, then looking.
+
+776
+01:53:27,735 --> 01:53:40,760
+How can classifying actions by risk, using reversible operations, verifying state, enforcing permission controls, and stopping safely prevent fast interaction from causing irreversible consequences?
+
+777
+01:53:40,760 --> 01:53:54,047
+advanced difficulty, three stars:  The same set of primitives (wake-up, safe point, cancellation, preemption, fast/slow separation) recurs in this chapter at different time scales.
+
+778
+01:53:54,047 --> 01:54:03,310
+Pick one and explain how its implementation differs between event-driven processing (seconds to days) and robot action chunking (milliseconds).
+
+779
+01:54:03,310 --> 01:54:12,422
+What mainly determines that difference—the speed at which the environment changes, the reversibility of the action, or the cost of obtaining an observation?
+
