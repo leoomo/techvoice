@@ -407,6 +407,13 @@ kbd {
   align-items: center;
   gap: 12px;
   overflow: hidden;
+  min-width: 0;
+  flex: 1;
+}
+
+.top-bar-left .btn-icon {
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .sidebar-toggle-btn {
@@ -531,24 +538,36 @@ kbd {
   background: var(--bg-player);
   border-bottom: 1px solid var(--border-subtle);
   backdrop-filter: blur(16px);
-  padding: 10px 24px;
+  padding: 8px 24px 10px 24px;
   z-index: 40;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
-.player-main-row {
+/* Row 1: Full-width Progress Bar & Chapter Markers */
+.player-progress-row {
   display: flex;
   align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+/* Row 2: Playback Controls & Utility Tools */
+.player-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
   gap: 16px;
 }
 
 .playback-controls {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
+  flex-shrink: 0;
 }
 
 .btn-control {
@@ -563,6 +582,7 @@ kbd {
   justify-content: center;
   cursor: pointer;
   transition: all 0.15s ease;
+  flex-shrink: 0;
 }
 
 .btn-control:hover {
@@ -606,20 +626,14 @@ kbd {
 }
 
 /* Progress bar & Timestamps */
-.progress-area {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 200px;
-}
-
 .time-display {
   font-family: var(--font-mono);
   font-size: 11.5px;
   color: var(--text-muted);
   min-width: 44px;
   text-align: center;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
 }
 
 .seek-track-wrapper {
@@ -729,7 +743,9 @@ kbd {
 .tool-controls {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .speed-select {
@@ -743,6 +759,7 @@ kbd {
   font-family: var(--font-mono);
   cursor: pointer;
   outline: none;
+  flex-shrink: 0;
   transition: all 0.15s ease;
 }
 
@@ -757,12 +774,14 @@ kbd {
   color: var(--text-secondary);
   font-size: 11.5px;
   height: 30px;
-  padding: 0 9px;
+  padding: 0 10px;
   border-radius: 6px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
   transition: all 0.15s ease;
 }
 

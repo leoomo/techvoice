@@ -40,6 +40,8 @@
   const totalTimeEl = document.getElementById('time-total');
   const speedSelect = document.getElementById('speed-select');
   const autoScrollBtn = document.getElementById('btn-autoscroll');
+  const autoScrollIcon = document.getElementById('autoscroll-icon');
+  const autoScrollText = document.getElementById('autoscroll-text');
   const cacheBtn = document.getElementById('btn-cache-chapter');
   const cacheIcon = document.getElementById('cache-icon');
   const cacheText = document.getElementById('cache-text');
@@ -65,7 +67,9 @@
     repeat: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`,
     cacheDefault: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`,
     cacheDone: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
-    cacheLoading: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>`
+    cacheLoading: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>`,
+    check: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+    cross: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`
   };
 
   function updateThemeUI() {
@@ -76,6 +80,26 @@
   function setPlayIcon(playing) {
     if (!playIcon) return;
     playIcon.innerHTML = playing ? SVGS.pause : SVGS.play;
+  }
+
+  function updateAutoScrollUI() {
+    if (!autoScrollBtn) return;
+    const isZh = isZhLang();
+    autoScrollBtn.classList.toggle('active', state.autoScroll);
+    const label = state.autoScroll
+      ? (isZh ? '自动跟随: ON' : 'Auto-scroll: ON')
+      : (isZh ? '自动跟随: OFF' : 'Auto-scroll: OFF');
+    if (autoScrollText) {
+      autoScrollText.textContent = label;
+    } else {
+      autoScrollBtn.textContent = label;
+    }
+    if (autoScrollIcon) {
+      autoScrollIcon.innerHTML = state.autoScroll ? SVGS.check : SVGS.cross;
+    }
+    autoScrollBtn.title = isZh
+      ? (state.autoScroll ? '字幕自动平滑滚动已开启（点击可关闭）' : '字幕自动平滑滚动已关闭（点击可开启）')
+      : (state.autoScroll ? 'Auto-scroll is ON (Click to disable)' : 'Auto-scroll is OFF (Click to enable)');
   }
 
   // Format seconds to mm:ss or hh:mm:ss
@@ -123,6 +147,12 @@
           state.currentChapterKey = savedCh;
         }
       }
+
+      const savedAutoScroll = localStorage.getItem('ai_agent_autoscroll');
+      if (savedAutoScroll !== null) {
+        state.autoScroll = savedAutoScroll === '1';
+      }
+      updateAutoScrollUI();
     } catch (e) {
       console.warn('LocalStorage access warning:', e);
     }
@@ -275,6 +305,11 @@
     seekBar.value = 0;
     curTimeEl.textContent = '00:00';
     totalTimeEl.textContent = meta.duration_str;
+
+    if (state.cues.length > 0) {
+      highlightCue(state.cues[0].id, false);
+      updateActiveSection(0);
+    }
 
     if (autoPlay || wasPlaying) {
       audio.play().catch(e => console.log('Autoplay prevented:', e));
@@ -465,7 +500,11 @@
         const isActive = (pillCueId === newCueId);
         pill.classList.toggle('active', isActive);
         if (isActive) {
-          pill.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+          const pList = document.getElementById('overview-pills-list');
+          if (pList) {
+            const leftPos = pill.offsetLeft - (pList.clientWidth / 2) + (pill.clientWidth / 2);
+            pList.scrollTo({ left: Math.max(0, leftPos), behavior: 'smooth' });
+          }
         }
       });
 
@@ -758,8 +797,11 @@
     updateActiveSection(curTime);
 
     // Find active cue
-    const currentCue = state.cues.find(c => curTime >= c.start && curTime <= c.end) ||
-                       state.cues.find(c => curTime >= c.start && curTime <= c.start + 12);
+    let currentCue = state.cues.find(c => curTime >= c.start && curTime <= c.end) ||
+                     state.cues.find(c => curTime >= c.start && curTime <= c.start + 12);
+    if (!currentCue && state.cues.length > 0 && curTime < state.cues[0].start + 1) {
+      currentCue = state.cues[0];
+    }
 
     if (currentCue) {
       // Single-sentence repeat handling
@@ -841,9 +883,13 @@
 
   autoScrollBtn.addEventListener('click', () => {
     state.autoScroll = !state.autoScroll;
-    autoScrollBtn.classList.toggle('active', state.autoScroll);
-    const isZh = isZhLang();
-    autoScrollBtn.textContent = state.autoScroll ? (isZh ? '自动跟随: ON' : 'Auto-scroll: ON') : (isZh ? '自动跟随: OFF' : 'Auto-scroll: OFF');
+    try {
+      localStorage.setItem('ai_agent_autoscroll', state.autoScroll ? '1' : '0');
+    } catch (e) {}
+    updateAutoScrollUI();
+    if (state.autoScroll && state.activeCueId) {
+      highlightCue(state.activeCueId, true);
+    }
   });
 
   themeToggleBtn.addEventListener('click', toggleTheme);
@@ -924,8 +970,7 @@
       }
       updateActiveSection(audio.currentTime);
     }
-    const isZh = isZhLang();
-    autoScrollBtn.textContent = state.autoScroll ? (isZh ? '自动跟随: ON' : 'Auto-scroll: ON') : (isZh ? '自动跟随: OFF' : 'Auto-scroll: OFF');
+    updateAutoScrollUI();
   });
 
   // Keyboard Shortcuts
