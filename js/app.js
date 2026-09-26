@@ -19,7 +19,8 @@
     theme: 'dark',
     cachedChapters: new Set(),
     isCaching: false,
-    preloadedNextChapterKey: null
+    preloadedNextChapterKey: null,
+    activeSectionCueId: null
   };
 
   // DOM Elements
@@ -160,8 +161,9 @@
     const isZh = isZhLang();
 
     window.CHAPTERS_META.forEach(ch => {
+      const isCur = ch.key === state.currentChapterKey;
       const item = document.createElement('a');
-      item.className = `nav-item ${ch.key === state.currentChapterKey ? 'active' : ''}`;
+      item.className = `nav-item ${isCur ? 'active' : ''}`;
       item.id = `nav-item-${ch.key}`;
       item.href = `#${ch.key}`;
       
@@ -191,6 +193,41 @@
         }
       });
       chapterNavEl.appendChild(item);
+
+      // Render Sub-chapters under active chapter
+      if (isCur && ch.sections && ch.sections.length > 0) {
+        const subNav = document.createElement('div');
+        subNav.className = 'sub-chapter-nav';
+        subNav.id = `sub-nav-${ch.key}`;
+
+        ch.sections.forEach(sec => {
+          const subItem = document.createElement('a');
+          subItem.className = `sub-nav-item ${sec.cue_id === state.activeSectionCueId ? 'active' : ''}`;
+          subItem.id = `sub-nav-sec-${sec.cue_id}`;
+          subItem.dataset.cueId = sec.cue_id;
+          subItem.href = `#cue-${sec.cue_id}`;
+          const secTitle = isZh ? sec.title_zh : sec.title_en;
+
+          subItem.innerHTML = `
+            <span class="sub-nav-title" title="${secTitle}">${secTitle}</span>
+            <span class="sub-nav-time">${sec.time_str}</span>
+          `;
+
+          subItem.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const targetCue = state.cues.find(c => c.id === sec.cue_id) || { start: sec.start, id: sec.cue_id };
+            seekToCue(targetCue);
+            if (window.innerWidth <= 900) {
+              sidebarEl.classList.remove('open');
+            }
+          });
+
+          subNav.appendChild(subItem);
+        });
+
+        chapterNavEl.appendChild(subNav);
+      }
     });
   }
 
@@ -201,16 +238,15 @@
 
     state.currentChapterKey = key;
     state.activeCueId = null;
+    state.activeSectionCueId = null;
     state.preloadedNextChapterKey = null;
     window.location.hash = key;
     try {
       localStorage.setItem('ai_agent_current_chapter', key);
     } catch (e) {}
 
-    // Update Sidebar Active state
-    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-    const curNav = document.getElementById(`nav-item-${key}`);
-    if (curNav) curNav.classList.add('active');
+    // Re-render Chapter and Sub-chapter Navigation in Sidebar
+    renderChapterNav();
 
     // Update Header
     const isZh = isZhLang();
@@ -224,8 +260,11 @@
     const dataVar = `CHAPTER_DATA_${key}`;
     state.cues = window[dataVar] || [];
 
-    // Render Transcript Cues
+    // Render Transcript Cues and Sub-chapter Dividers
     renderTranscript(meta);
+
+    // Render Seekbar chapter tick markers
+    renderSeekMarkers(meta);
 
     // Load Audio
     const wasPlaying = !audio.paused;
@@ -394,11 +433,153 @@
     }
   }
 
-  // Render Transcript Cues
+  // Update active sub-chapter / section based on current audio time
+  function updateActiveSection(curTime) {
+    const meta = window.CHAPTERS_META.find(c => c.key === state.currentChapterKey);
+    if (!meta || !meta.sections || meta.sections.length === 0) return;
+
+    let activeSec = null;
+    for (let i = 0; i < meta.sections.length; i++) {
+      if (curTime >= meta.sections[i].start - 0.2) {
+        activeSec = meta.sections[i];
+      } else {
+        break;
+      }
+    }
+
+    const newCueId = activeSec ? activeSec.cue_id : null;
+    if (state.activeSectionCueId !== newCueId) {
+      state.activeSectionCueId = newCueId;
+
+      // 1. Sidebar sub-nav items
+      const subItems = document.querySelectorAll('.sub-nav-item');
+      subItems.forEach(item => {
+        const itemCueId = parseInt(item.dataset.cueId, 10);
+        item.classList.toggle('active', itemCueId === newCueId);
+      });
+
+      // 2. Overview pills
+      const pills = document.querySelectorAll('.section-pill');
+      pills.forEach(pill => {
+        const pillCueId = parseInt(pill.dataset.cueId, 10);
+        const isActive = (pillCueId === newCueId);
+        pill.classList.toggle('active', isActive);
+        if (isActive) {
+          pill.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+        }
+      });
+
+      // 3. Seekbar tick markers
+      const markers = document.querySelectorAll('.seek-marker');
+      markers.forEach(marker => {
+        const markerCueId = parseInt(marker.dataset.cueId, 10);
+        marker.classList.toggle('active', markerCueId === newCueId);
+      });
+    }
+  }
+
+  // Render sub-chapter markers along the seek bar
+  function renderSeekMarkers(meta) {
+    const markersContainer = document.getElementById('seek-markers-container');
+    if (!markersContainer) return;
+    markersContainer.innerHTML = '';
+    if (!meta.sections || meta.sections.length === 0 || !meta.duration_sec) return;
+
+    const isZh = isZhLang();
+    meta.sections.forEach(sec => {
+      const pct = (sec.start / meta.duration_sec) * 100;
+      if (pct < 0 || pct > 100) return;
+      const marker = document.createElement('div');
+      marker.className = `seek-marker ${sec.cue_id === state.activeSectionCueId ? 'active' : ''}`;
+      marker.dataset.cueId = sec.cue_id;
+      marker.style.left = `${pct}%`;
+      const title = isZh ? sec.title_zh : sec.title_en;
+      marker.innerHTML = `<span class="seek-marker-tooltip">${sec.time_str} ${title}</span>`;
+      marker.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const targetCue = state.cues.find(c => c.id === sec.cue_id) || { start: sec.start, id: sec.cue_id };
+        seekToCue(targetCue);
+      });
+      markersContainer.appendChild(marker);
+    });
+  }
+
+  // Render Transcript Cues and Sub-chapter Dividers
   function renderTranscript(meta) {
     transcriptEl.innerHTML = '';
-    
+    const isZh = isZhLang();
+
+    // 1. Chapter Overview / Outline Bar at the top of transcript
+    if (meta.sections && meta.sections.length > 0) {
+      const overviewBar = document.createElement('div');
+      overviewBar.className = 'chapter-overview-bar';
+      const secCountText = isZh ? `${meta.sections.length} 个小节` : `${meta.sections.length} sections`;
+      overviewBar.innerHTML = `
+        <div class="overview-header">
+          <span class="overview-title">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 6h16M4 12h16M4 18h7"/>
+            </svg>
+            <span>${isZh ? '本章子目录速览' : 'Chapter Outline'} · ${secCountText}</span>
+          </span>
+        </div>
+        <div class="overview-pills" id="overview-pills-list"></div>
+      `;
+      const pillsContainer = overviewBar.querySelector('#overview-pills-list');
+      meta.sections.forEach(sec => {
+        const pill = document.createElement('a');
+        pill.className = `section-pill ${sec.cue_id === state.activeSectionCueId ? 'active' : ''}`;
+        pill.id = `pill-sec-${sec.cue_id}`;
+        pill.dataset.cueId = sec.cue_id;
+        pill.href = `#cue-${sec.cue_id}`;
+        const pTitle = isZh ? sec.title_zh : sec.title_en;
+        pill.innerHTML = `
+          <span>${pTitle}</span>
+          <span class="section-pill-time">${sec.time_str}</span>
+        `;
+        pill.addEventListener('click', (e) => {
+          e.preventDefault();
+          const targetCue = state.cues.find(c => c.id === sec.cue_id) || { start: sec.start, id: sec.cue_id };
+          seekToCue(targetCue);
+        });
+        pillsContainer.appendChild(pill);
+      });
+      transcriptEl.appendChild(overviewBar);
+    }
+
+    // 2. Render Cues and Section Dividers
+    const sectionByCueId = meta.sections ? new Map(meta.sections.map(s => [s.cue_id, s])) : new Map();
+
     state.cues.forEach(cue => {
+      // If this cue starts a section, insert Section Divider Card
+      if (sectionByCueId.has(cue.id)) {
+        const sec = sectionByCueId.get(cue.id);
+        const secDivider = document.createElement('div');
+        secDivider.className = `section-divider-card level-${sec.level || 2}`;
+        secDivider.id = `section-divider-${sec.cue_id}`;
+        secDivider.title = isZh ? '点击跳转至该小节播放' : 'Click to jump to section';
+        const secTagLabel = sec.level === 3 ? (isZh ? '小节' : 'SUBSECTION') : (isZh ? '章节' : 'SECTION');
+        secDivider.innerHTML = `
+          <div class="section-divider-header">
+            <span class="section-tag">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+              </svg>
+              <span>${secTagLabel}</span>
+            </span>
+            <span class="section-timestamp">${sec.time_str}</span>
+          </div>
+          <h3 class="section-title-primary">${isZh ? sec.title_zh : sec.title_en}</h3>
+          <div class="section-title-secondary">${isZh ? sec.title_en : sec.title_zh}</div>
+        `;
+        secDivider.addEventListener('click', () => {
+          const targetCue = state.cues.find(c => c.id === sec.cue_id) || { start: sec.start, id: sec.cue_id };
+          seekToCue(targetCue);
+        });
+        transcriptEl.appendChild(secDivider);
+      }
+
       const card = document.createElement('div');
       card.className = 'cue-card';
       card.id = `cue-${cue.id}`;
@@ -447,6 +628,7 @@
       audio.play();
     }
     highlightCue(cue.id, true);
+    updateActiveSection(cue.start + 0.05);
   }
 
   // Highlight Cue
@@ -571,6 +753,9 @@
     if (audio.duration > 0 && (audio.duration - curTime <= 60)) {
       preloadNextChapter();
     }
+
+    // Active sub-chapter / section tracking
+    updateActiveSection(curTime);
 
     // Find active cue
     const currentCue = state.cues.find(c => curTime >= c.start && curTime <= c.end) ||
@@ -732,11 +917,12 @@
     if (meta) {
       const isZh = isZhLang();
       currentChapterTitleEl.textContent = isZh ? `${meta.name}: ${meta.title_zh} • ${meta.title_en}` : `${meta.name}: ${meta.title_en} • ${meta.title_zh}`;
-      const oldNav = transcriptEl.querySelector('.chapter-end-nav');
-      if (oldNav) oldNav.remove();
-      const oldBanner = transcriptEl.querySelector('.chapter-sponsor-banner');
-      if (oldBanner) oldBanner.remove();
-      appendChapterBottomNav(meta);
+      renderSeekMarkers(meta);
+      renderTranscript(meta);
+      if (state.activeCueId) {
+        highlightCue(state.activeCueId, false);
+      }
+      updateActiveSection(audio.currentTime);
     }
     const isZh = isZhLang();
     autoScrollBtn.textContent = state.autoScroll ? (isZh ? '自动跟随: ON' : 'Auto-scroll: ON') : (isZh ? '自动跟随: OFF' : 'Auto-scroll: OFF');
