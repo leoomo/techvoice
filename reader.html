@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>深入浅出 AI Agent - 开源技术书双语精听</title>
   <meta name="description" content="《深入浅出 AI Agent》（AI Agents in Depth）全书 21 小时中英双语对照听书。涵盖上下文工程、工具系统、代码智能体与强化学习后训练等底层原理。">
+  <meta name="theme-color" content="#090d16">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="assets/icon.svg">
   <link rel="stylesheet" href="css/style.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>">
 </head>
@@ -94,8 +97,8 @@
 
       <!-- Sticky Audio Player -->
       <section class="player-container">
-        <!-- Hidden Audio Element -->
-        <audio id="audio-element" preload="metadata"></audio>
+        <!-- Hidden Audio Element with Proactive Buffering -->
+        <audio id="audio-element" preload="auto"></audio>
 
         <div class="player-main-row">
           <!-- Playback Controls -->
@@ -117,8 +120,12 @@
             <span class="time-display" id="time-total">00:00</span>
           </div>
 
-          <!-- Speed & Auto Scroll Tools -->
+          <!-- Speed, Cache & Auto Scroll Tools -->
           <div class="tool-controls">
+            <button class="btn-toggle-tool btn-cache" id="btn-cache-chapter" title="离线缓存当前章节音频与字幕">
+              <span id="cache-icon">💾</span>
+              <span id="cache-text" data-i18n="reader_cache_btn">缓存本章</span>
+            </button>
             <select class="speed-select" id="speed-select" title="播放速度">
               <option value="0.75">0.75x</option>
               <option value="1.0" selected>1.0x</option>
@@ -264,5 +271,18 @@
 
   <!-- Application Controller -->
   <script src="js/app.js"></script>
+
+  <!-- Service Worker Registration for PWA Offline Caching -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').then((reg) => {
+          console.log('[SW] Reader registered scope:', reg.scope);
+        }).catch((err) => {
+          console.warn('[SW] Reader registration failed:', err);
+        });
+      });
+    }
+  </script>
 </body>
 </html>

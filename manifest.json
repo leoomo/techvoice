@@ -1,0 +1,19 @@
+{
+  "name": "深入浅出 AI Agent · 双语精听小站",
+  "short_name": "AI Agent 听书",
+  "description": "《深入浅出 AI Agent》（AI Agents in Depth）全书 21 小时中英双语对照精听小站，支持离线收听与单句跟读。",
+  "start_url": "index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#090d16",
+  "theme_color": "#090d16",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "assets/icon.svg",
+      "sizes": "512x512 192x192 128x128 64x64",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

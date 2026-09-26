@@ -16,7 +16,10 @@
     autoScroll: true,
     viewMode: 'bilingual', // 'bilingual' | 'en' | 'zh'
     playbackRate: 1.0,
-    theme: 'dark'
+    theme: 'dark',
+    cachedChapters: new Set(),
+    isCaching: false,
+    preloadedNextChapterKey: null
   };
 
   // DOM Elements
@@ -36,6 +39,9 @@
   const totalTimeEl = document.getElementById('time-total');
   const speedSelect = document.getElementById('speed-select');
   const autoScrollBtn = document.getElementById('btn-autoscroll');
+  const cacheBtn = document.getElementById('btn-cache-chapter');
+  const cacheIcon = document.getElementById('cache-icon');
+  const cacheText = document.getElementById('cache-text');
   const themeToggleBtn = document.getElementById('btn-theme-toggle');
   const sidebarEl = document.getElementById('sidebar');
   const sidebarToggleBtn = document.getElementById('btn-sidebar-toggle');
@@ -140,11 +146,13 @@
       const numLabel = ch.num === 0 ? 'Intro' : (ch.num === 11 ? 'End' : `Ch ${ch.num}`);
       const titleDisplay = isZh ? `${ch.title_zh} (${ch.title_en})` : `${ch.title_en} (${ch.title_zh})`;
       const countLabel = isZh ? `${ch.cues_count} 句` : `${ch.cues_count} cues`;
+      const isCached = state.cachedChapters.has(ch.key);
+      const offlineBadge = isCached ? `<span class="nav-item-offline-badge">✓ ${isZh ? '已离线' : 'Offline'}</span>` : '';
 
       item.innerHTML = `
         <span class="nav-item-num">${numLabel}</span>
         <div class="nav-item-content">
-          <span class="nav-item-title">${titleDisplay}</span>
+          <span class="nav-item-title">${titleDisplay} ${offlineBadge}</span>
           <div class="nav-item-meta">
             <span>⏱ ${ch.duration_str}</span>
             <span>📝 ${countLabel}</span>
@@ -170,6 +178,7 @@
 
     state.currentChapterKey = key;
     state.activeCueId = null;
+    state.preloadedNextChapterKey = null;
     window.location.hash = key;
     try {
       localStorage.setItem('ai_agent_current_chapter', key);
@@ -184,6 +193,9 @@
     const isZh = isZhLang();
     currentChapterTitleEl.textContent = isZh ? `${meta.name}: ${meta.title_zh} • ${meta.title_en}` : `${meta.name}: ${meta.title_en} • ${meta.title_zh}`;
     document.title = `AI Agents in Depth - ${meta.name}: ${isZh ? meta.title_zh : meta.title_en}`;
+
+    // Update Cache button state for current chapter
+    updateCacheBtnState();
 
     // Load Cues from window.CHAPTER_DATA_{key}
     const dataVar = `CHAPTER_DATA_${key}`;
@@ -204,6 +216,158 @@
 
     if (autoPlay || wasPlaying) {
       audio.play().catch(e => console.log('Autoplay prevented:', e));
+    }
+  }
+
+  // Check which chapters are currently cached in Cache Storage
+  async function refreshCachedChapters() {
+    if (!('caches' in window)) return;
+    try {
+      const audioCache = await caches.open('ai-agent-audio-v1');
+      const keys = await audioCache.keys();
+      state.cachedChapters.clear();
+      for (const req of keys) {
+        const url = new URL(req.url);
+        const found = window.CHAPTERS_META.find(ch => url.pathname.endsWith(ch.audio));
+        if (found) {
+          state.cachedChapters.add(found.key);
+        }
+      }
+      updateCacheBtnState();
+      renderChapterNav();
+    } catch (e) {
+      console.warn('Cache inspection error:', e);
+    }
+  }
+
+  // Update Cache button UI according to state
+  function updateCacheBtnState() {
+    if (!cacheBtn || !cacheIcon || !cacheText) return;
+    const isZh = isZhLang();
+    const isCached = state.cachedChapters.has(state.currentChapterKey);
+
+    if (state.isCaching) {
+      cacheBtn.className = 'btn-toggle-tool btn-cache caching';
+      cacheIcon.textContent = '⏳';
+      cacheBtn.title = isZh ? '正在下载离线音频缓存...' : 'Downloading audio for offline cache...';
+      return;
+    }
+
+    if (isCached) {
+      cacheBtn.className = 'btn-toggle-tool btn-cache cached';
+      cacheIcon.textContent = '✅';
+      cacheText.textContent = isZh ? '已离线' : 'Offline Ready';
+      cacheBtn.title = isZh ? '本章已离线缓存（点击可清除以释放空间）' : 'Chapter cached offline (Click to clear)';
+    } else {
+      cacheBtn.className = 'btn-toggle-tool btn-cache';
+      cacheIcon.textContent = '💾';
+      cacheText.textContent = isZh ? '缓存本章' : 'Cache Chapter';
+      cacheBtn.title = isZh ? '离线缓存当前章节音频到浏览器（断网可听）' : 'Cache current chapter audio for offline listening';
+    }
+  }
+
+  // Cache or Clear Current Chapter Audio
+  async function handleCacheChapterClick() {
+    if (!('caches' in window)) {
+      alert(isZhLang() ? '当前浏览器不支持离线缓存 API' : 'Cache API not supported in this browser');
+      return;
+    }
+
+    const curKey = state.currentChapterKey;
+    const meta = window.CHAPTERS_META.find(c => c.key === curKey);
+    if (!meta) return;
+
+    const isZh = isZhLang();
+    const isCached = state.cachedChapters.has(curKey);
+
+    // If already cached, ask to clear
+    if (isCached) {
+      const confirmClear = confirm(isZh 
+        ? `《${meta.name}: ${meta.title_zh}》已离线缓存。\n要清除该章节缓存以释放存储空间吗？` 
+        : `"${meta.name}: ${meta.title_en}" is currently cached.\nClear cache to free up local storage?`);
+      if (confirmClear) {
+        try {
+          const audioCache = await caches.open('ai-agent-audio-v1');
+          await audioCache.delete(meta.audio);
+          const fullPath = new URL(meta.audio, window.location.href).pathname;
+          await audioCache.delete(fullPath);
+          state.cachedChapters.delete(curKey);
+          updateCacheBtnState();
+          renderChapterNav();
+        } catch (e) {
+          console.warn('Clear cache error:', e);
+        }
+      }
+      return;
+    }
+
+    // Start caching current chapter
+    if (state.isCaching) return;
+    state.isCaching = true;
+    updateCacheBtnState();
+
+    try {
+      const response = await fetch(meta.audio);
+      if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+
+      const contentLength = response.headers.get('content-length');
+      const totalBytes = contentLength ? parseInt(contentLength, 10) : 0;
+      let loadedBytes = 0;
+
+      const reader = response.body.getReader();
+      const chunks = [];
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        loadedBytes += value.length;
+        if (totalBytes > 0 && cacheText) {
+          const percent = Math.round((loadedBytes / totalBytes) * 100);
+          cacheText.textContent = `${percent}%`;
+        }
+      }
+
+      const audioBlob = new Blob(chunks, { type: 'audio/mpeg' });
+      const cachedResponse = new Response(audioBlob, {
+        status: 200,
+        statusText: 'OK',
+        headers: {
+          'Content-Type': 'audio/mpeg',
+          'Content-Length': audioBlob.size.toString(),
+          'Accept-Ranges': 'bytes'
+        }
+      });
+
+      const audioCache = await caches.open('ai-agent-audio-v1');
+      const audioUrl = new URL(meta.audio, window.location.href).pathname;
+      await audioCache.put(audioUrl, cachedResponse);
+
+      state.cachedChapters.add(curKey);
+      state.isCaching = false;
+      updateCacheBtnState();
+      renderChapterNav();
+    } catch (err) {
+      console.error('Download audio cache error:', err);
+      state.isCaching = false;
+      updateCacheBtnState();
+      alert(isZh ? '缓存失败，请检查网络连接后重试' : 'Caching failed, please check connection and retry');
+    }
+  }
+
+  // Preload Next Chapter's audio when near the end of current chapter
+  function preloadNextChapter() {
+    const idx = window.CHAPTERS_META.findIndex(c => c.key === state.currentChapterKey);
+    if (idx < window.CHAPTERS_META.length - 1) {
+      const nextMeta = window.CHAPTERS_META[idx + 1];
+      if (state.preloadedNextChapterKey === nextMeta.key) return;
+      state.preloadedNextChapterKey = nextMeta.key;
+      const link = document.createElement('link');
+      link.rel = 'prefetch';
+      link.as = 'fetch';
+      link.href = nextMeta.audio;
+      document.head.appendChild(link);
+      console.log('[Audio Preload] Next chapter prefetching:', nextMeta.name);
     }
   }
 
@@ -374,6 +538,11 @@
     curTimeEl.textContent = formatTime(curTime);
     seekBar.value = curTime;
 
+    // Smooth Lookahead: Preload next chapter when near end (within 60s)
+    if (audio.duration > 0 && (audio.duration - curTime <= 60)) {
+      preloadNextChapter();
+    }
+
     // Find active cue
     const currentCue = state.cues.find(c => curTime >= c.start && curTime <= c.end) ||
                        state.cues.find(c => curTime >= c.start && curTime <= c.start + 12);
@@ -507,6 +676,11 @@
   document.getElementById('btn-open-about').addEventListener('click', () => openModal(aboutModal));
   document.getElementById('btn-shortcuts').addEventListener('click', () => openModal(shortcutsModal));
 
+  // Cache Chapter Button Trigger
+  if (cacheBtn) {
+    cacheBtn.addEventListener('click', handleCacheChapterClick);
+  }
+
   function updateControlsTooltips() {
     const isZh = isZhLang();
     prevCueBtn.title = isZh ? '上一句 (↑)' : 'Previous sentence (↑)';
@@ -524,6 +698,7 @@
   window.addEventListener('langchange', () => {
     renderChapterNav();
     updateControlsTooltips();
+    updateCacheBtnState();
     const meta = window.CHAPTERS_META.find(c => c.key === state.currentChapterKey);
     if (meta) {
       const isZh = isZhLang();
@@ -586,5 +761,6 @@
   renderChapterNav();
   updateControlsTooltips();
   loadChapter(state.currentChapterKey, false);
+  refreshCachedChapters();
 
 })();

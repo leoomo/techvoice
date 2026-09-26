@@ -553,6 +553,55 @@ body {
   font-weight: 500;
 }
 
+/* Cache Chapter Button */
+.btn-toggle-tool.btn-cache {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 500;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-toggle-tool.btn-cache:hover {
+  border-color: var(--text-accent);
+  color: var(--text-accent);
+}
+
+.btn-toggle-tool.btn-cache.cached {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #10b981;
+}
+
+.btn-toggle-tool.btn-cache.cached:hover {
+  background: rgba(244, 63, 94, 0.12);
+  border-color: rgba(244, 63, 94, 0.4);
+  color: #f43f5e;
+}
+
+.btn-toggle-tool.btn-cache.caching {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #f59e0b;
+  cursor: wait;
+}
+
+/* Sidebar Chapter Item Offline Badge */
+.nav-item-offline-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
 /* ==========================================================================
    Transcript / Cue List
    ========================================================================== */
