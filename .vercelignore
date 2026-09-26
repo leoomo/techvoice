@@ -1,0 +1,9 @@
+# Ignore large media and build scripts on Vercel
+*.mp3
+*.epub
+audio_chunks/
+repo/
+__pycache__/
+*.py
+.git/
+.wrangler/
