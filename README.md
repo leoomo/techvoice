@@ -63,9 +63,10 @@ To make this comprehensive 400+ page monograph accessible on-the-go—during dai
 * **Seekbar Milestone Ticks**: Audio progress bar features visual tick marks for every sub-chapter, with tooltip previews on hover.
 * **Section Divider Cards & Sticky Pills**: Prominent visual cards split subsections in the transcript, accompanied by a horizontally-scrollable top pill bar for swift section jumping.
 
-### 4. Offline Ready & Standalone Files
+### 4. Cloudflare R2 Streaming & Offline Ready
+* **High-Speed Global CDN**: Audio is hosted on Cloudflare R2 with HTTP 206 Partial Content (Range requests) support, enabling instant audio scrubbing with zero egress delay.
 * **PWA / One-Click Chapter Caching**: Built with CacheStorage and Service Workers. Hit "Cache Chapter" to save audio locally for flights or network dead-zones.
-* **Standard Offline Media**: The repository root includes complete, standard `.mp3` audio tracks and matching `.srt` / `.vtt` subtitle files, ready for import into podcast apps or mobile media players.
+* **Matching Subtitle Files**: Includes complete `.srt` / `.vtt` bilingual subtitle files with millisecond timestamps for offline study.
 
 ### 5. Fast, Clean & Privacy-First
 * Zero tracking, zero ads, no login required. Instant static page load.
