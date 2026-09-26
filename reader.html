@@ -27,6 +27,12 @@
             <h2 data-i18n="book_title_main">深入理解 AI Agent</h2>
             <p data-i18n="book_title_sub">AI AGENTS IN DEPTH</p>
           </div>
+          <button class="sidebar-close-btn" id="btn-sidebar-close" aria-label="关闭目录" data-i18n-title="reader_sidebar_close_tip" title="关闭目录">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
         </div>
         <div class="author-meta">
           <span data-i18n="book_author_meta">李博杰 著 · 21h 有声精读</span>
@@ -63,6 +69,9 @@
         </div>
       </div>
     </aside>
+
+    <!-- Mobile Sidebar Backdrop Overlay -->
+    <div class="sidebar-backdrop" id="sidebar-backdrop" aria-label="关闭目录"></div>
 
     <!-- Main Content Area -->
     <main class="main-content">

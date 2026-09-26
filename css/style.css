@@ -122,6 +122,42 @@ kbd {
   align-items: center;
   gap: 10px;
   margin-bottom: 10px;
+  position: relative;
+}
+
+.book-title-group {
+  flex: 1;
+  min-width: 0;
+}
+
+.sidebar-close-btn {
+  display: none;
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+  margin-left: auto;
+}
+
+.sidebar-close-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+  background: var(--bg-card);
+}
+
+.sidebar-close-btn:active {
+  transform: scale(0.95);
+}
+
+.sidebar-backdrop {
+  display: none;
 }
 
 .book-badge-icon {
@@ -1450,21 +1486,48 @@ kbd {
 /* Responsive Media Queries */
 @media (max-width: 900px) {
   :root {
-    --sidebar-w: 280px;
+    --sidebar-w: min(320px, 84vw);
   }
   .sidebar {
     position: fixed;
     top: 0;
     bottom: 0;
     left: 0;
+    width: var(--sidebar-w);
+    max-width: 85vw;
     transform: translateX(-100%);
+    box-shadow: none;
+    z-index: 100;
   }
   .sidebar.open {
     transform: translateX(0);
-    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+    box-shadow: 16px 0 40px rgba(0, 0, 0, 0.65);
   }
   .sidebar-toggle-btn {
     display: inline-flex;
+  }
+  .sidebar-close-btn {
+    display: inline-flex;
+  }
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 95;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .sidebar-backdrop.active,
+  .sidebar.open ~ .sidebar-backdrop {
+    opacity: 1;
+    pointer-events: auto;
   }
 }
 

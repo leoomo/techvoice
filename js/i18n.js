@@ -209,6 +209,7 @@
       // Tooltips & Titles
       reader_back_lib_tip: "返回图书库首页",
       reader_sidebar_toggle_tip: "展开/收起目录",
+      reader_sidebar_close_tip: "关闭目录",
       reader_view_bilingual_tip: "中英双语对照",
       reader_view_en_tip: "纯英文沉浸式听力",
       reader_view_zh_tip: "纯中文速览",
@@ -421,6 +422,7 @@
       // Tooltips & Titles
       reader_back_lib_tip: "Back to Home Library",
       reader_sidebar_toggle_tip: "Toggle Sidebar Outline",
+      reader_sidebar_close_tip: "Close Sidebar",
       reader_view_bilingual_tip: "Bilingual Side-by-Side",
       reader_view_en_tip: "English Listening Only",
       reader_view_zh_tip: "Chinese Reading Only",

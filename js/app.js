@@ -48,6 +48,33 @@
   const themeToggleBtn = document.getElementById('btn-theme-toggle');
   const sidebarEl = document.getElementById('sidebar');
   const sidebarToggleBtn = document.getElementById('btn-sidebar-toggle');
+  const sidebarCloseBtn = document.getElementById('btn-sidebar-close');
+  const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+
+  function openSidebar() {
+    if (!sidebarEl) return;
+    sidebarEl.classList.add('open');
+    if (sidebarBackdrop) sidebarBackdrop.classList.add('active');
+    document.body.classList.add('sidebar-open');
+    if (sidebarToggleBtn) sidebarToggleBtn.setAttribute('aria-expanded', 'true');
+  }
+
+  function closeSidebar() {
+    if (!sidebarEl) return;
+    sidebarEl.classList.remove('open');
+    if (sidebarBackdrop) sidebarBackdrop.classList.remove('active');
+    document.body.classList.remove('sidebar-open');
+    if (sidebarToggleBtn) sidebarToggleBtn.setAttribute('aria-expanded', 'false');
+  }
+
+  function toggleSidebar() {
+    if (!sidebarEl) return;
+    if (sidebarEl.classList.contains('open')) {
+      closeSidebar();
+    } else {
+      openSidebar();
+    }
+  }
   
   // Modals
   const sponsorModal = document.getElementById('modal-sponsor');
@@ -229,7 +256,7 @@
         e.preventDefault();
         loadChapter(ch.key, true);
         if (window.innerWidth <= 900) {
-          sidebarEl.classList.remove('open');
+          closeSidebar();
         }
       });
       chapterNavEl.appendChild(item);
@@ -262,7 +289,7 @@
             const targetCue = state.cues.find(c => c.id === sec.cue_id) || { start: sec.start, id: sec.cue_id };
             seekToCue(targetCue);
             if (window.innerWidth <= 900) {
-              sidebarEl.classList.remove('open');
+              closeSidebar();
             }
           });
 
@@ -915,9 +942,39 @@
     });
   });
 
-  // Sidebar Mobile Toggle
-  sidebarToggleBtn.addEventListener('click', () => {
-    sidebarEl.classList.toggle('open');
+  // Sidebar Mobile Toggle & Close Actions
+  if (sidebarToggleBtn) {
+    sidebarToggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleSidebar();
+    });
+  }
+
+  if (sidebarCloseBtn) {
+    sidebarCloseBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeSidebar();
+    });
+  }
+
+  if (sidebarBackdrop) {
+    sidebarBackdrop.addEventListener('click', () => {
+      closeSidebar();
+    });
+  }
+
+  // Close sidebar on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && sidebarEl && sidebarEl.classList.contains('open')) {
+      closeSidebar();
+    }
+  });
+
+  // Close mobile sidebar on window resize to desktop
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 900 && sidebarEl && sidebarEl.classList.contains('open')) {
+      closeSidebar();
+    }
   });
 
   // Modals Open/Close
@@ -948,9 +1005,17 @@
   const btnOpenSponsor = document.getElementById('btn-open-sponsor');
   if (btnOpenSponsor) btnOpenSponsor.addEventListener('click', () => openModal(sponsorModal));
   const btnSidebarSponsor = document.getElementById('btn-sidebar-sponsor');
-  if (btnSidebarSponsor) btnSidebarSponsor.addEventListener('click', () => openModal(sponsorModal));
-  document.getElementById('btn-open-about').addEventListener('click', () => openModal(aboutModal));
-  document.getElementById('btn-shortcuts').addEventListener('click', () => openModal(shortcutsModal));
+  if (btnSidebarSponsor) btnSidebarSponsor.addEventListener('click', () => {
+    closeSidebar();
+    openModal(sponsorModal);
+  });
+  const btnOpenAbout = document.getElementById('btn-open-about');
+  if (btnOpenAbout) btnOpenAbout.addEventListener('click', () => {
+    closeSidebar();
+    openModal(aboutModal);
+  });
+  const btnShortcuts = document.getElementById('btn-shortcuts');
+  if (btnShortcuts) btnShortcuts.addEventListener('click', () => openModal(shortcutsModal));
 
   // Cache Chapter Button Trigger
   if (cacheBtn) {
