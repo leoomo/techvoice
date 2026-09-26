@@ -22,7 +22,7 @@
       // Hero Section
       hero_badge: "自己平时听书做的开源小站 · 21 小时全书音频",
       hero_title: '开源技术书<br><span class="text-accent">中英双语精听小站</span>',
-      hero_desc: "把开源的技术好书转成自然流畅的英文有声，配上逐句中英对照字幕。平时散步、通勤时听听，顺便磨磨英文听力、学学系统设计。",
+      hero_desc: "把开源的技术好书转成自然流畅的英文有声，配上逐句中英对照字幕。平时散步、通勤时听听，顺便磨磨英文听力、学学系统设计。英文音频版为本站个人独立制作，非原作者发布。",
       hero_btn_listen: "开始收听《深入理解 AI Agent》 (21h)",
       hero_btn_explore: "电子书与配套资源",
       metric_audio_val: "20h 56m",
@@ -48,7 +48,7 @@
       featured_title: "正在精听的书",
       featured_book_title: "《深入理解 AI Agent：设计原理与工程实践》",
       featured_book_sub: "AI Agents in Depth: Design Principles and Engineering Practice",
-      featured_book_summary: "这是前微软亚洲研究院研究员、Pine AI 联合创始人兼首席科学家<b>李博杰</b>写的一本开源技术书。内容非常扎实，系统讲解了 Agent = LLM + 上下文 + 工具 的最小工程实现、Prompt 与上下文工程、MCP 工具协议、代码智能体，以及基于强化学习的模型后训练机制。我自己平时想边走边听，就把它转成了自然英文语音并做好了逐句双语字幕，放在这里和大家一起分享。",
+      featured_book_summary: "这是前微软亚洲研究院研究员、Pine AI 联合创始人兼首席科学家<b>李博杰</b>写的一本开源技术书。内容非常扎实，系统讲解了 Agent = LLM + 上下文 + 工具 的最小工程实现、Prompt 与上下文工程、MCP 工具协议、代码智能体，以及基于强化学习的模型后训练机制。<b>本站的英文有声版和逐句双语字幕均为站长个人独立制作，并非原作者发布的版本。</b>我自己平时想边走边听，就把中文原书转成了自然英文语音并做好了逐句双语字幕，放在这里和大家一起分享。",
       featured_quick_stat_time: "20h 56m 全书",
       featured_quick_stat_cues: "8,052 句中英对齐",
       featured_start_btn: "从头开始听",
@@ -112,14 +112,14 @@
 
       // Sponsorship
       sponsor_title: "请喝杯咖啡",
-      sponsor_desc: "做这套 21 小时的有声书花了不少整理时间、算力与语音合成成本。如果这个小站对你的技术学习或英文听力有一点点帮助，欢迎请喝杯咖啡支持一下日常维护；也强烈推荐去原作者李博杰老师的 GitHub 仓库给原书点个 Star！",
+      sponsor_desc: "这套 21 小时的英文有声版是我个人从中文原书独立转制的（非原作者发布），花了不少整理时间、算力与语音合成成本。如果这个小站对你的技术学习或英文听力有一点点帮助，欢迎请喝杯咖啡支持一下日常维护；也强烈推荐去原作者李博杰老师的 GitHub 仓库给原书点个 Star！",
       sponsor_scan_hint: "微信 / 支付宝扫一扫 · 随意随心，感谢支持",
       sponsor_star_btn: "原书 GitHub Star 支持",
       sponsor_btn: "GitHub Sponsors",
 
       // Footer
       footer_title: "TechVoice · 开源技术书精听小站",
-      footer_desc: "© 2026. 内容源自李博杰《深入浅出 AI Agent》。本站为个人学习整理分享，代码与音频遵循开源共享许可。",
+      footer_desc: "© 2026. 原书内容源自李博杰《深入浅出 AI Agent》。英文有声版与双语字幕由本站个人独立制作，非原作者发布。代码与音频遵循开源共享许可。",
       footer_cta: "打开播放器 →",
 
       // Reader UI labels
@@ -154,17 +154,19 @@
       reader_cue_repeat_tip: "单句循环 (Repeat sentence)",
       reader_shortcuts_title: "键盘快捷键指南",
       reader_banner_title: "觉得这个听书小站有帮助？",
-      reader_banner_desc: "全书 12 章节、21 小时中英双语音频由个人学习整理制作。如果对你有帮助，欢迎请喝杯咖啡支持日常维护！",
+      reader_banner_desc: "全书 12 章节、21 小时英文音频与逐句双语字幕均由本站个人独立制作（非原作者发布）。如果对你有帮助，欢迎请喝杯咖啡支持日常维护！",
       reader_banner_btn: "请喝杯咖啡",
 
       // Reader Modals
       reader_modal_sponsor_title: "请喝杯咖啡",
-      reader_modal_sponsor_desc: "你好！这个小站最初是我自己想边散步通勤边听开源技术书、顺便练练英文听力而整理的。全书 12 个章节、21 小时的音频与 8,000+ 句中英字幕均已制作完成并开源分享。如果它确实对你的学习有所帮助，欢迎随意赞赏请喝杯咖啡，支持一下服务器与语音合成的开销。也非常感谢你去原作者的 GitHub 给原书点颗 Star 支持作者！",
+      reader_modal_sponsor_desc: "你好！这个小站最初是我自己想边散步通勤边听开源技术书、顺便练练英文听力而做的。我把李博杰老师的中文原书独立转制成自然英文语音，并逐句制作了中英双语字幕——这套英文有声版是我个人的制作，不是原作者发布的。全书 12 个章节、21 小时的音频与 8,000+ 句中英字幕均已制作完成并开源分享。如果它确实对你的学习有所帮助，欢迎随意赞赏请喝杯咖啡，支持一下服务器与语音合成的开销。也非常感谢你去原作者的 GitHub 给原书点颗 Star 支持作者！",
       reader_modal_sponsor_scan: "微信 / 支付宝扫码 · 随意随心，感谢支持",
 
       reader_modal_about_title: "关于《深入理解 AI Agent》",
       reader_modal_about_author_title: "原书作者简介",
       reader_modal_about_author_bio: "<b>李博杰 (Bojie Li)</b>：Pine AI 联合创始人兼首席科学家，中国科学院大学兼职讲师，前微软亚洲研究院首席研究员。在计算机系统与分布式 AI 领域有深入研究，本书是他总结的关于现代 AI Agent 架构与工程实践的开源力作。",
+      reader_modal_about_audio_title: "关于本站英文有声版",
+      reader_modal_about_audio_desc: "本站的英文有声版和逐句中英双语字幕均为<b>站长个人独立制作</b>，并非原书作者李博杰发布的版本。站长将中文原书内容转制为自然英文语音，并逐句制作了双语字幕，供个人学习使用并开源分享。",
       reader_modal_about_formula_title: "全书核心公式",
       reader_modal_about_formula_body: "Agent = LLM (大脑) + 上下文 (眼睛) + 工具 (手脚)<br>Agent = Model + Harness (约束 + 验证 + 纠错)",
       reader_modal_about_res_title: "配套资源与官方链接",
@@ -184,7 +186,7 @@
       // Branding & Book metadata
       book_title_main: "深入理解 AI Agent",
       book_title_sub: "AI AGENTS IN DEPTH",
-      book_author_meta: "李博杰 著 · 21h 有声精读",
+      book_author_meta: "李博杰 著 · 英文有声版由本站独立制作",
       mock_cover_tag: "TECHVOICE AUDIO 01",
       mock_cover_title: "深入理解<br>AI Agent",
       mock_cover_sub: "设计原理与工程实践",
@@ -232,7 +234,7 @@
       // Hero Section
       hero_badge: "Personal project shared for everyone · 21h complete audio",
       hero_title: 'Listen to Open Tech Books<br><span class="text-accent">Bilingual & Sentence-Aligned</span>',
-      hero_desc: "A simple place to listen to open-source technical books with sentence-by-sentence bilingual subtitles. Good for commuting, walking, tuning your technical English ear, and learning system design.",
+      hero_desc: "A personal project turning open-source technical books into natural English audio with sentence-aligned bilingual subtitles. The English audio edition is independently created by this site's author — it is not published by the original book author. Perfect for commuting, walking, and improving your technical English.",
       hero_btn_listen: 'Listen to "AI Agents in Depth" (21h)',
       hero_btn_explore: "E-Books & Resources",
       metric_audio_val: "20h 56m",
@@ -258,7 +260,7 @@
       featured_title: "Book We're Listening To",
       featured_book_title: '"AI Agents in Depth: Design Principles and Engineering Practice"',
       featured_book_sub: "AI Agents in Depth: Design Principles and Engineering Practice",
-      featured_book_summary: "An open-source technical book authored by Dr. Bojie Li, Co-Founder & Chief Scientist of Pine AI and former Principal Researcher at MSRA. It thoroughly covers Agent = LLM + Context + Tools, context engineering, MCP tool protocols, coding agents, and reinforcement learning post-training. Made into an audio edition with aligned bilingual subtitles for personal study and shared with anyone who enjoys audio learning.",
+      featured_book_summary: "An open-source technical book authored by Dr. Bojie Li, Co-Founder & Chief Scientist of Pine AI and former Principal Researcher at MSRA. It thoroughly covers Agent = LLM + Context + Tools, context engineering, MCP tool protocols, coding agents, and reinforcement learning post-training. <b>The English audio edition and bilingual subtitles on this site were independently created by the site owner and are not published by the original author.</b> Converted from the original Chinese book into natural English speech with sentence-aligned bilingual subtitles for personal study and shared openly.",
       featured_quick_stat_time: "20h 56m Full Book",
       featured_quick_stat_cues: "8,052 Aligned Sentences",
       featured_start_btn: "Start From Beginning",
@@ -322,14 +324,14 @@
 
       // Sponsorship
       sponsor_title: "Buy Me a Coffee",
-      sponsor_desc: "Synthesizing and aligning 21 hours of technical audio took quite a bit of time and API cost. If this little site is helpful for your learning or listening practice, feel free to support with a coffee, or give a Star to Bojie Li's original repository on GitHub!",
+      sponsor_desc: "This 21-hour English audio edition was independently created by the site owner from the original Chinese book — it is not published by the original author. Synthesizing and aligning all the audio took quite a bit of time and API cost. If this site helps your learning or listening practice, feel free to support with a coffee, or give a Star to Bojie Li's original repository on GitHub!",
       sponsor_scan_hint: "WeChat Pay / Alipay · Any support is warmly appreciated!",
       sponsor_star_btn: "Star Original Book on GitHub",
       sponsor_btn: "GitHub Sponsors",
 
       // Footer
       footer_title: "TechVoice · Open Tech Book Audio Reader",
-      footer_desc: '© 2026. Content based on "AI Agents in Depth" by Bojie Li. Created for personal study and open sharing under open-source licenses.',
+      footer_desc: '© 2026. Original book by Bojie Li. English audio edition & bilingual subtitles independently created by this site\'s author, not published by the original author. Open-source licensed.',
       footer_cta: "Open Player →",
 
       // Reader UI labels
@@ -364,17 +366,19 @@
       reader_cue_repeat_tip: "Repeat sentence (A-B loop)",
       reader_shortcuts_title: "Keyboard Shortcuts",
       reader_banner_title: "Finding this audio reader helpful?",
-      reader_banner_desc: "This 21-hour audio edition was created for personal study and shared openly. If it helps your learning, feel free to buy a coffee to support maintenance!",
+      reader_banner_desc: "This 21-hour English audio edition and bilingual subtitles were independently created by the site owner (not published by the original author). If it helps your learning, feel free to buy a coffee to support maintenance!",
       reader_banner_btn: "Buy Me a Coffee",
 
       // Reader Modals
       reader_modal_sponsor_title: "Buy Me a Coffee",
-      reader_modal_sponsor_desc: "Hi! This project started as a personal tool to listen to open-source tech books on walks and commutes while tuning my English listening skills. All 12 chapters (21 hours) and 8,000+ aligned sentences are completely free and open. If you find it helpful, feel free to buy a coffee to help cover hosting and synthesis costs, and be sure to Star Bojie Li's original repository!",
+      reader_modal_sponsor_desc: "Hi! This project started as a personal tool to listen to open-source tech books while walking and commuting. I independently converted Dr. Bojie Li's original Chinese book into natural English speech with sentence-aligned bilingual subtitles — this English audio edition is my own creation and is not published by the original author. All 12 chapters (21 hours) and 8,000+ aligned sentences are completely free and open. If you find it helpful, feel free to buy a coffee to help cover hosting and synthesis costs, and be sure to Star Bojie Li's original repository!",
       reader_modal_sponsor_scan: "Scan with WeChat Pay or Alipay · Any support is warmly appreciated",
 
       reader_modal_about_title: 'About "AI Agents in Depth"',
       reader_modal_about_author_title: "About the Author",
       reader_modal_about_author_bio: "<b>Dr. Bojie Li</b>: Co-Founder & Chief Scientist of Pine AI, adjunct lecturer at UCAS, and former Principal Researcher at Microsoft Research Asia. A veteran systems and distributed AI researcher, this book represents his comprehensive open-source work on modern AI Agent architectures.",
+      reader_modal_about_audio_title: "About the English Audio Edition",
+      reader_modal_about_audio_desc: "The English audio edition and sentence-aligned bilingual subtitles on this site were <b>independently created by the site owner</b> and are not published by the original book author Dr. Bojie Li. The site owner converted the original Chinese book content into natural English speech and produced bilingual subtitles sentence by sentence, for personal study and open sharing.",
       reader_modal_about_formula_title: "Core Architectural Formulas",
       reader_modal_about_formula_body: "Agent = LLM (Brain) + Context (Eyes) + Tools (Hands & Feet)<br>Agent = Model + Harness (Constraint + Verification + Error Correction)",
       reader_modal_about_res_title: "Companion Resources & Official Links",
@@ -394,7 +398,7 @@
       // Branding & Book metadata
       book_title_main: "AI Agents in Depth",
       book_title_sub: "AUDIO EDITION · 21H",
-      book_author_meta: "By Bojie Li · 21h Audio Edition",
+      book_author_meta: "By Bojie Li · Audio Edition by Site Owner",
       mock_cover_tag: "TECHVOICE AUDIO 01",
       mock_cover_title: "AI AGENTS<br>IN DEPTH",
       mock_cover_sub: "Design Principles & Practice",
