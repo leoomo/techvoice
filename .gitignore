@@ -17,3 +17,6 @@ repo/
 
 # Audio files (hosted on Cloudflare R2 CDN)
 *.mp3
+
+# Cloudflare Wrangler cache
+.wrangler/
