@@ -55,6 +55,28 @@
     return window.TechVoiceI18N ? window.TechVoiceI18N.getLang() === 'zh' : true;
   }
 
+  // Pure Vector SVGs for UI components
+  const SVGS = {
+    play: `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>`,
+    pause: `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>`,
+    sun: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`,
+    moon: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`,
+    repeat: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`,
+    cacheDefault: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`,
+    cacheDone: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+    cacheLoading: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>`
+  };
+
+  function updateThemeUI() {
+    if (!themeToggleBtn) return;
+    themeToggleBtn.innerHTML = state.theme === 'light' ? SVGS.moon : SVGS.sun;
+  }
+
+  function setPlayIcon(playing) {
+    if (!playIcon) return;
+    playIcon.innerHTML = playing ? SVGS.pause : SVGS.play;
+  }
+
   // Format seconds to mm:ss or hh:mm:ss
   function formatTime(sec) {
     if (isNaN(sec) || sec < 0) return '00:00';
@@ -74,8 +96,8 @@
       if (savedTheme) {
         state.theme = savedTheme;
         document.documentElement.setAttribute('data-theme', savedTheme);
-        themeToggleBtn.textContent = savedTheme === 'light' ? '🌙' : '☀️';
       }
+      updateThemeUI();
 
       const savedMode = localStorage.getItem('ai_agent_view_mode');
       if (savedMode) {
@@ -109,7 +131,7 @@
   function toggleTheme() {
     state.theme = state.theme === 'dark' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', state.theme);
-    themeToggleBtn.textContent = state.theme === 'light' ? '🌙' : '☀️';
+    updateThemeUI();
     try {
       localStorage.setItem('ai_agent_theme', state.theme);
     } catch (e) {}
@@ -147,15 +169,16 @@
       const titleDisplay = isZh ? `${ch.title_zh} (${ch.title_en})` : `${ch.title_en} (${ch.title_zh})`;
       const countLabel = isZh ? `${ch.cues_count} 句` : `${ch.cues_count} cues`;
       const isCached = state.cachedChapters.has(ch.key);
-      const offlineBadge = isCached ? `<span class="nav-item-offline-badge">✓ ${isZh ? '已离线' : 'Offline'}</span>` : '';
+      const offlineBadge = isCached ? `<span class="nav-item-offline-badge"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:2px;"><polyline points="20 6 9 17 4 12"/></svg>${isZh ? '已离线' : 'Offline'}</span>` : '';
 
       item.innerHTML = `
         <span class="nav-item-num">${numLabel}</span>
         <div class="nav-item-content">
           <span class="nav-item-title">${titleDisplay} ${offlineBadge}</span>
           <div class="nav-item-meta">
-            <span>⏱ ${ch.duration_str}</span>
-            <span>📝 ${countLabel}</span>
+            <span>${ch.duration_str}</span>
+            <span>·</span>
+            <span>${countLabel}</span>
           </div>
         </div>
       `;
@@ -248,19 +271,19 @@
 
     if (state.isCaching) {
       cacheBtn.className = 'btn-toggle-tool btn-cache caching';
-      cacheIcon.textContent = '⏳';
+      cacheIcon.innerHTML = SVGS.cacheLoading;
       cacheBtn.title = isZh ? '正在下载离线音频缓存...' : 'Downloading audio for offline cache...';
       return;
     }
 
     if (isCached) {
       cacheBtn.className = 'btn-toggle-tool btn-cache cached';
-      cacheIcon.textContent = '✅';
+      cacheIcon.innerHTML = SVGS.cacheDone;
       cacheText.textContent = isZh ? '已离线' : 'Offline Ready';
       cacheBtn.title = isZh ? '本章已离线缓存（点击可清除以释放空间）' : 'Chapter cached offline (Click to clear)';
     } else {
       cacheBtn.className = 'btn-toggle-tool btn-cache';
-      cacheIcon.textContent = '💾';
+      cacheIcon.innerHTML = SVGS.cacheDefault;
       cacheText.textContent = isZh ? '缓存本章' : 'Cache Chapter';
       cacheBtn.title = isZh ? '离线缓存当前章节音频到浏览器（断网可听）' : 'Cache current chapter audio for offline listening';
     }
@@ -385,7 +408,9 @@
       card.innerHTML = `
         <div class="cue-meta-col">
           <span class="cue-timestamp">${timeStr}</span>
-          <button class="cue-btn-repeat" title="单句循环 (Repeat sentence)" data-cue-id="${cue.id}">🔁</button>
+          <button class="cue-btn-repeat" title="单句循环 (Repeat sentence)" data-cue-id="${cue.id}">
+            ${SVGS.repeat}
+          </button>
         </div>
         <div class="cue-text-col">
           <div class="en-text">${cue.en}</div>
@@ -477,9 +502,10 @@
 
     // Sponsor Banner
     const dict = window.TechVoiceI18N ? window.TechVoiceI18N.data[isZh ? 'zh' : 'en'] : null;
-    const bannerTitle = dict ? dict.reader_banner_title : (isZh ? '☕ 觉得这个听书小站有帮助？' : '☕ Finding this audio reader helpful?');
+    const bannerTitle = dict ? dict.reader_banner_title : (isZh ? '觉得这个听书小站有帮助？' : 'Finding this audio reader helpful?');
     const bannerDesc = dict ? dict.reader_banner_desc : (isZh ? '全书 12 章节、21 小时中英双语音频由个人学习整理制作。如果对你有帮助，欢迎请喝杯咖啡支持日常维护！' : 'This 21-hour audio edition was created for personal study and shared openly. If it helps your learning, feel free to buy a coffee to support maintenance!');
-    const bannerBtnText = dict ? dict.reader_banner_btn : (isZh ? '☕ 请喝杯咖啡' : '☕ Buy a Coffee');
+    const bannerBtnText = dict ? dict.reader_banner_btn : (isZh ? '请喝杯咖啡' : 'Buy a Coffee');
+    const coffeeSvg = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>`;
 
     const sponsorBanner = document.createElement('div');
     sponsorBanner.className = 'chapter-sponsor-banner';
@@ -488,7 +514,10 @@
         <h4>${bannerTitle}</h4>
         <p>${bannerDesc}</p>
       </div>
-      <button class="btn-icon btn-sponsor" id="btn-banner-sponsor">${bannerBtnText}</button>
+      <button class="btn-icon btn-sponsor" id="btn-banner-sponsor">
+        ${coffeeSvg}
+        <span>${bannerBtnText}</span>
+      </button>
     `;
     transcriptEl.appendChild(sponsorBanner);
 
@@ -518,13 +547,13 @@
   // Audio Playback Events
   audio.addEventListener('play', () => {
     state.isPlaying = true;
-    playIcon.textContent = '⏸';
+    setPlayIcon(true);
     playBtn.title = isZhLang() ? '暂停 (Space)' : 'Pause (Space)';
   });
 
   audio.addEventListener('pause', () => {
     state.isPlaying = false;
-    playIcon.textContent = '▶';
+    setPlayIcon(false);
     playBtn.title = isZhLang() ? '播放 (Space)' : 'Play (Space)';
   });
 
@@ -559,7 +588,7 @@
 
   audio.addEventListener('ended', () => {
     state.isPlaying = false;
-    playIcon.textContent = '▶';
+    setPlayIcon(false);
     // Autoplay next chapter if available
     const idx = window.CHAPTERS_META.findIndex(c => c.key === state.currentChapterKey);
     if (idx < window.CHAPTERS_META.length - 1) {

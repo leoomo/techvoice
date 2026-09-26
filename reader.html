@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>深入浅出 AI Agent - 开源技术书双语精听</title>
   <meta name="description" content="《深入浅出 AI Agent》（AI Agents in Depth）全书 21 小时中英双语对照听书。涵盖上下文工程、工具系统、代码智能体与强化学习后训练等底层原理。">
-  <meta name="theme-color" content="#090d16">
+  <meta name="theme-color" content="#080c14">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="assets/icon.svg">
   <link rel="stylesheet" href="css/style.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>">
+  <link rel="icon" type="image/svg+xml" href="assets/icon.svg">
 </head>
 <body>
   <div class="app-container">
@@ -17,34 +17,49 @@
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <div class="book-brand">
-          <div class="book-badge-icon">🤖</div>
+          <div class="book-badge-icon" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+            </svg>
+          </div>
           <div class="book-title-group">
             <h2>深入理解 AI Agent</h2>
             <p>AI AGENTS IN DEPTH</p>
           </div>
         </div>
         <div class="author-meta">
-          <span>李博杰 著 • 21h 有声精读</span>
+          <span>李博杰 著 · 21h 有声精读</span>
           <button class="btn-about" id="btn-open-about" data-i18n="reader_about_btn">关于本书</button>
         </div>
       </div>
 
       <!-- Chapter Navigation List -->
-      <nav class="chapter-nav" id="chapter-nav-list">
+      <nav class="chapter-nav" id="chapter-nav-list" aria-label="章节导航">
         <!-- Rendered by JS -->
       </nav>
 
       <!-- Sidebar Footer / Sponsor Card -->
       <div class="sidebar-footer">
-        <div class="sponsor-mini-card" id="btn-sidebar-sponsor">
+        <div class="sponsor-mini-card" id="btn-sidebar-sponsor" role="button" tabindex="0">
           <div class="sponsor-mini-left">
-            <span class="sponsor-icon">☕</span>
+            <span class="sponsor-mini-icon">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+                <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+                <line x1="6" y1="1" x2="6" y2="4"/>
+                <line x1="10" y1="1" x2="10" y2="4"/>
+                <line x1="14" y1="1" x2="14" y2="4"/>
+              </svg>
+            </span>
             <div>
               <div class="sponsor-mini-title" data-i18n="reader_sponsor_title">请喝杯咖啡</div>
               <div class="sponsor-mini-sub" data-i18n="reader_sponsor_sub">随意随心 · 支持日常维护</div>
             </div>
           </div>
-          <span style="color: #f59e0b; font-size: 14px;">❤</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--text-muted);">
+            <path d="M9 18l6-6-6-6"/>
+          </svg>
         </div>
       </div>
     </aside>
@@ -54,44 +69,93 @@
       <!-- Top App Bar -->
       <header class="top-bar">
         <div class="top-bar-left">
-          <a href="index.html" class="btn-icon" style="color: var(--text-accent); border-color: rgba(56, 189, 248, 0.4);" title="返回图书库首页">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          <a href="index.html" class="btn-icon" title="返回图书库首页">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
             <span data-i18n="reader_back_lib">图书库</span>
           </a>
-          <button class="sidebar-toggle-btn" id="btn-sidebar-toggle" title="展开/收起目录">☰</button>
+          <button class="sidebar-toggle-btn" id="btn-sidebar-toggle" title="展开/收起目录" aria-label="切换目录">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="3" y1="12" x2="21" y2="12"/>
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+          </button>
           <span class="current-chapter-title" id="current-chapter-title">Introduction: Practice Precedes Naming</span>
         </div>
 
         <div class="top-bar-right">
           <!-- View Mode Switcher -->
-          <div class="view-mode-group">
+          <div class="view-mode-group" role="tablist">
             <button class="view-btn active" data-mode="bilingual" data-i18n="reader_view_bilingual" title="中英双语对照">中英双语</button>
             <button class="view-btn" data-mode="en" data-i18n="reader_view_en" title="纯英文沉浸式听力">纯英文</button>
             <button class="view-btn" data-mode="zh" data-i18n="reader_view_zh" title="纯中文速览">纯中文</button>
           </div>
 
-          <!-- Language Switcher Toggle -->
-          <button class="btn-icon" id="btn-lang-toggle" title="Switch Language / 切换语言">
-            <span>🌐</span>
-            <span id="lang-switch-text" style="font-size: 11px; font-weight: 700;">EN</span>
-          </button>
+          <div class="top-bar-tools">
+            <!-- Language Switcher Toggle -->
+            <button class="btn-icon btn-tool-sm" id="btn-lang-toggle" title="Switch Language / 切换语言">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="2" y1="12" x2="22" y2="12"/>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+              </svg>
+              <span id="lang-switch-text" style="font-size: 11px; font-weight: 600; font-family: var(--font-mono);">EN</span>
+            </button>
 
-          <!-- GitHub Repo Link -->
-          <a href="https://github.com/bojieli/ai-agent-book" target="_blank" rel="noopener noreferrer" class="btn-icon" title="查看 GitHub 开源仓库">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
-            </svg>
-            <span>GitHub</span>
-          </a>
+            <!-- GitHub Repo Link -->
+            <a href="https://github.com/bojieli/ai-agent-book" target="_blank" rel="noopener noreferrer" class="btn-icon btn-tool-sm" title="查看 GitHub 开源仓库">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+              </svg>
+            </a>
 
-          <!-- Shortcuts Button -->
-          <button class="btn-icon" id="btn-shortcuts" title="快捷键 (Shortcuts)">⌨️</button>
+            <!-- Shortcuts Button -->
+            <button class="btn-icon btn-tool-sm" id="btn-shortcuts" title="快捷键 (Shortcuts)">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="4" width="20" height="16" rx="2"/>
+                <line x1="6" y1="8" x2="6.01" y2="8"/>
+                <line x1="10" y1="8" x2="10.01" y2="8"/>
+                <line x1="14" y1="8" x2="14.01" y2="8"/>
+                <line x1="18" y1="8" x2="18.01" y2="8"/>
+                <line x1="6" y1="12" x2="6.01" y2="12"/>
+                <line x1="10" y1="12" x2="10.01" y2="12"/>
+                <line x1="14" y1="12" x2="14.01" y2="12"/>
+                <line x1="18" y1="12" x2="18.01" y2="12"/>
+                <line x1="7" y1="16" x2="17" y2="16"/>
+              </svg>
+            </button>
 
-          <!-- Theme Toggle -->
-          <button class="btn-icon" id="btn-theme-toggle" title="切换深色/浅色模式">☀️</button>
+            <!-- Theme Toggle -->
+            <button class="btn-icon btn-tool-sm" id="btn-theme-toggle" title="切换深色/浅色模式">
+              <span id="theme-icon-container">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="5"/>
+                  <line x1="12" y1="1" x2="12" y2="3"/>
+                  <line x1="12" y1="21" x2="12" y2="23"/>
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                  <line x1="1" y1="12" x2="3" y2="12"/>
+                  <line x1="21" y1="12" x2="23" y2="12"/>
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+                </svg>
+              </span>
+            </button>
 
-          <!-- Sponsor Modal Button -->
-          <button class="btn-icon btn-sponsor" id="btn-open-sponsor" data-i18n="reader_sponsor_btn" title="请喝杯咖啡">☕ 请喝咖啡</button>
+            <!-- Sponsor Button -->
+            <button class="btn-icon btn-tool-sm btn-sponsor-subtle" id="btn-open-sponsor" data-i18n="reader_sponsor_btn" title="请喝杯咖啡">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+                <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+                <line x1="6" y1="1" x2="6" y2="4"/>
+                <line x1="10" y1="1" x2="10" y2="4"/>
+                <line x1="14" y1="1" x2="14" y2="4"/>
+              </svg>
+              <span>咖啡</span>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -103,27 +167,66 @@
         <div class="player-main-row">
           <!-- Playback Controls -->
           <div class="playback-controls">
-            <button class="btn-control" id="btn-prev-cue" title="上一句 (↑)">⏮</button>
-            <button class="btn-control" id="btn-rewind" title="快退 5 秒 (←)">⏪ 5s</button>
-            <button class="btn-control btn-play" id="btn-play" title="播放 / 暂停 (Space)">
-              <span id="play-icon">▶</span>
+            <button class="btn-control" id="btn-prev-cue" title="上一句 (↑)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="19 20 9 12 19 4 19 20"/>
+                <line x1="5" y1="19" x2="5" y2="5"/>
+              </svg>
             </button>
-            <button class="btn-control" id="btn-forward" title="快进 5 秒 (→)">5s ⏩</button>
-            <button class="btn-control" id="btn-next-cue" title="下一句 (↓)">⏭</button>
-            <button class="btn-control btn-repeat" id="btn-repeat" title="单句循环跟读 (R)">🔁</button>
+            <button class="btn-control" id="btn-rewind" title="快退 5 秒 (←)">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 4v6h6"/>
+                <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+                <text x="12" y="15" font-size="7" font-family="sans-serif" font-weight="700" text-anchor="middle" fill="currentColor" stroke="none">5</text>
+              </svg>
+            </button>
+            <button class="btn-control btn-play" id="btn-play" title="播放 / 暂停 (Space)">
+              <span id="play-icon">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                  <polygon points="6 3 20 12 6 21 6 3"/>
+                </svg>
+              </span>
+            </button>
+            <button class="btn-control" id="btn-forward" title="快进 5 秒 (→)">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M23 4v6h-6"/>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                <text x="12" y="15" font-size="7" font-family="sans-serif" font-weight="700" text-anchor="middle" fill="currentColor" stroke="none">5</text>
+              </svg>
+            </button>
+            <button class="btn-control" id="btn-next-cue" title="下一句 (↓)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="5 4 15 12 5 20 5 4"/>
+                <line x1="19" y1="5" x2="19" y2="19"/>
+              </svg>
+            </button>
+            <button class="btn-control btn-repeat" id="btn-repeat" title="单句循环跟读 (R)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="17 1 21 5 17 9"/>
+                <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+                <polyline points="7 23 3 19 7 15"/>
+                <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+              </svg>
+            </button>
           </div>
 
           <!-- Progress Bar & Time -->
           <div class="progress-area">
             <span class="time-display" id="time-current">00:00</span>
-            <input type="range" class="seek-bar" id="seek-bar" min="0" max="100" value="0" step="0.1">
+            <input type="range" class="seek-bar" id="seek-bar" min="0" max="100" value="0" step="0.1" aria-label="音频进度条">
             <span class="time-display" id="time-total">00:00</span>
           </div>
 
           <!-- Speed, Cache & Auto Scroll Tools -->
           <div class="tool-controls">
             <button class="btn-toggle-tool btn-cache" id="btn-cache-chapter" title="离线缓存当前章节音频与字幕">
-              <span id="cache-icon">💾</span>
+              <span id="cache-icon">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+              </span>
               <span id="cache-text" data-i18n="reader_cache_btn">缓存本章</span>
             </button>
             <select class="speed-select" id="speed-select" title="播放速度">
@@ -133,7 +236,12 @@
               <option value="1.5">1.5x</option>
               <option value="1.75">1.75x</option>
             </select>
-            <button class="btn-toggle-tool active" id="btn-autoscroll" title="字幕平滑跟随滚屏">自动跟随: ON</button>
+            <button class="btn-toggle-tool active" id="btn-autoscroll" title="字幕平滑跟随滚屏">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              <span id="autoscroll-text">跟随</span>
+            </button>
           </div>
         </div>
       </section>
@@ -149,8 +257,17 @@
   <div class="modal-overlay" id="modal-sponsor">
     <div class="modal-card">
       <div class="modal-header">
-        <h3 class="modal-title" data-i18n="reader_modal_sponsor_title">☕ 请喝杯咖啡</h3>
-        <button class="modal-close-btn">&times;</button>
+        <h3 class="modal-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+            <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+            <line x1="6" y1="1" x2="6" y2="4"/>
+            <line x1="10" y1="1" x2="10" y2="4"/>
+            <line x1="14" y1="1" x2="14" y2="4"/>
+          </svg>
+          <span data-i18n="reader_modal_sponsor_title">请喝杯咖啡</span>
+        </h3>
+        <button class="modal-close-btn" aria-label="关闭">&times;</button>
       </div>
       <div class="modal-body">
         <p style="margin-bottom: 12px;" data-i18n="reader_modal_sponsor_desc">
@@ -167,16 +284,22 @@
           </div>
         </div>
 
-        <p style="text-align: center; font-size: 12px; color: var(--text-muted); margin-bottom: 16px;" data-i18n="sponsor_scan_hint">
+        <p style="text-align: center; font-size: 11.5px; color: var(--text-muted); margin-bottom: 16px;" data-i18n="sponsor_scan_hint">
           微信 / 支付宝扫一扫 · 随意随心，感谢支持
         </p>
 
         <div class="sponsor-links-row">
           <a href="https://github.com/bojieli/ai-agent-book" target="_blank" rel="noopener noreferrer" class="btn-icon" data-i18n="sponsor_star_btn">
-            ⭐ 原书 GitHub Star 支持
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+            <span>原书 GitHub Star 支持</span>
           </a>
           <a href="https://github.com/sponsors/bojieli" target="_blank" rel="noopener noreferrer" class="btn-icon" data-i18n="sponsor_btn">
-            💖 GitHub Sponsors
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="#f43f5e">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+            <span>GitHub Sponsors</span>
           </a>
         </div>
       </div>
@@ -187,23 +310,29 @@
   <div class="modal-overlay" id="modal-about">
     <div class="modal-card">
       <div class="modal-header">
-        <h3 class="modal-title" data-i18n="reader_modal_about_title">📖 关于《深入浅出 AI Agent》</h3>
-        <button class="modal-close-btn">&times;</button>
+        <h3 class="modal-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+          </svg>
+          <span data-i18n="reader_modal_about_title">关于《深入浅出 AI Agent》</span>
+        </h3>
+        <button class="modal-close-btn" aria-label="关闭">&times;</button>
       </div>
       <div class="modal-body">
-        <h4 style="color: var(--text-primary); margin-bottom: 8px;" data-i18n="reader_modal_about_author_title">原书作者简介</h4>
-        <p style="margin-bottom: 16px;" data-i18n-html="reader_modal_about_author_bio">
+        <h4 style="color: var(--text-primary); margin-bottom: 6px; font-size: 13.5px;" data-i18n="reader_modal_about_author_title">原书作者简介</h4>
+        <p style="margin-bottom: 14px;" data-i18n-html="reader_modal_about_author_bio">
           <b>李博杰 (Bojie Li)</b>：Pine AI 联合创始人兼首席科学家，中国科学院大学兼职讲师，前微软亚洲研究院首席研究员。在计算机系统与分布式 AI 领域有深入研究，本书是他总结的关于现代 AI Agent 架构与工程实践的开源力作。
         </p>
 
-        <h4 style="color: var(--text-primary); margin-bottom: 8px;" data-i18n="reader_modal_about_formula_title">全书核心公式</h4>
-        <div style="background: rgba(0,0,0,0.15); padding: 12px 16px; border-radius: 8px; font-family: var(--font-mono); margin-bottom: 16px; color: var(--text-accent);" data-i18n-html="reader_modal_about_formula_body">
+        <h4 style="color: var(--text-primary); margin-bottom: 6px; font-size: 13.5px;" data-i18n="reader_modal_about_formula_title">全书核心公式</h4>
+        <div style="background: rgba(0,0,0,0.2); border: 1px solid var(--border-subtle); padding: 10px 14px; border-radius: 6px; font-family: var(--font-mono); font-size: 12px; margin-bottom: 14px; color: var(--text-accent);" data-i18n-html="reader_modal_about_formula_body">
           Agent = LLM (大脑) + 上下文 (眼睛) + 工具 (手脚)<br>
           Agent = Model + Harness (约束 + 验证 + 纠错)
         </div>
 
-        <h4 style="color: var(--text-primary); margin-bottom: 8px;" data-i18n="reader_modal_about_res_title">配套资源与下载</h4>
-        <ul style="padding-left: 20px; margin-bottom: 16px;">
+        <h4 style="color: var(--text-primary); margin-bottom: 6px; font-size: 13.5px;" data-i18n="reader_modal_about_res_title">配套资源与下载</h4>
+        <ul style="padding-left: 18px; margin-bottom: 14px; display: flex; flex-direction: column; gap: 4px;">
           <li data-i18n-html="reader_modal_about_res_repo"><b>原书 GitHub 仓库</b>：<a href="https://github.com/bojieli/ai-agent-book" target="_blank" style="color: var(--text-accent);">github.com/bojieli/ai-agent-book</a></li>
           <li data-i18n-html="reader_modal_about_res_en_epub"><b>英文版电子书</b>：<a href="AI-Agents-in-Depth-en-Kindle-Inline.epub" style="color: var(--text-accent);" download>AI-Agents-in-Depth-en-Kindle-Inline.epub (22.9MB)</a></li>
           <li data-i18n-html="reader_modal_about_res_zh_epub"><b>中文版电子书</b>：<a href="AI-Agent-Book-zh-CN-Kindle-Inline.epub" style="color: var(--text-accent);" download>AI-Agent-Book-zh-CN-Kindle-Inline.epub (22.5MB)</a></li>
@@ -217,8 +346,22 @@
   <div class="modal-overlay" id="modal-shortcuts">
     <div class="modal-card">
       <div class="modal-header">
-        <h3 class="modal-title" data-i18n="reader_shortcuts_title">⌨️ 键盘快捷键指南</h3>
-        <button class="modal-close-btn">&times;</button>
+        <h3 class="modal-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="4" width="20" height="16" rx="2"/>
+            <line x1="6" y1="8" x2="6.01" y2="8"/>
+            <line x1="10" y1="8" x2="10.01" y2="8"/>
+            <line x1="14" y1="8" x2="14.01" y2="8"/>
+            <line x1="18" y1="8" x2="18.01" y2="8"/>
+            <line x1="6" y1="12" x2="6.01" y2="12"/>
+            <line x1="10" y1="12" x2="10.01" y2="12"/>
+            <line x1="14" y1="12" x2="14.01" y2="12"/>
+            <line x1="18" y1="12" x2="18.01" y2="12"/>
+            <line x1="7" y1="16" x2="17" y2="16"/>
+          </svg>
+          <span data-i18n="reader_shortcuts_title">键盘快捷键指南</span>
+        </h3>
+        <button class="modal-close-btn" aria-label="关闭">&times;</button>
       </div>
       <div class="modal-body">
         <div class="shortcut-list">
