@@ -232,13 +232,16 @@
 
         ch.sections.forEach(sec => {
           const subItem = document.createElement('a');
-          subItem.className = `sub-nav-item ${sec.cue_id === state.activeSectionCueId ? 'active' : ''}`;
+          const isL3 = sec.level === 3;
+          subItem.className = `sub-nav-item ${isL3 ? 'level-3' : 'level-2'} ${sec.cue_id === state.activeSectionCueId ? 'active' : ''}`;
           subItem.id = `sub-nav-sec-${sec.cue_id}`;
           subItem.dataset.cueId = sec.cue_id;
           subItem.href = `#cue-${sec.cue_id}`;
           const secTitle = isZh ? sec.title_zh : sec.title_en;
+          const numBadge = sec.num ? `<span class="sub-nav-num">${sec.num}</span>` : '';
 
           subItem.innerHTML = `
+            ${numBadge}
             <span class="sub-nav-title" title="${secTitle}">${secTitle}</span>
             <span class="sub-nav-time">${sec.time_str}</span>
           `;
@@ -533,7 +536,8 @@
       marker.dataset.cueId = sec.cue_id;
       marker.style.left = `${pct}%`;
       const title = isZh ? sec.title_zh : sec.title_en;
-      marker.innerHTML = `<span class="seek-marker-tooltip">${sec.time_str} ${title}</span>`;
+      const numPrefix = sec.num ? `[${sec.num}] ` : '';
+      marker.innerHTML = `<span class="seek-marker-tooltip">${numPrefix}${sec.time_str} ${title}</span>`;
       marker.addEventListener('click', (e) => {
         e.stopPropagation();
         const targetCue = state.cues.find(c => c.id === sec.cue_id) || { start: sec.start, id: sec.cue_id };
@@ -567,13 +571,16 @@
       const pillsContainer = overviewBar.querySelector('#overview-pills-list');
       meta.sections.forEach(sec => {
         const pill = document.createElement('a');
-        pill.className = `section-pill ${sec.cue_id === state.activeSectionCueId ? 'active' : ''}`;
+        const isL3 = sec.level === 3;
+        pill.className = `section-pill ${isL3 ? 'level-3' : 'level-2'} ${sec.cue_id === state.activeSectionCueId ? 'active' : ''}`;
         pill.id = `pill-sec-${sec.cue_id}`;
         pill.dataset.cueId = sec.cue_id;
         pill.href = `#cue-${sec.cue_id}`;
         const pTitle = isZh ? sec.title_zh : sec.title_en;
+        const numBadge = sec.num ? `<span class="pill-num">${sec.num}</span>` : '';
         pill.innerHTML = `
-          <span>${pTitle}</span>
+          ${numBadge}
+          <span class="pill-title">${pTitle}</span>
           <span class="section-pill-time">${sec.time_str}</span>
         `;
         pill.addEventListener('click', (e) => {
@@ -597,7 +604,12 @@
         secDivider.className = `section-divider-card level-${sec.level || 2}`;
         secDivider.id = `section-divider-${sec.cue_id}`;
         secDivider.title = isZh ? '点击跳转至该小节播放' : 'Click to jump to section';
-        const secTagLabel = sec.level === 3 ? (isZh ? '小节' : 'SUBSECTION') : (isZh ? '章节' : 'SECTION');
+        const numBadge = sec.num ? ` ${sec.num}` : '';
+        const secTagLabel = sec.level === 3 ? (isZh ? `小节${numBadge}` : `SUBSECTION${numBadge}`) : (isZh ? `章节${numBadge}` : `SECTION${numBadge}`);
+        const primaryTitle = isZh ? sec.title_zh : sec.title_en;
+        const secondaryTitle = isZh ? sec.title_en : sec.title_zh;
+        const numPrefix = sec.num ? `<span class="section-title-num">${sec.num}</span> ` : '';
+
         secDivider.innerHTML = `
           <div class="section-divider-header">
             <span class="section-tag">
@@ -609,8 +621,8 @@
             </span>
             <span class="section-timestamp">${sec.time_str}</span>
           </div>
-          <h3 class="section-title-primary">${isZh ? sec.title_zh : sec.title_en}</h3>
-          <div class="section-title-secondary">${isZh ? sec.title_en : sec.title_zh}</div>
+          <h3 class="section-title-primary">${numPrefix}${primaryTitle}</h3>
+          <div class="section-title-secondary">${sec.num ? sec.num + ' ' : ''}${secondaryTitle}</div>
         `;
         secDivider.addEventListener('click', () => {
           const targetCue = state.cues.find(c => c.id === sec.cue_id) || { start: sec.start, id: sec.cue_id };
