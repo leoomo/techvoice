@@ -580,11 +580,76 @@
     });
   }
 
+  // Dynamic Data Loader for On-Demand Chapter Scripts
+  const DynamicDataLoader = {
+    loadedChapters: new Set(),
+    loadingPromises: new Map(),
+
+    isLoaded(key) {
+      return this.loadedChapters.has(key);
+    },
+
+    loadChapterData(key) {
+      const dataVar = `CHAPTER_DATA_${key}`;
+      if (this.loadedChapters.has(key)) {
+        return Promise.resolve((typeof window !== 'undefined' && window[dataVar]) || []);
+      }
+      if (typeof window !== 'undefined' && window[dataVar]) {
+        this.loadedChapters.add(key);
+        return Promise.resolve(window[dataVar]);
+      }
+      if (this.loadingPromises.has(key)) {
+        return this.loadingPromises.get(key);
+      }
+
+      const promise = new Promise((resolve, reject) => {
+        if (typeof document === 'undefined') {
+          return resolve([]);
+        }
+        const script = document.createElement('script');
+        script.src = `data/${key}.js`;
+        script.async = true;
+        script.onload = () => {
+          this.loadingPromises.delete(key);
+          this.loadedChapters.add(key);
+          resolve((typeof window !== 'undefined' && window[dataVar]) || []);
+        };
+        script.onerror = (err) => {
+          this.loadingPromises.delete(key);
+          if (script.parentNode) {
+            script.parentNode.removeChild(script);
+          }
+          reject(err || new Error(`Failed to load chapter data for ${key}`));
+        };
+        const parent = document.head || document.body || document.documentElement;
+        if (parent && parent.appendChild) {
+          parent.appendChild(script);
+        }
+      });
+
+      this.loadingPromises.set(key, promise);
+      return promise;
+    },
+
+    loadAll() {
+      if (typeof window === 'undefined' || !window.CHAPTERS_META) return Promise.resolve([]);
+      return Promise.all(
+        window.CHAPTERS_META.map(ch => this.loadChapterData(ch.key).catch(e => {
+          console.warn(`Failed to preload ${ch.key}:`, e);
+          return [];
+        }))
+      );
+    }
+  };
+
+  let currentLoadToken = 0;
+
   // Load and Switch Chapter
   function loadChapter(key, autoPlay = false) {
     const meta = window.CHAPTERS_META.find(c => c.key === key);
     if (!meta) return;
 
+    const loadToken = ++currentLoadToken;
     state.currentChapterKey = key;
     state.activeCueId = null;
     state.activeSectionCueId = null;
@@ -605,17 +670,10 @@
     // Update Cache button state for current chapter
     updateCacheBtnState();
 
-    // Load Cues from window.CHAPTER_DATA_{key}
-    const dataVar = `CHAPTER_DATA_${key}`;
-    state.cues = window[dataVar] || [];
-
-    // Render Transcript Cues and Sub-chapter Dividers
-    renderTranscript(meta);
-
     // Render Seekbar chapter tick markers
     renderSeekMarkers(meta);
 
-    // Load Audio
+    // Load Audio immediately (start streaming)
     const wasPlaying = !audio.paused;
     audio.src = resolveAudioUrl(meta.audio);
     audio.playbackRate = state.playbackRate;
@@ -668,9 +726,33 @@
     // Setup Lock Screen & Earphone Media Controls
     updateMediaSession(meta);
 
-    if (state.cues.length > 0) {
-      highlightCue(state.cues[0].id, false);
-      updateActiveSection(0);
+    // Asynchronously or synchronously load chapter cues via DynamicDataLoader
+    const dataVar = `CHAPTER_DATA_${key}`;
+    if (window[dataVar] && Array.isArray(window[dataVar])) {
+      state.cues = window[dataVar];
+      DynamicDataLoader.loadedChapters.add(key);
+      renderTranscript(meta);
+      if (state.cues.length > 0) {
+        highlightCue(state.cues[0].id, false);
+        updateActiveSection(0);
+      }
+    } else {
+      state.cues = [];
+      transcriptEl.innerHTML = '<div class="transcript-loading" style="text-align:center;padding:40px 20px;color:var(--text-muted);"><p>Loading chapter data...</p></div>';
+      DynamicDataLoader.loadChapterData(key).then(cues => {
+        if (loadToken !== currentLoadToken || state.currentChapterKey !== key) return;
+        state.cues = cues || [];
+        renderTranscript(meta);
+        if (state.cues.length > 0) {
+          const curSec = audio.currentTime || 0;
+          highlightCue(state.cues[0].id, false);
+          updateActiveSection(curSec);
+        }
+      }).catch(err => {
+        if (loadToken !== currentLoadToken || state.currentChapterKey !== key) return;
+        console.error(`Failed to load transcript for ${key}:`, err);
+        transcriptEl.innerHTML = '<div class="transcript-error" style="text-align:center;padding:40px 20px;color:var(--text-muted);"><p>Failed to load transcript data.</p></div>';
+      });
     }
 
     if (autoPlay || wasPlaying) {
@@ -1487,7 +1569,8 @@
     calculateBufferPercent,
     parseLocationHash,
     generateDeepLink,
-    copyTextToClipboard
+    copyTextToClipboard,
+    DynamicDataLoader
   };
 
   if (typeof window !== 'undefined') {

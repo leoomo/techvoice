@@ -157,6 +157,7 @@ if (typeof global !== 'undefined') {
     createElement: (tag) => new DOMElementMock(`mock-${Math.random()}`, tag),
     querySelectorAll: () => [],
     querySelector: () => null,
+    head: new DOMElementMock('head', 'head'),
     body: new DOMElementMock('body', 'body'),
     documentElement: new DOMElementMock('html', 'html'),
     addEventListener: () => {},
