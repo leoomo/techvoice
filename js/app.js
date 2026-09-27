@@ -153,6 +153,97 @@
     return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
   }
 
+  // Toast Notification Manager
+  function showToast(message, options = {}) {
+    if (typeof document === 'undefined') return null;
+    let container = document.querySelector('.toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.className = 'toast-container';
+      document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = 'toast-item';
+
+    const msgSpan = document.createElement('span');
+    msgSpan.className = 'toast-msg';
+    msgSpan.textContent = message;
+    toast.appendChild(msgSpan);
+
+    if (options.actionLabel && typeof options.onAction === 'function') {
+      const actionBtn = document.createElement('button');
+      actionBtn.className = 'toast-action-btn';
+      actionBtn.textContent = options.actionLabel;
+      actionBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        options.onAction();
+        removeToast();
+      });
+      toast.appendChild(actionBtn);
+    }
+
+    const closeBtn = document.createElement('button');
+    closeBtn.className = 'toast-close-btn';
+    closeBtn.innerHTML = '&times;';
+    closeBtn.setAttribute('aria-label', 'Close');
+    closeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      removeToast();
+    });
+    toast.appendChild(closeBtn);
+
+    container.appendChild(toast);
+
+    let timer = setTimeout(removeToast, options.duration || 4500);
+
+    function removeToast() {
+      clearTimeout(timer);
+      toast.classList.add('hiding');
+      setTimeout(() => {
+        if (toast.parentNode) {
+          toast.parentNode.removeChild(toast);
+        }
+      }, 300);
+    }
+
+    return toast;
+  }
+
+  // Playback Position Persistence & Auto-Resume
+  let lastPositionSaveTime = 0;
+
+  function savePosition(chapterKey, time, immediate = false) {
+    if (!chapterKey || isNaN(time) || time < 5) return;
+    const now = Date.now();
+    if (immediate || now - lastPositionSaveTime >= 2000) {
+      lastPositionSaveTime = now;
+      try {
+        localStorage.setItem(`ai_agent_pos_${chapterKey}`, time.toFixed(1));
+      } catch (e) {}
+    }
+  }
+
+  function checkAndResumePosition(chapterKey, duration) {
+    try {
+      const saved = localStorage.getItem(`ai_agent_pos_${chapterKey}`);
+      if (!saved) return null;
+      const pos = parseFloat(saved);
+      if (isNaN(pos) || pos < 5) return null;
+      if (duration && pos >= duration - 5) return null;
+      return pos;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function resetChapterPosition(chapterKey) {
+    try {
+      localStorage.removeItem(`ai_agent_pos_${chapterKey}`);
+    } catch (e) {}
+  }
+
+
   // Initialize Preferences from LocalStorage
   function loadPreferences() {
     try {
@@ -345,6 +436,45 @@
     seekBar.value = 0;
     curTimeEl.textContent = '00:00';
     totalTimeEl.textContent = meta.duration_str;
+
+    // Handle Auto-Resume or Deep-Link seek
+    function applyResume() {
+      if (state.pendingDeepLinkTime != null) {
+        const targetTime = Math.min(state.pendingDeepLinkTime, Math.max(0, (audio.duration || 99999) - 1));
+        audio.currentTime = targetTime;
+        curTimeEl.textContent = formatTime(targetTime);
+        seekBar.value = targetTime;
+        state.pendingDeepLinkTime = null;
+        savePosition(key, targetTime, true);
+        return;
+      }
+      const resumedPos = checkAndResumePosition(key, audio.duration);
+      if (resumedPos && resumedPos > 0) {
+        audio.currentTime = resumedPos;
+        curTimeEl.textContent = formatTime(resumedPos);
+        seekBar.value = resumedPos;
+        const isZh = isZhLang();
+        const timeStr = formatTime(resumedPos);
+        const msg = isZh ? `已恢复至上次播放进度 ${timeStr}` : `Resumed to ${timeStr}`;
+        const restartLabel = isZh ? '从头开始' : 'Start Over';
+        showToast(msg, {
+          actionLabel: restartLabel,
+          onAction: () => {
+            audio.currentTime = 0;
+            curTimeEl.textContent = '00:00';
+            seekBar.value = 0;
+            resetChapterPosition(key);
+            if (state.cues.length > 0) highlightCue(state.cues[0].id, false);
+          }
+        });
+      }
+    }
+
+    if (audio.readyState >= 1) {
+      applyResume();
+    } else {
+      audio.addEventListener('loadedmetadata', applyResume, { once: true });
+    }
 
     if (state.cues.length > 0) {
       highlightCue(state.cues[0].id, false);
@@ -817,6 +947,7 @@
     state.isPlaying = false;
     setPlayIcon(false);
     playBtn.title = isZhLang() ? '播放 (Space)' : 'Play (Space)';
+    savePosition(state.currentChapterKey, audio.currentTime, true);
   });
 
   audio.addEventListener('loadedmetadata', () => {
@@ -828,6 +959,9 @@
     const curTime = audio.currentTime;
     curTimeEl.textContent = formatTime(curTime);
     seekBar.value = curTime;
+
+    // Periodically save playback position
+    savePosition(state.currentChapterKey, curTime, false);
 
     // Smooth Lookahead: Preload next chapter when near end (within 60s)
     if (audio.duration > 0 && (audio.duration - curTime <= 60)) {
@@ -1098,6 +1232,18 @@
     }
   });
 
+  // Unload and visibility persistence
+  if (typeof window !== 'undefined') {
+    window.addEventListener('beforeunload', () => {
+      savePosition(state.currentChapterKey, audio.currentTime, true);
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        savePosition(state.currentChapterKey, audio.currentTime, true);
+      }
+    });
+  }
+
   // App Initialization
   loadPreferences();
   renderChapterNav();
@@ -1110,7 +1256,11 @@
     state,
     formatTime,
     resolveAudioUrl,
-    loadChapter
+    loadChapter,
+    showToast,
+    savePosition,
+    checkAndResumePosition,
+    resetChapterPosition
   };
 
   if (typeof window !== 'undefined') {
@@ -1121,4 +1271,5 @@
   }
 
 })();
+
 

@@ -95,9 +95,19 @@ class DOMElementMock {
     this.style = {};
     this.value = '';
     this.innerHTML = '';
-    this.textContent = '';
+    this._textContent = '';
     this.children = [];
     this.listeners = {};
+  }
+  get textContent() {
+    if (this._textContent) return this._textContent;
+    if (this.children.length > 0) {
+      return this.children.map(c => c.textContent || '').join(' ');
+    }
+    return '';
+  }
+  set textContent(v) {
+    this._textContent = String(v);
   }
   setAttribute(k, v) { this[k] = v; }
   getAttribute(k) { return this[k] || null; }

@@ -218,7 +218,16 @@
       reader_theme_tip: "切换深色/浅色模式",
       reader_sponsor_tip: "请喝杯咖啡",
       reader_autoscroll_tip: "字幕平滑跟随滚屏",
-      theme_toggle_title: "切换深色/浅色模式"
+      theme_toggle_title: "切换深色/浅色模式",
+      toast_resumed: "已恢复至上次播放进度",
+      toast_restart_btn: "从头开始",
+      toast_link_copied: "已复制当前句子播放链接",
+      toast_copy_failed: "复制失败，请手动复制",
+      toast_network_error: "音频加载遇到问题，请检查网络",
+      toast_retry_btn: "重试",
+      toast_timer_set: "睡眠定时已设为",
+      toast_timer_off: "睡眠定时已关闭",
+      toast_ab_loop_cleared: "已自动解除单句复读"
     },
     en: {
       // Header & Navigation
@@ -431,7 +440,16 @@
       reader_theme_tip: "Toggle Dark / Light Mode",
       reader_sponsor_tip: "Buy Me a Coffee",
       reader_autoscroll_tip: "Smooth Auto-Scroll Subtitles",
-      theme_toggle_title: "Toggle Dark / Light Theme"
+      theme_toggle_title: "Toggle Dark / Light Theme",
+      toast_resumed: "Resumed to previous position",
+      toast_restart_btn: "Start Over",
+      toast_link_copied: "Sentence timestamp link copied",
+      toast_copy_failed: "Failed to copy link",
+      toast_network_error: "Audio loading issue, check connection",
+      toast_retry_btn: "Retry",
+      toast_timer_set: "Sleep timer set to",
+      toast_timer_off: "Sleep timer turned off",
+      toast_ab_loop_cleared: "A-B Loop disabled for sleep timer"
     }
   };
 
