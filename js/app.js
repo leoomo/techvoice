@@ -868,22 +868,15 @@
     return Math.max(safeMin, cutoff - leadBuffer);
   }
 
-  // Echo Method (Prof. Karen Chung's 3-step loop) Controller
+  // 3-Pass Mastery Shadowing Loop Controller
   const EchoController = {
     mode: false,
-    step: 'IDLE', // 'IDLE' | 'LISTEN' | 'ECHO' | 'SHADOW'
-    timerId: null,
+    step: 'IDLE', // 'IDLE' | 'LISTEN' | 'SHADOW' | 'REVIEW'
     activeCue: null,
-    savedVolume: 1.0,
+    isSeeking: false,
 
     isActive() {
       return this.mode || this.step !== 'IDLE';
-    },
-
-    calcEchoDuration(cue) {
-      if (!cue) return 2.0;
-      const raw = (cue.end - cue.start) * 0.75;
-      return Math.max(1.8, Math.min(3.5, raw));
     },
 
     toggleMode(forceState, fromCue) {
@@ -895,9 +888,9 @@
         if (state.repeatCurrent) {
           state.repeatCurrent = false;
           if (repeatBtn) repeatBtn.classList.remove('active');
-          showToast(isZh ? '已自动解除单句复读并开启全局跟读模式' : 'A-B Loop disabled, global shadowing enabled');
+          showToast(isZh ? '已自动解除单句复读并开启三遍跟读模式' : 'A-B Loop disabled, 3-Pass shadowing enabled');
         } else {
-          showToast(isZh ? '已开启全局跟读模式（原速听 -> 留白想 -> 降速跟读）' : 'Global shadowing mode enabled (Listen -> Echo -> Shadow at 0.85x)');
+          showToast(isZh ? '已开启三遍跟读模式（1遍原速听 -> 2遍慢速跟读 -> 3遍原速巩固）' : '3-Pass shadowing enabled (1. Listen -> 2. Shadow 0.85x -> 3. Review)');
         }
         if (echoModeBtn) echoModeBtn.classList.add('active');
 
@@ -914,7 +907,6 @@
     },
 
     startSingleCue(cue) {
-      // Clicking cue card initiates global shadowing starting from this cue
       this.toggleMode(true, cue);
     },
 
@@ -927,11 +919,10 @@
       }
       this.activeCue = cue;
       this.step = 'LISTEN';
+      this.isSeeking = true;
       audio.playbackRate = state.playbackRate;
-      if (typeof this.savedVolume === 'number' && audio.volume === 0) {
-        audio.volume = this.savedVolume;
-      }
       audio.currentTime = cue.start + 0.02;
+      setTimeout(() => { this.isSeeking = false; }, 80);
       if (audio.paused) {
         audio.play().catch(err => console.log('Audio play error:', err));
       }
@@ -941,45 +932,33 @@
     },
 
     onTimeUpdate(curTime, currentCue) {
+      if (this.isSeeking || (audio && audio.seeking)) return;
       const targetCue = this.activeCue || currentCue;
       if (!targetCue) return;
+      if (curTime < targetCue.start + 0.05) return;
+
       const cutoff = getCueCutoff(targetCue);
-      if (this.step === 'LISTEN') {
-        if (curTime >= cutoff) {
-          this.enterEchoStep(targetCue);
-        }
-      } else if (this.step === 'SHADOW') {
-        if (curTime >= cutoff) {
-          this.finishShadowStep(targetCue);
+      if (curTime >= cutoff) {
+        if (this.step === 'LISTEN') {
+          // Pass 1 (Listen) complete -> Pass 2 (Shadow at 0.85x, full sentence)
+          this.enterShadowStep(targetCue);
+        } else if (this.step === 'SHADOW') {
+          // Pass 2 (Shadow) complete -> Pass 3 (Review at 1.0x, full sentence)
+          this.enterReviewStep(targetCue);
+        } else if (this.step === 'REVIEW') {
+          // Pass 3 (Review) complete -> Auto-advance to next sentence
+          this.finishReviewStep(targetCue);
         }
       }
     },
 
-    enterEchoStep(cue) {
-      this.step = 'ECHO';
-      this.savedVolume = (audio.volume > 0 ? audio.volume : (this.savedVolume || 1.0));
-      audio.volume = 0; // Silent pause - keep session active so browser never blocks resumption
-      audio.currentTime = cue.start + 0.02;
-      this.updateVisuals(cue);
-      const dur = this.calcEchoDuration(cue);
-      if (this.timerId) clearTimeout(this.timerId);
-      this.timerId = setTimeout(() => {
-        this.triggerShadow();
-      }, dur * 1000);
-    },
-
-    triggerShadow() {
-      if (this.timerId) {
-        clearTimeout(this.timerId);
-        this.timerId = null;
-      }
-      const cue = this.activeCue;
-      if (!cue) return;
+    enterShadowStep(cue) {
       this.step = 'SHADOW';
-      audio.volume = (typeof this.savedVolume === 'number') ? this.savedVolume : 1.0;
+      this.isSeeking = true;
       const shadowRate = Math.min(state.playbackRate, 0.85);
       audio.playbackRate = shadowRate;
       audio.currentTime = cue.start + 0.02;
+      setTimeout(() => { this.isSeeking = false; }, 80);
       this.updateVisuals(cue);
       if (audio.paused) {
         audio.play().catch(err => console.log('Shadow play failed:', err));
@@ -987,11 +966,21 @@
       syncBoundaryMonitor();
     },
 
-    finishShadowStep(cue) {
+    enterReviewStep(cue) {
+      this.step = 'REVIEW';
+      this.isSeeking = true;
       audio.playbackRate = state.playbackRate;
-      if (typeof this.savedVolume === 'number') {
-        audio.volume = this.savedVolume;
+      audio.currentTime = cue.start + 0.02;
+      setTimeout(() => { this.isSeeking = false; }, 80);
+      this.updateVisuals(cue);
+      if (audio.paused) {
+        audio.play().catch(err => console.log('Review play failed:', err));
       }
+      syncBoundaryMonitor();
+    },
+
+    finishReviewStep(cue) {
+      audio.playbackRate = state.playbackRate;
       this.clearVisuals();
 
       if (this.mode) {
@@ -1020,18 +1009,12 @@
     },
 
     cancelEcho(restoreRate = true) {
-      if (this.timerId) {
-        clearTimeout(this.timerId);
-        this.timerId = null;
-      }
       this.step = 'IDLE';
       this.activeCue = null;
+      this.isSeeking = false;
       this.clearVisuals();
       if (restoreRate && audio) {
         audio.playbackRate = state.playbackRate;
-        if (typeof this.savedVolume === 'number') {
-          audio.volume = this.savedVolume;
-        }
       }
       syncBoundaryMonitor();
     },
@@ -1054,12 +1037,15 @@
           }
         }
         const isZh = isZhLang();
-        if (this.step === 'ECHO') {
-          card.classList.add('echo-step-echoing');
-          badge.textContent = isZh ? '🧠 留白回响 (脑海回放原声)...' : '🧠 Echo in mind (mental replay)...';
+        if (this.step === 'LISTEN') {
+          card.classList.add('echo-step-listening');
+          badge.textContent = isZh ? '🎧 第 1/3 遍 · 原速输入 (1.0x)' : '🎧 Pass 1/3 · Listen (1.0x)...';
         } else if (this.step === 'SHADOW') {
           card.classList.add('echo-step-shadowing');
-          badge.textContent = isZh ? '🎙️ 开口模仿跟读 (0.85x原声音频)...' : '🎙️ Shadowing & Mimic (0.85x voice)...';
+          badge.textContent = isZh ? '🎙️ 第 2/3 遍 · 降速跟读 (0.85x)' : '🎙️ Pass 2/3 · Shadow (0.85x)...';
+        } else if (this.step === 'REVIEW') {
+          card.classList.add('echo-step-reviewing');
+          badge.textContent = isZh ? '🌟 第 3/3 遍 · 原速巩固 (1.0x)' : '🌟 Pass 3/3 · Review (1.0x)...';
         }
       }
       if (echoModeBtn) {
@@ -1069,7 +1055,7 @@
 
     clearVisuals() {
       if (typeof document === 'undefined') return;
-      ['echo-step-echoing', 'echo-step-shadowing'].forEach(cls => {
+      ['echo-step-listening', 'echo-step-shadowing', 'echo-step-reviewing', 'echo-step-echoing'].forEach(cls => {
         const els = document.querySelectorAll('.' + cls);
         if (els && els.forEach) {
           els.forEach(el => el.classList.remove(cls));
@@ -1084,6 +1070,7 @@
 
   function checkCueBoundaries(curTime) {
     if (state.repeatCurrent && state.cues && state.cues.length > 0) {
+      if (audio && audio.seeking) return true;
       let repeatCue = state.cues.find(c => c.id === state.activeCueId);
       if (!repeatCue) {
         repeatCue = state.cues.find(c => curTime >= c.start && curTime <= c.end) || state.cues[0];
@@ -1091,6 +1078,10 @@
       }
       if (repeatCue) {
         const cutoff = getCueCutoff(repeatCue);
+        if (curTime < repeatCue.start + 0.05) {
+          highlightCue(repeatCue.id);
+          return true;
+        }
         // Loop boundary: reached or passed cutoff (within 0.8s window of cue end)
         if (curTime >= cutoff && curTime < repeatCue.end + 0.8) {
           audio.currentTime = repeatCue.start + 0.02;

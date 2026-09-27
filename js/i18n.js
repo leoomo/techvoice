@@ -242,15 +242,17 @@
       toast_timer_set: "睡眠定时已设为",
       toast_timer_off: "睡眠定时已关闭",
       toast_ab_loop_cleared: "已自动解除单句复读",
-      btn_echo_mode: "回音模式",
-      reader_echo_tip: "史嘉琳回音精听模式 (快捷键: E)",
-      reader_cue_echo_tip: "回音三步法精听 (听 -> 留白想 -> 降速跟读)",
+      btn_echo_mode: "跟读模式",
+      reader_echo_tip: "三遍精听跟读模式 (快捷键: E)",
+      reader_cue_echo_tip: "三遍精听跟读 (1原速听 -> 2慢速跟读 -> 3原速巩固)",
+      echo_status_listening: "🎧 第 1/3 遍 · 原速输入 (专注听清发音)...",
+      echo_status_shadowing: "🎙️ 第 2/3 遍 · 降速跟读 (0.85x完整发音)...",
+      echo_status_reviewing: "🌟 第 3/3 遍 · 原速巩固 (脱稿流利复述)...",
       echo_status_echoing: "🧠 留白回响 (脑海回放原声)...",
-      echo_status_shadowing: "🎙️ 开口模仿跟读 (0.85x原声音频)...",
-      reader_modal_sc_echo: "开启 / 关闭回音精听模式（史嘉琳三步法）",
-      toast_echo_enabled: "回音精听模式已开启（原速听 -> 留白想 -> 0.85x开口跟读）",
-      toast_echo_disabled: "回音精听模式已关闭",
-      toast_echo_ab_mutually_cleared: "已自动解除单句复读并开启回音模式"
+      reader_modal_sc_echo: "开启 / 关闭三遍精听跟读模式（快捷键: E）",
+      toast_echo_enabled: "三遍精听跟读已开启（1遍原速听 -> 2遍慢速跟读 -> 3遍原速巩固）",
+      toast_echo_disabled: "跟读模式已关闭",
+      toast_echo_ab_mutually_cleared: "已自动解除单句复读并开启三遍跟读模式"
     },
     en: {
       // Header & Navigation
@@ -487,15 +489,17 @@
       toast_timer_set: "Sleep timer set to",
       toast_timer_off: "Sleep timer turned off",
       toast_ab_loop_cleared: "A-B Loop disabled for sleep timer",
-      btn_echo_mode: "Echo Mode",
-      reader_echo_tip: "Echo Method Listening (Shortcut: E)",
-      reader_cue_echo_tip: "Echo Method (Listen -> Echo in mind -> Shadow at 0.85x)",
+      btn_echo_mode: "Shadowing",
+      reader_echo_tip: "3-Pass Shadowing Mode (Shortcut: E)",
+      reader_cue_echo_tip: "3-Pass Shadowing (1. Listen -> 2. Shadow 0.85x -> 3. Review)",
+      echo_status_listening: "🎧 Pass 1/3 · Listen (1.0x input)...",
+      echo_status_shadowing: "🎙️ Pass 2/3 · Shadow (0.85x full sentence)...",
+      echo_status_reviewing: "🌟 Pass 3/3 · Review (1.0x consolidation)...",
       echo_status_echoing: "🧠 Echo in mind (mental replay)...",
-      echo_status_shadowing: "🎙️ Shadowing & Mimic (0.85x voice)...",
-      reader_modal_sc_echo: "Toggle Echo Method Loop (Listen -> Echo -> Shadow)",
-      toast_echo_enabled: "Echo mode enabled (Listen -> Echo -> Shadow at 0.85x)",
-      toast_echo_disabled: "Echo mode disabled",
-      toast_echo_ab_mutually_cleared: "A-B Loop disabled, Echo mode enabled"
+      reader_modal_sc_echo: "Toggle 3-Pass Shadowing Mode (Shortcut: E)",
+      toast_echo_enabled: "3-Pass shadowing enabled (1. Listen -> 2. Shadow 0.85x -> 3. Review)",
+      toast_echo_disabled: "Shadowing mode disabled",
+      toast_echo_ab_mutually_cleared: "A-B Loop disabled, 3-Pass shadowing enabled"
     }
   };
 
