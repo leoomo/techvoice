@@ -109,7 +109,8 @@
     cacheDone: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
     cacheLoading: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>`,
     check: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
-    cross: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`
+    cross: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+    share: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`
   };
 
   function updateThemeUI() {
@@ -352,6 +353,82 @@
 
 
 
+  // Timestamp Deep Linking and Sentence Sharing
+  function parseLocationHash(hashStr) {
+    if (!hashStr) return { chapterKey: null, seekTime: null, cueId: null };
+    const raw = hashStr.startsWith('#') ? hashStr.slice(1) : hashStr;
+    if (!raw) return { chapterKey: null, seekTime: null, cueId: null };
+
+    let chapterKey = null;
+    let cueId = null;
+    let seekTime = null;
+
+    // Extract query part if present (?t=123 or ?cue=456)
+    const qIdx = raw.indexOf('?');
+    let mainPart = raw;
+    let queryPart = '';
+    if (qIdx !== -1) {
+      mainPart = raw.slice(0, qIdx);
+      queryPart = raw.slice(qIdx + 1);
+    }
+
+    // Parse mainPart: could be chapter2 or chapter2-cue_15 or chapter2-15
+    const dashMatch = mainPart.match(/^([a-zA-Z0-9]+)(?:-(cue_?[a-zA-Z0-9_]+|[0-9]+))?$/);
+    if (dashMatch) {
+      chapterKey = dashMatch[1];
+      if (dashMatch[2]) {
+        cueId = dashMatch[2];
+      }
+    } else {
+      chapterKey = mainPart;
+    }
+
+    if (queryPart) {
+      const params = new URLSearchParams(queryPart);
+      if (params.has('t') || params.has('time')) {
+        const t = parseFloat(params.get('t') || params.get('time'));
+        if (!isNaN(t) && t >= 0) seekTime = t;
+      }
+      if (params.has('cue')) {
+        cueId = params.get('cue');
+      }
+    }
+
+    return { chapterKey, seekTime, cueId };
+  }
+
+  function generateDeepLink(chapterKey, seekTime, cueId) {
+    const origin = (typeof window !== 'undefined' && window.location) 
+      ? `${window.location.origin}${window.location.pathname}`
+      : 'reader.html';
+    const tParam = (seekTime != null && !isNaN(seekTime)) ? `?t=${seekTime.toFixed(1)}` : '';
+    return `${origin}#${chapterKey}${tParam}`;
+  }
+
+  async function copyTextToClipboard(text) {
+    if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (e) {}
+    }
+    if (typeof document !== 'undefined' && typeof document.execCommand === 'function') {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const res = document.execCommand('copy');
+        document.body.removeChild(ta);
+        return !!res;
+      } catch (err) {}
+    }
+    return false;
+  }
+
   // Initialize Preferences from LocalStorage
   function loadPreferences() {
     try {
@@ -372,11 +449,14 @@
         audio.playbackRate = state.playbackRate;
       }
 
-      // Check URL hash for chapter
-      const hash = window.location.hash.replace('#', '');
-      const validMeta = window.CHAPTERS_META.find(c => c.key === hash);
+      // Check URL hash for chapter and deep link parameters
+      const parsed = parseLocationHash(window.location.hash);
+      const validMeta = parsed.chapterKey ? window.CHAPTERS_META.find(c => c.key === parsed.chapterKey) : null;
       if (validMeta) {
-        state.currentChapterKey = hash;
+        state.currentChapterKey = parsed.chapterKey;
+        if (parsed.seekTime != null) {
+          state.pendingDeepLinkTime = parsed.seekTime;
+        }
       } else {
         const savedCh = localStorage.getItem('ai_agent_current_chapter');
         if (savedCh && window.CHAPTERS_META.find(c => c.key === savedCh)) {
@@ -929,8 +1009,11 @@
       card.innerHTML = `
         <div class="cue-meta-col">
           <span class="cue-timestamp">${timeStr}</span>
-          <button class="cue-btn-repeat" title="单句循环 (Repeat sentence)" data-cue-id="${cue.id}">
+          <button class="cue-btn-repeat" title="${isZh ? '单句循环跟读 (R)' : 'Repeat sentence (R)'}" data-cue-id="${cue.id}">
             ${SVGS.repeat}
+          </button>
+          <button class="cue-btn-share" title="${isZh ? '复制本句播放链接' : 'Copy sentence link'}" data-cue-id="${cue.id}">
+            ${SVGS.share}
           </button>
         </div>
         <div class="cue-text-col">
@@ -941,18 +1024,36 @@
 
       // Click card to jump audio
       card.addEventListener('click', (e) => {
-        if (e.target.classList.contains('cue-btn-repeat')) return;
+        if (e.target.closest('.cue-btn-repeat') || e.target.closest('.cue-btn-share')) return;
         seekToCue(cue);
       });
 
       // Repeat button
       const rBtn = card.querySelector('.cue-btn-repeat');
-      rBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        state.repeatCurrent = true;
-        repeatBtn.classList.add('active');
-        seekToCue(cue);
-      });
+      if (rBtn) {
+        rBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          state.repeatCurrent = true;
+          repeatBtn.classList.add('active');
+          seekToCue(cue);
+        });
+      }
+
+      // Share button
+      const sBtn = card.querySelector('.cue-btn-share');
+      if (sBtn) {
+        sBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const link = generateDeepLink(meta.key, cue.start, cue.id);
+          copyTextToClipboard(link).then((ok) => {
+            const isZhNow = isZhLang();
+            showToast(ok 
+              ? (isZhNow ? '已复制当前句子播放链接' : 'Sentence timestamp link copied') 
+              : (isZhNow ? '复制失败，请手动复制' : 'Failed to copy link')
+            );
+          });
+        });
+      }
 
       transcriptEl.appendChild(card);
     });
@@ -1383,7 +1484,10 @@
     resetChapterPosition,
     updateMediaSession,
     syncMediaPositionState,
-    calculateBufferPercent
+    calculateBufferPercent,
+    parseLocationHash,
+    generateDeepLink,
+    copyTextToClipboard
   };
 
   if (typeof window !== 'undefined') {

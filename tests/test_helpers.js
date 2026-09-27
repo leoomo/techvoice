@@ -190,6 +190,20 @@ if (typeof global !== 'undefined') {
     setPositionState: () => {}
   };
 
+  const mockClipboard = {
+    writeText: (t) => Promise.resolve(t)
+  };
+
+  try {
+    Object.defineProperty(global.navigator, 'clipboard', {
+      value: mockClipboard,
+      writable: true,
+      configurable: true
+    });
+  } catch (e) {
+    global.navigator.clipboard = mockClipboard;
+  }
+
   try {
     Object.defineProperty(global.navigator, 'mediaSession', {
       value: mockMediaSession,
