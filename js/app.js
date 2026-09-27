@@ -1706,6 +1706,35 @@
     // Active sub-chapter / section tracking
     updateActiveSection(curTime);
 
+    // Single-sentence repeat (A-B loop) handling with boundary protection
+    if (state.repeatCurrent && state.cues.length > 0) {
+      let repeatCue = state.cues.find(c => c.id === state.activeCueId);
+      if (!repeatCue) {
+        repeatCue = state.cues.find(c => curTime >= c.start && curTime <= c.end) || state.cues[0];
+        if (repeatCue) state.activeCueId = repeatCue.id;
+      }
+      if (repeatCue) {
+        // If within natural playback loop boundary (overshoot <= 1.5s)
+        if (curTime >= repeatCue.end && curTime < repeatCue.end + 1.5) {
+          audio.currentTime = repeatCue.start + 0.05;
+          highlightCue(repeatCue.id);
+          return;
+        }
+        // If outside repeatCue because of a deliberate seek/jump (> 1.5s overshoot or before cue start)
+        if (curTime < repeatCue.start - 0.2 || curTime >= repeatCue.end + 1.5) {
+          const seekedCue = state.cues.find(c => curTime >= c.start && curTime <= c.end);
+          if (seekedCue) {
+            state.activeCueId = seekedCue.id;
+            highlightCue(seekedCue.id);
+            return;
+          }
+        } else {
+          highlightCue(repeatCue.id);
+          return;
+        }
+      }
+    }
+
     // Find active cue
     let currentCue = state.cues.find(c => curTime >= c.start && curTime <= c.end) ||
                      state.cues.find(c => curTime >= c.start && curTime <= c.start + 12);
@@ -1719,15 +1748,20 @@
           EchoController.startContinuous(currentCue);
         }
         EchoController.onTimeUpdate(curTime, currentCue);
-      } else if (state.repeatCurrent && curTime >= currentCue.end) {
-        audio.currentTime = currentCue.start + 0.05;
-        return;
       }
       highlightCue(currentCue.id);
     }
   });
 
   audio.addEventListener('ended', () => {
+    if (state.repeatCurrent && state.activeCueId) {
+      const cue = state.cues.find(c => c.id === state.activeCueId);
+      if (cue) {
+        audio.currentTime = cue.start + 0.05;
+        audio.play().catch(err => console.log('Repeat replay error:', err));
+        return;
+      }
+    }
     state.isPlaying = false;
     setPlayIcon(false);
     if (SleepTimer.mode === 'end_of_chapter') {
