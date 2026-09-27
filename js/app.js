@@ -36,6 +36,7 @@
   const forwardBtn = document.getElementById('btn-forward');
   const repeatBtn = document.getElementById('btn-repeat');
   const seekBar = document.getElementById('seek-bar');
+  const bufferBarEl = document.getElementById('seek-buffer-bar');
   const curTimeEl = document.getElementById('time-current');
   const totalTimeEl = document.getElementById('time-total');
   const speedSelect = document.getElementById('speed-select');
@@ -317,6 +318,38 @@
     } catch (e) {}
   }
 
+  // Audio Stream Buffer Progress Calculation
+  function calculateBufferPercent(curTime, buffered, duration) {
+    if (!duration || duration <= 0 || isNaN(duration) || !buffered || buffered.length === 0) {
+      return 0;
+    }
+    let bufferEnd = 0;
+    for (let i = 0; i < buffered.length; i++) {
+      const start = buffered.start(i);
+      const end = buffered.end(i);
+      if (curTime >= start && curTime <= end) {
+        bufferEnd = end;
+        break;
+      } else if (start <= curTime) {
+        bufferEnd = Math.max(bufferEnd, end);
+      } else if (bufferEnd === 0 && i === 0 && start === 0) {
+        bufferEnd = end;
+      }
+    }
+    if (bufferEnd === 0 && buffered.length > 0) {
+      bufferEnd = buffered.end(buffered.length - 1);
+    }
+    const pct = Math.min(100, Math.max(0, (bufferEnd / duration) * 100));
+    return Math.round(pct * 10) / 10;
+  }
+
+  function updateBufferProgress() {
+    if (!bufferBarEl || !audio) return;
+    const pct = calculateBufferPercent(audio.currentTime, audio.buffered, audio.duration);
+    bufferBarEl.style.width = `${pct}%`;
+  }
+
+
 
 
   // Initialize Preferences from LocalStorage
@@ -509,6 +542,7 @@
     audio.load();
 
     seekBar.value = 0;
+    if (bufferBarEl) bufferBarEl.style.width = '0%';
     curTimeEl.textContent = '00:00';
     totalTimeEl.textContent = meta.duration_str;
 
@@ -1034,7 +1068,10 @@
     totalTimeEl.textContent = formatTime(audio.duration);
     seekBar.max = audio.duration;
     syncMediaPositionState(audio.currentTime, audio.duration, audio.playbackRate);
+    updateBufferProgress();
   });
+
+  audio.addEventListener('progress', updateBufferProgress);
 
   audio.addEventListener('timeupdate', () => {
     const curTime = audio.currentTime;
@@ -1044,6 +1081,7 @@
     // Periodically save playback position
     savePosition(state.currentChapterKey, curTime, false);
     syncMediaPositionState(curTime, audio.duration, audio.playbackRate);
+    updateBufferProgress();
 
     // Smooth Lookahead: Preload next chapter when near end (within 60s)
     if (audio.duration > 0 && (audio.duration - curTime <= 60)) {
@@ -1344,7 +1382,8 @@
     checkAndResumePosition,
     resetChapterPosition,
     updateMediaSession,
-    syncMediaPositionState
+    syncMediaPositionState,
+    calculateBufferPercent
   };
 
   if (typeof window !== 'undefined') {

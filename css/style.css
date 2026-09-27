@@ -743,6 +743,37 @@ kbd {
   height: 24px;
 }
 
+.seek-track-wrapper::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-subtle);
+  z-index: 0;
+}
+
+.seek-buffer-bar {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 4px;
+  width: 0%;
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 2px;
+  pointer-events: none;
+  transition: width 0.2s ease;
+  z-index: 1;
+}
+
+[data-theme="light"] .seek-buffer-bar {
+  background: rgba(0, 0, 0, 0.16);
+}
+
 .seek-bar {
   width: 100%;
   position: relative;
@@ -751,7 +782,7 @@ kbd {
   appearance: none;
   height: 4px;
   border-radius: 2px;
-  background: var(--border-subtle);
+  background: transparent;
   outline: none;
   cursor: pointer;
   transition: height 0.15s ease;
