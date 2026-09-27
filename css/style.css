@@ -1252,8 +1252,7 @@ kbd {
 }
 
 .cue-btn-repeat,
-.cue-btn-echo,
-.cue-btn-share {
+.cue-btn-echo {
   opacity: 0;
   background: transparent;
   border: none;
@@ -1269,14 +1268,12 @@ kbd {
 }
 
 .cue-card:hover .cue-btn-repeat,
-.cue-card:hover .cue-btn-echo,
-.cue-card:hover .cue-btn-share {
+.cue-card:hover .cue-btn-echo {
   opacity: 1;
 }
 
 .cue-btn-repeat:hover,
-.cue-btn-echo:hover,
-.cue-btn-share:hover {
+.cue-btn-echo:hover {
   color: var(--text-accent);
   background: rgba(56, 189, 248, 0.1);
 }
@@ -1869,8 +1866,7 @@ kbd {
   }
 
   .cue-btn-repeat,
-  .cue-btn-echo,
-  .cue-btn-share {
+  .cue-btn-echo {
     opacity: 0.7; /* visible on touch screens */
     width: 24px;
     height: 24px;

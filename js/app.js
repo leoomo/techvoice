@@ -851,13 +851,13 @@
   // Echo Method (Prof. Karen Chung's 3-step loop) Controller
   const EchoController = {
     mode: false,
-    singleCueId: null,
     step: 'IDLE', // 'IDLE' | 'LISTEN' | 'ECHO' | 'SHADOW'
     timerId: null,
     activeCue: null,
+    savedVolume: 1.0,
 
     isActive() {
-      return this.mode || this.singleCueId !== null || this.step !== 'IDLE';
+      return this.mode || this.step !== 'IDLE';
     },
 
     calcEchoDuration(cue) {
@@ -866,7 +866,7 @@
       return Math.max(1.8, Math.min(3.5, raw));
     },
 
-    toggleMode(forceState) {
+    toggleMode(forceState, fromCue) {
       const target = (typeof forceState === 'boolean') ? forceState : !this.mode;
       this.mode = target;
 
@@ -875,51 +875,44 @@
         if (state.repeatCurrent) {
           state.repeatCurrent = false;
           if (repeatBtn) repeatBtn.classList.remove('active');
-          showToast(isZh ? '已自动解除单句复读并开启回音模式' : 'A-B Loop disabled, Echo mode enabled');
+          showToast(isZh ? '已自动解除单句复读并开启全局跟读模式' : 'A-B Loop disabled, global shadowing enabled');
         } else {
-          showToast(isZh ? '回音精听模式已开启（原速听 -> 留白想 -> 0.85x开口跟读）' : 'Echo mode enabled (Listen -> Echo -> Shadow at 0.85x)');
+          showToast(isZh ? '已开启全局跟读模式（原速听 -> 留白想 -> 降速跟读）' : 'Global shadowing mode enabled (Listen -> Echo -> Shadow at 0.85x)');
         }
         if (echoModeBtn) echoModeBtn.classList.add('active');
 
-        const curCue = state.cues.find(c => c.id === state.activeCueId) || state.cues[0];
-        if (curCue && !audio.paused && this.step === 'IDLE') {
-          this.startContinuous(curCue);
+        const targetCue = fromCue || state.cues.find(c => c.id === state.activeCueId) || state.cues[0];
+        if (targetCue) {
+          this.startContinuous(targetCue);
         }
       } else {
         this.cancelEcho(true);
         if (echoModeBtn) echoModeBtn.classList.remove('active');
-        showToast(isZh ? '回音精听模式已关闭' : 'Echo mode disabled');
+        showToast(isZh ? '跟读模式已关闭' : 'Shadowing mode disabled');
       }
     },
 
     startSingleCue(cue) {
-      if (!cue) return;
-      if (state.repeatCurrent) {
-        state.repeatCurrent = false;
-        if (repeatBtn) repeatBtn.classList.remove('active');
-      }
-      this.cancelEcho(false);
-      this.singleCueId = cue.id;
-      this.activeCue = cue;
-      this.step = 'LISTEN';
-      audio.playbackRate = state.playbackRate;
-      audio.currentTime = cue.start;
-      if (audio.paused) {
-        audio.play().catch(err => console.log(err));
-      }
-      this.updateVisuals(cue);
-      highlightCue(cue.id, true);
+      // Clicking cue card initiates global shadowing starting from this cue
+      this.toggleMode(true, cue);
     },
 
     startContinuous(cue) {
       if (!cue) return;
-      this.singleCueId = null;
+      this.mode = true;
+      if (state.repeatCurrent) {
+        state.repeatCurrent = false;
+        if (repeatBtn) repeatBtn.classList.remove('active');
+      }
       this.activeCue = cue;
       this.step = 'LISTEN';
       audio.playbackRate = state.playbackRate;
-      audio.currentTime = cue.start;
+      if (typeof this.savedVolume === 'number' && audio.volume === 0) {
+        audio.volume = this.savedVolume;
+      }
+      audio.currentTime = cue.start + 0.02;
       if (audio.paused) {
-        audio.play().catch(err => console.log(err));
+        audio.play().catch(err => console.log('Audio play error:', err));
       }
       this.updateVisuals(cue);
       highlightCue(cue.id, true);
@@ -941,7 +934,9 @@
 
     enterEchoStep(cue) {
       this.step = 'ECHO';
-      audio.pause();
+      this.savedVolume = (audio.volume > 0 ? audio.volume : (this.savedVolume || 1.0));
+      audio.volume = 0; // Silent pause - keep session active so browser never blocks resumption
+      audio.currentTime = cue.start;
       this.updateVisuals(cue);
       const dur = this.calcEchoDuration(cue);
       if (this.timerId) clearTimeout(this.timerId);
@@ -958,31 +953,39 @@
       const cue = this.activeCue;
       if (!cue) return;
       this.step = 'SHADOW';
+      audio.volume = (typeof this.savedVolume === 'number') ? this.savedVolume : 1.0;
       const shadowRate = Math.min(state.playbackRate, 0.85);
       audio.playbackRate = shadowRate;
       audio.currentTime = cue.start + 0.02;
       this.updateVisuals(cue);
-      audio.play().catch(err => console.log('Shadow play failed:', err));
+      if (audio.paused) {
+        audio.play().catch(err => console.log('Shadow play failed:', err));
+      }
     },
 
     finishShadowStep(cue) {
       audio.playbackRate = state.playbackRate;
+      if (typeof this.savedVolume === 'number') {
+        audio.volume = this.savedVolume;
+      }
       this.clearVisuals();
 
-      if (this.singleCueId !== null) {
-        this.step = 'IDLE';
-        this.singleCueId = null;
-        this.activeCue = null;
-        audio.pause();
-      } else if (this.mode) {
-        const curIdx = state.cues.findIndex(c => c.id === cue.id);
+      if (this.mode) {
+        const curIdx = state.cues.findIndex(c => String(c.id) === String(cue.id));
         if (curIdx >= 0 && curIdx < state.cues.length - 1) {
           const nextCue = state.cues[curIdx + 1];
           this.startContinuous(nextCue);
         } else {
-          this.step = 'IDLE';
-          this.activeCue = null;
-          audio.pause();
+          // Chapter ended: autoplay next chapter if available
+          const chIdx = window.CHAPTERS_META.findIndex(c => c.key === state.currentChapterKey);
+          if (chIdx < window.CHAPTERS_META.length - 1) {
+            const nextCh = window.CHAPTERS_META[chIdx + 1];
+            loadChapter(nextCh.key, true);
+          } else {
+            this.step = 'IDLE';
+            this.activeCue = null;
+            audio.pause();
+          }
         }
       } else {
         this.step = 'IDLE';
@@ -996,11 +999,13 @@
         this.timerId = null;
       }
       this.step = 'IDLE';
-      this.singleCueId = null;
       this.activeCue = null;
       this.clearVisuals();
       if (restoreRate && audio) {
         audio.playbackRate = state.playbackRate;
+        if (typeof this.savedVolume === 'number') {
+          audio.volume = this.savedVolume;
+        }
       }
     },
 
@@ -1502,11 +1507,8 @@
           <button class="cue-btn-repeat" title="${isZh ? '单句循环跟读 (R)' : 'Repeat sentence (R)'}" data-cue-id="${cue.id}">
             ${SVGS.repeat}
           </button>
-          <button class="cue-btn-echo" title="${isZh ? '史嘉琳回音精听 (E)' : 'Echo Method (E)'}" data-cue-id="${cue.id}">
+          <button class="cue-btn-echo" title="${isZh ? '开启全局跟读 (E)' : 'Start shadowing (E)'}" data-cue-id="${cue.id}">
             ${SVGS.echo}
-          </button>
-          <button class="cue-btn-share" title="${isZh ? '复制本句播放链接' : 'Copy sentence link'}" data-cue-id="${cue.id}">
-            ${SVGS.share}
           </button>
         </div>
         <div class="cue-text-col">
@@ -1518,9 +1520,10 @@
 
       // Click card to jump audio
       card.addEventListener('click', (e) => {
-        if (e.target.closest('.cue-btn-repeat') || e.target.closest('.cue-btn-share') || e.target.closest('.cue-btn-echo')) return;
-        if (typeof EchoController !== 'undefined' && EchoController.singleCueId !== null) {
-          EchoController.cancelEcho();
+        if (e.target.closest('.cue-btn-repeat') || e.target.closest('.cue-btn-echo')) return;
+        if (typeof EchoController !== 'undefined' && EchoController.mode) {
+          EchoController.startContinuous(cue);
+          return;
         }
         seekToCue(cue);
       });
@@ -1544,28 +1547,12 @@
         });
       }
 
-      // Echo button (Single Cue Echo)
+      // Echo button (Global Shadowing Stream starting from this cue)
       const eBtn = card.querySelector('.cue-btn-echo');
       if (eBtn) {
         eBtn.addEventListener('click', (e) => {
           e.stopPropagation();
-          EchoController.startSingleCue(cue);
-        });
-      }
-
-      // Share button
-      const sBtn = card.querySelector('.cue-btn-share');
-      if (sBtn) {
-        sBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const link = generateDeepLink(meta.key, cue.start, cue.id);
-          copyTextToClipboard(link).then((ok) => {
-            const isZhNow = isZhLang();
-            showToast(ok 
-              ? (isZhNow ? '已复制当前句子播放链接' : 'Sentence timestamp link copied') 
-              : (isZhNow ? '复制失败，请手动复制' : 'Failed to copy link')
-            );
-          });
+          EchoController.toggleMode(true, cue);
         });
       }
 
