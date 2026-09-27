@@ -241,7 +241,16 @@
       toast_retry_btn: "重试",
       toast_timer_set: "睡眠定时已设为",
       toast_timer_off: "睡眠定时已关闭",
-      toast_ab_loop_cleared: "已自动解除单句复读"
+      toast_ab_loop_cleared: "已自动解除单句复读",
+      btn_echo_mode: "回音模式",
+      reader_echo_tip: "史嘉琳回音精听模式 (快捷键: E)",
+      reader_cue_echo_tip: "回音三步法精听 (听 -> 留白想 -> 降速跟读)",
+      echo_status_echoing: "🧠 留白回响 (脑海回放原声)...",
+      echo_status_shadowing: "🎙️ 开口模仿跟读 (0.85x原声音频)...",
+      reader_modal_sc_echo: "开启 / 关闭回音精听模式（史嘉琳三步法）",
+      toast_echo_enabled: "回音精听模式已开启（原速听 -> 留白想 -> 0.85x开口跟读）",
+      toast_echo_disabled: "回音精听模式已关闭",
+      toast_echo_ab_mutually_cleared: "已自动解除单句复读并开启回音模式"
     },
     en: {
       // Header & Navigation
@@ -477,7 +486,16 @@
       toast_retry_btn: "Retry",
       toast_timer_set: "Sleep timer set to",
       toast_timer_off: "Sleep timer turned off",
-      toast_ab_loop_cleared: "A-B Loop disabled for sleep timer"
+      toast_ab_loop_cleared: "A-B Loop disabled for sleep timer",
+      btn_echo_mode: "Echo Mode",
+      reader_echo_tip: "Echo Method Listening (Shortcut: E)",
+      reader_cue_echo_tip: "Echo Method (Listen -> Echo in mind -> Shadow at 0.85x)",
+      echo_status_echoing: "🧠 Echo in mind (mental replay)...",
+      echo_status_shadowing: "🎙️ Shadowing & Mimic (0.85x voice)...",
+      reader_modal_sc_echo: "Toggle Echo Method Loop (Listen -> Echo -> Shadow)",
+      toast_echo_enabled: "Echo mode enabled (Listen -> Echo -> Shadow at 0.85x)",
+      toast_echo_disabled: "Echo mode disabled",
+      toast_echo_ab_mutually_cleared: "A-B Loop disabled, Echo mode enabled"
     }
   };
 
