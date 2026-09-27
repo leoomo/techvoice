@@ -1105,4 +1105,20 @@
   loadChapter(state.currentChapterKey, false);
   refreshCachedChapters();
 
+  // Export for testing and external extension
+  const exported = {
+    state,
+    formatTime,
+    resolveAudioUrl,
+    loadChapter
+  };
+
+  if (typeof window !== 'undefined') {
+    window.TechVoiceApp = exported;
+  }
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = exported;
+  }
+
 })();
+
