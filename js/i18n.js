@@ -180,6 +180,9 @@
       reader_modal_sc_cues: "跳转到上一句 / 下一句",
       reader_modal_sc_repeat: "单句循环复读（A-B Loop）",
       reader_modal_sc_mode: "切换显示模式（双语 / 纯英文 / 纯中文）",
+      reader_modal_sc_search: "搜索全书字幕与概念",
+      reader_modal_sc_speed: "调节播放速度 (-0.25x / +0.25x)",
+      reader_modal_sc_mute: "快速静音 / 恢复音量",
       reader_modal_sc_close: "关闭当前弹窗",
       reader_modal_sc_space: "Space 空格",
 
@@ -413,6 +416,9 @@
       reader_modal_sc_cues: "Previous / Next Sentence",
       reader_modal_sc_repeat: "Repeat Sentence (Press R)",
       reader_modal_sc_mode: "Cycle View Mode (Bilingual / English / Chinese)",
+      reader_modal_sc_search: "Search Subtitles & Concepts",
+      reader_modal_sc_speed: "Adjust Playback Speed (-0.25x / +0.25x)",
+      reader_modal_sc_mute: "Quick Mute / Unmute",
       reader_modal_sc_close: "Close Modal",
       reader_modal_sc_space: "Space",
 

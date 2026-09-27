@@ -1566,11 +1566,7 @@
   });
 
   speedSelect.addEventListener('change', () => {
-    state.playbackRate = parseFloat(speedSelect.value);
-    audio.playbackRate = state.playbackRate;
-    try {
-      localStorage.setItem('ai_agent_rate', speedSelect.value);
-    } catch (e) {}
+    setPlaybackRate(parseFloat(speedSelect.value));
   });
 
   if (timerSelect) {
@@ -1861,16 +1857,57 @@
     updateAutoScrollUI();
   });
 
-  // Keyboard Shortcuts
-  window.addEventListener('keydown', (e) => {
+  const AVAILABLE_SPEEDS = [0.75, 1.0, 1.25, 1.5, 1.75];
+  let lastNonZeroVolume = 1.0;
+
+  function setPlaybackRate(rate) {
+    const clamped = Math.max(0.75, Math.min(1.75, rate));
+    state.playbackRate = clamped;
+    if (audio) audio.playbackRate = clamped;
+    if (speedSelect) speedSelect.value = String(clamped);
+    try {
+      localStorage.setItem('ai_agent_rate', String(clamped));
+    } catch (e) {}
+    const isZh = isZhLang();
+    showToast(isZh ? `播放速度: ${clamped}x` : `Playback speed: ${clamped}x`);
+  }
+
+  function stepSpeed(direction) {
+    const currentRate = state.playbackRate || 1.0;
+    const curIdx = AVAILABLE_SPEEDS.indexOf(currentRate);
+    if (curIdx !== -1) {
+      const nextIdx = Math.max(0, Math.min(AVAILABLE_SPEEDS.length - 1, curIdx + direction));
+      setPlaybackRate(AVAILABLE_SPEEDS[nextIdx]);
+    } else {
+      const target = currentRate + direction * 0.25;
+      setPlaybackRate(target);
+    }
+  }
+
+  function toggleMute() {
+    if (!audio) return;
+    const isZh = isZhLang();
+    if (audio.volume > 0) {
+      lastNonZeroVolume = audio.volume;
+      audio.volume = 0;
+      showToast(isZh ? '已静音 (快捷键: M)' : 'Muted (Shortcut: M)');
+    } else {
+      audio.volume = lastNonZeroVolume || 1.0;
+      showToast(isZh ? `已恢复音量 (${Math.round(audio.volume * 100)}%)` : `Unmuted (${Math.round(audio.volume * 100)}%)`);
+    }
+  }
+
+  function handleKeyboardShortcut(e) {
+    if (!e) return;
     if (e.key === 'Escape') {
+      if (typeof e.preventDefault === 'function') e.preventDefault();
       document.querySelectorAll('.modal-overlay.active').forEach(closeModal);
       return;
     }
 
-    // Global Cmd+K / Ctrl+K shortcut for search
+    // Global Cmd+K / Ctrl+K shortcut for search (works anywhere, even in inputs)
     if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
-      e.preventDefault();
+      if (typeof e.preventDefault === 'function') e.preventDefault();
       if (searchModal && searchModal.classList.contains('active')) {
         closeSearchModal();
       } else {
@@ -1879,48 +1916,66 @@
       return;
     }
 
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    // Input focus isolation: do not trigger single-key playback controls when typing
+    const activeEl = (typeof document !== 'undefined' && document.activeElement) || e.target;
+    const isInputFocused = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
+    if (isInputFocused) return;
 
     if (e.key === '/') {
-      e.preventDefault();
+      if (typeof e.preventDefault === 'function') e.preventDefault();
       openSearchModal();
       return;
     }
 
     switch (e.code) {
       case 'Space':
-        e.preventDefault();
-        if (audio.paused) audio.play();
+        if (typeof e.preventDefault === 'function') e.preventDefault();
+        if (audio.paused) audio.play().catch(err => console.log(err));
         else audio.pause();
         break;
       case 'ArrowLeft':
-        e.preventDefault();
+        if (typeof e.preventDefault === 'function') e.preventDefault();
         audio.currentTime = Math.max(0, audio.currentTime - 5);
         break;
       case 'ArrowRight':
-        e.preventDefault();
+        if (typeof e.preventDefault === 'function') e.preventDefault();
         audio.currentTime = Math.min(audio.duration, audio.currentTime + 5);
         break;
       case 'ArrowUp':
-        e.preventDefault();
-        prevCueBtn.click();
+        if (typeof e.preventDefault === 'function') e.preventDefault();
+        if (prevCueBtn && prevCueBtn.click) prevCueBtn.click();
         break;
       case 'ArrowDown':
-        e.preventDefault();
-        nextCueBtn.click();
+        if (typeof e.preventDefault === 'function') e.preventDefault();
+        if (nextCueBtn && nextCueBtn.click) nextCueBtn.click();
         break;
       case 'KeyR':
-        e.preventDefault();
-        repeatBtn.click();
+        if (typeof e.preventDefault === 'function') e.preventDefault();
+        if (repeatBtn && repeatBtn.click) repeatBtn.click();
         break;
       case 'KeyL':
-        e.preventDefault();
+        if (typeof e.preventDefault === 'function') e.preventDefault();
         const modes = ['bilingual', 'en', 'zh'];
         const nextMode = modes[(modes.indexOf(state.viewMode) + 1) % modes.length];
         setViewMode(nextMode);
         break;
+      case 'BracketRight': // ]
+        if (typeof e.preventDefault === 'function') e.preventDefault();
+        stepSpeed(1);
+        break;
+      case 'BracketLeft': // [
+        if (typeof e.preventDefault === 'function') e.preventDefault();
+        stepSpeed(-1);
+        break;
+      case 'KeyM': // M
+        if (typeof e.preventDefault === 'function') e.preventDefault();
+        toggleMute();
+        break;
     }
-  });
+  }
+
+  // Register Global Keyboard Shortcuts Listener
+  window.addEventListener('keydown', handleKeyboardShortcut);
 
   // Unload and visibility persistence
   if (typeof window !== 'undefined') {
@@ -1961,7 +2016,10 @@
     escapeHtml,
     highlightMatches,
     SearchEngine,
-    SleepTimer
+    SleepTimer,
+    handleKeyboardShortcut,
+    setPlaybackRate,
+    toggleMute
   };
 
   if (typeof window !== 'undefined') {

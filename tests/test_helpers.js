@@ -155,7 +155,18 @@ if (typeof global !== 'undefined') {
   global.document = {
     getElementById: (id) => getOrCreateElement(id),
     createElement: (tag) => new DOMElementMock(`mock-${Math.random()}`, tag),
-    querySelectorAll: () => [],
+    querySelectorAll: (sel) => {
+      const results = [];
+      for (const el of elementsMap.values()) {
+        if (!el || !el.classList || !el.classList.contains) continue;
+        if (sel === '.modal-overlay.active' && el.classList.contains('active')) {
+          results.push(el);
+        } else if (sel.startsWith('.') && el.classList.contains(sel.slice(1))) {
+          results.push(el);
+        }
+      }
+      return results;
+    },
     querySelector: () => null,
     head: new DOMElementMock('head', 'head'),
     body: new DOMElementMock('body', 'body'),
