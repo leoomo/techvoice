@@ -35,6 +35,7 @@
   const rewindBtn = document.getElementById('btn-rewind');
   const forwardBtn = document.getElementById('btn-forward');
   const repeatBtn = document.getElementById('btn-repeat');
+  const echoModeBtn = document.getElementById('btn-echo-mode');
   const seekBar = document.getElementById('seek-bar');
   const bufferBarEl = document.getElementById('seek-buffer-bar');
   const curTimeEl = document.getElementById('time-current');
@@ -113,6 +114,7 @@
     sun: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`,
     moon: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`,
     repeat: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`,
+    echo: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><path d="M12 18v4"/><path d="M8 22h8"/></svg>`,
     cacheDefault: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`,
     cacheDone: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
     cacheLoading: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>`,
@@ -751,7 +753,10 @@
         return;
       }
 
-      // Mutual exclusivity guard: disable A-B Loop if active
+      // Mutual exclusivity guard: disable A-B Loop & Echo mode if active
+      if (typeof EchoController !== 'undefined' && EchoController.isActive()) {
+        EchoController.toggleMode(false);
+      }
       if (state.repeatCurrent) {
         state.repeatCurrent = false;
         if (repeatBtn) repeatBtn.classList.remove('active');
@@ -823,6 +828,9 @@
       if (restoreVolume && audio) {
         audio.volume = this.originalVolume;
       }
+      if (typeof EchoController !== 'undefined' && EchoController.step !== 'IDLE') {
+        EchoController.cancelEcho();
+      }
       this.updateUI();
     },
 
@@ -840,12 +848,214 @@
     }
   };
 
+  // Echo Method (Prof. Karen Chung's 3-step loop) Controller
+  const EchoController = {
+    mode: false,
+    singleCueId: null,
+    step: 'IDLE', // 'IDLE' | 'LISTEN' | 'ECHO' | 'SHADOW'
+    timerId: null,
+    activeCue: null,
+
+    isActive() {
+      return this.mode || this.singleCueId !== null || this.step !== 'IDLE';
+    },
+
+    calcEchoDuration(cue) {
+      if (!cue) return 2.0;
+      const raw = (cue.end - cue.start) * 0.75;
+      return Math.max(1.8, Math.min(3.5, raw));
+    },
+
+    toggleMode(forceState) {
+      const target = (typeof forceState === 'boolean') ? forceState : !this.mode;
+      this.mode = target;
+
+      const isZh = isZhLang();
+      if (this.mode) {
+        if (state.repeatCurrent) {
+          state.repeatCurrent = false;
+          if (repeatBtn) repeatBtn.classList.remove('active');
+          showToast(isZh ? '已自动解除单句复读并开启回音模式' : 'A-B Loop disabled, Echo mode enabled');
+        } else {
+          showToast(isZh ? '回音精听模式已开启（原速听 -> 留白想 -> 0.85x开口跟读）' : 'Echo mode enabled (Listen -> Echo -> Shadow at 0.85x)');
+        }
+        if (echoModeBtn) echoModeBtn.classList.add('active');
+
+        const curCue = state.cues.find(c => c.id === state.activeCueId) || state.cues[0];
+        if (curCue && !audio.paused && this.step === 'IDLE') {
+          this.startContinuous(curCue);
+        }
+      } else {
+        this.cancelEcho(true);
+        if (echoModeBtn) echoModeBtn.classList.remove('active');
+        showToast(isZh ? '回音精听模式已关闭' : 'Echo mode disabled');
+      }
+    },
+
+    startSingleCue(cue) {
+      if (!cue) return;
+      if (state.repeatCurrent) {
+        state.repeatCurrent = false;
+        if (repeatBtn) repeatBtn.classList.remove('active');
+      }
+      this.cancelEcho(false);
+      this.singleCueId = cue.id;
+      this.activeCue = cue;
+      this.step = 'LISTEN';
+      audio.playbackRate = state.playbackRate;
+      audio.currentTime = cue.start;
+      if (audio.paused) {
+        audio.play().catch(err => console.log(err));
+      }
+      this.updateVisuals(cue);
+      highlightCue(cue.id, true);
+    },
+
+    startContinuous(cue) {
+      if (!cue) return;
+      this.singleCueId = null;
+      this.activeCue = cue;
+      this.step = 'LISTEN';
+      audio.playbackRate = state.playbackRate;
+      audio.currentTime = cue.start;
+      if (audio.paused) {
+        audio.play().catch(err => console.log(err));
+      }
+      this.updateVisuals(cue);
+      highlightCue(cue.id, true);
+    },
+
+    onTimeUpdate(curTime, currentCue) {
+      const targetCue = this.activeCue || currentCue;
+      if (!targetCue) return;
+      if (this.step === 'LISTEN') {
+        if (curTime >= targetCue.end) {
+          this.enterEchoStep(targetCue);
+        }
+      } else if (this.step === 'SHADOW') {
+        if (curTime >= targetCue.end) {
+          this.finishShadowStep(targetCue);
+        }
+      }
+    },
+
+    enterEchoStep(cue) {
+      this.step = 'ECHO';
+      audio.pause();
+      this.updateVisuals(cue);
+      const dur = this.calcEchoDuration(cue);
+      if (this.timerId) clearTimeout(this.timerId);
+      this.timerId = setTimeout(() => {
+        this.triggerShadow();
+      }, dur * 1000);
+    },
+
+    triggerShadow() {
+      if (this.timerId) {
+        clearTimeout(this.timerId);
+        this.timerId = null;
+      }
+      const cue = this.activeCue;
+      if (!cue) return;
+      this.step = 'SHADOW';
+      const shadowRate = Math.min(state.playbackRate, 0.85);
+      audio.playbackRate = shadowRate;
+      audio.currentTime = cue.start + 0.02;
+      this.updateVisuals(cue);
+      audio.play().catch(err => console.log('Shadow play failed:', err));
+    },
+
+    finishShadowStep(cue) {
+      audio.playbackRate = state.playbackRate;
+      this.clearVisuals();
+
+      if (this.singleCueId !== null) {
+        this.step = 'IDLE';
+        this.singleCueId = null;
+        this.activeCue = null;
+        audio.pause();
+      } else if (this.mode) {
+        const curIdx = state.cues.findIndex(c => c.id === cue.id);
+        if (curIdx >= 0 && curIdx < state.cues.length - 1) {
+          const nextCue = state.cues[curIdx + 1];
+          this.startContinuous(nextCue);
+        } else {
+          this.step = 'IDLE';
+          this.activeCue = null;
+          audio.pause();
+        }
+      } else {
+        this.step = 'IDLE';
+        this.activeCue = null;
+      }
+    },
+
+    cancelEcho(restoreRate = true) {
+      if (this.timerId) {
+        clearTimeout(this.timerId);
+        this.timerId = null;
+      }
+      this.step = 'IDLE';
+      this.singleCueId = null;
+      this.activeCue = null;
+      this.clearVisuals();
+      if (restoreRate && audio) {
+        audio.playbackRate = state.playbackRate;
+      }
+    },
+
+    updateVisuals(cue) {
+      if (typeof document === 'undefined') return;
+      this.clearVisuals();
+      if (!cue) return;
+      const card = document.getElementById(`cue-${cue.id}`);
+      if (card) {
+        let badge = card.querySelector('.cue-echo-badge');
+        if (!badge) {
+          badge = document.createElement('div');
+          badge.className = 'cue-echo-badge';
+          const textCol = card.querySelector('.cue-text-col');
+          if (textCol && textCol.insertBefore) {
+            textCol.insertBefore(badge, textCol.firstChild);
+          } else {
+            card.appendChild(badge);
+          }
+        }
+        const isZh = isZhLang();
+        if (this.step === 'ECHO') {
+          card.classList.add('echo-step-echoing');
+          badge.textContent = isZh ? '🧠 留白回响 (脑海回放原声)...' : '🧠 Echo in mind (mental replay)...';
+        } else if (this.step === 'SHADOW') {
+          card.classList.add('echo-step-shadowing');
+          badge.textContent = isZh ? '🎙️ 开口模仿跟读 (0.85x原声音频)...' : '🎙️ Shadowing & Mimic (0.85x voice)...';
+        }
+      }
+      if (echoModeBtn) {
+        echoModeBtn.classList.toggle('active', this.mode);
+      }
+    },
+
+    clearVisuals() {
+      if (typeof document === 'undefined') return;
+      ['echo-step-echoing', 'echo-step-shadowing'].forEach(cls => {
+        const els = document.querySelectorAll('.' + cls);
+        if (els && els.forEach) {
+          els.forEach(el => el.classList.remove(cls));
+        }
+      });
+    }
+  };
+
   let currentLoadToken = 0;
 
   // Load and Switch Chapter
   function loadChapter(key, autoPlay = false) {
     const meta = window.CHAPTERS_META.find(c => c.key === key);
     if (!meta) return;
+
+    if (typeof EchoController !== 'undefined') {
+      EchoController.cancelEcho();
+    }
 
     const loadToken = ++currentLoadToken;
     state.currentChapterKey = key;
@@ -1292,11 +1502,15 @@
           <button class="cue-btn-repeat" title="${isZh ? '单句循环跟读 (R)' : 'Repeat sentence (R)'}" data-cue-id="${cue.id}">
             ${SVGS.repeat}
           </button>
+          <button class="cue-btn-echo" title="${isZh ? '史嘉琳回音精听 (E)' : 'Echo Method (E)'}" data-cue-id="${cue.id}">
+            ${SVGS.echo}
+          </button>
           <button class="cue-btn-share" title="${isZh ? '复制本句播放链接' : 'Copy sentence link'}" data-cue-id="${cue.id}">
             ${SVGS.share}
           </button>
         </div>
         <div class="cue-text-col">
+          <div class="cue-echo-badge"></div>
           <div class="en-text">${cue.en}</div>
           <div class="zh-text">${cue.zh || ''}</div>
         </div>
@@ -1304,7 +1518,10 @@
 
       // Click card to jump audio
       card.addEventListener('click', (e) => {
-        if (e.target.closest('.cue-btn-repeat') || e.target.closest('.cue-btn-share')) return;
+        if (e.target.closest('.cue-btn-repeat') || e.target.closest('.cue-btn-share') || e.target.closest('.cue-btn-echo')) return;
+        if (typeof EchoController !== 'undefined' && EchoController.singleCueId !== null) {
+          EchoController.cancelEcho();
+        }
         seekToCue(cue);
       });
 
@@ -1315,12 +1532,24 @@
           e.stopPropagation();
           state.repeatCurrent = true;
           repeatBtn.classList.add('active');
+          if (typeof EchoController !== 'undefined' && EchoController.isActive()) {
+            EchoController.toggleMode(false);
+          }
           if (SleepTimer.mode) {
             SleepTimer.stop(true);
             const isZh = isZhLang();
             showToast(isZh ? '已自动关闭睡眠定时' : 'Sleep timer turned off');
           }
           seekToCue(cue);
+        });
+      }
+
+      // Echo button (Single Cue Echo)
+      const eBtn = card.querySelector('.cue-btn-echo');
+      if (eBtn) {
+        eBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          EchoController.startSingleCue(cue);
         });
       }
 
@@ -1485,8 +1714,12 @@
     }
 
     if (currentCue) {
-      // Single-sentence repeat handling
-      if (state.repeatCurrent && curTime >= currentCue.end) {
+      if (typeof EchoController !== 'undefined' && EchoController.isActive()) {
+        if (EchoController.mode && EchoController.step === 'IDLE' && !EchoController.activeCue) {
+          EchoController.startContinuous(currentCue);
+        }
+        EchoController.onTimeUpdate(curTime, currentCue);
+      } else if (state.repeatCurrent && curTime >= currentCue.end) {
         audio.currentTime = currentCue.start + 0.05;
         return;
       }
@@ -1539,6 +1772,11 @@
 
   // Controls Event Listeners
   playBtn.addEventListener('click', () => {
+    if (typeof EchoController !== 'undefined' && EchoController.step === 'ECHO') {
+      EchoController.cancelEcho();
+      audio.pause();
+      return;
+    }
     if (audio.paused) {
       audio.play();
     } else {
@@ -1576,16 +1814,27 @@
   repeatBtn.addEventListener('click', () => {
     state.repeatCurrent = !state.repeatCurrent;
     repeatBtn.classList.toggle('active', state.repeatCurrent);
-    if (state.repeatCurrent && SleepTimer.mode) {
-      SleepTimer.stop(true);
-      const isZh = isZhLang();
-      showToast(isZh ? '已自动关闭睡眠定时' : 'Sleep timer turned off');
+    if (state.repeatCurrent) {
+      if (typeof EchoController !== 'undefined' && EchoController.isActive()) {
+        EchoController.toggleMode(false);
+      }
+      if (SleepTimer.mode) {
+        SleepTimer.stop(true);
+        const isZh = isZhLang();
+        showToast(isZh ? '已自动关闭睡眠定时' : 'Sleep timer turned off');
+      }
     }
     const isZh = isZhLang();
     repeatBtn.title = state.repeatCurrent 
       ? (isZh ? '取消单句循环 (R)' : 'Disable sentence loop (R)') 
       : (isZh ? '开启单句循环 (R)' : 'Enable sentence loop (R)');
   });
+
+  if (echoModeBtn) {
+    echoModeBtn.addEventListener('click', () => {
+      EchoController.toggleMode();
+    });
+  }
 
   seekBar.addEventListener('input', () => {
     audio.currentTime = parseFloat(seekBar.value);
@@ -1860,6 +2109,9 @@
     repeatBtn.title = state.repeatCurrent 
       ? (isZh ? '取消单句循环 (R)' : 'Disable sentence loop (R)') 
       : (isZh ? '开启单句循环 (R)' : 'Enable sentence loop (R)');
+    if (echoModeBtn) {
+      echoModeBtn.title = isZh ? '史嘉琳回音精听模式 (E)' : 'Echo Method Listening (E)';
+    }
     speedSelect.title = isZh ? '播放速度' : 'Playback Speed';
   }
 
@@ -1956,6 +2208,11 @@
     switch (e.code) {
       case 'Space':
         if (typeof e.preventDefault === 'function') e.preventDefault();
+        if (typeof EchoController !== 'undefined' && EchoController.step === 'ECHO') {
+          EchoController.cancelEcho();
+          audio.pause();
+          break;
+        }
         if (audio.paused) audio.play().catch(err => console.log(err));
         else audio.pause();
         break;
@@ -1978,6 +2235,10 @@
       case 'KeyR':
         if (typeof e.preventDefault === 'function') e.preventDefault();
         if (repeatBtn && repeatBtn.click) repeatBtn.click();
+        break;
+      case 'KeyE':
+        if (typeof e.preventDefault === 'function') e.preventDefault();
+        if (typeof EchoController !== 'undefined') EchoController.toggleMode();
         break;
       case 'KeyL':
         if (typeof e.preventDefault === 'function') e.preventDefault();
@@ -2043,6 +2304,7 @@
     highlightMatches,
     SearchEngine,
     SleepTimer,
+    EchoController,
     handleKeyboardShortcut,
     setPlaybackRate,
     toggleMute,
