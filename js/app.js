@@ -1511,6 +1511,32 @@
     }
   });
 
+  // Audio Network and Stream Error Recovery
+  function handleAudioError() {
+    if (!audio.src || audio.src === 'about:blank' || audio.src.endsWith('/')) return;
+    const isZh = isZhLang();
+    const errorMsg = isZh ? '音频加载遇到问题，请检查网络' : 'Audio loading issue, check connection';
+    const retryLabel = isZh ? '重试' : 'Retry';
+    const toastFn = (typeof exported !== 'undefined' && exported.showToast) ? exported.showToast : showToast;
+    return toastFn(errorMsg, {
+      duration: 6000,
+      actionLabel: retryLabel,
+      onAction: () => {
+        const cur = audio.currentTime || 0;
+        const currentSrc = audio.src;
+        audio.src = '';
+        audio.src = currentSrc;
+        audio.load();
+        if (cur > 0) {
+          audio.currentTime = cur;
+        }
+        audio.play().catch(err => console.log('Audio retry failed:', err));
+      }
+    });
+  }
+
+  audio.addEventListener('error', handleAudioError);
+
   // Controls Event Listeners
   playBtn.addEventListener('click', () => {
     if (audio.paused) {
@@ -2019,7 +2045,8 @@
     SleepTimer,
     handleKeyboardShortcut,
     setPlaybackRate,
-    toggleMute
+    toggleMute,
+    handleAudioError
   };
 
   if (typeof window !== 'undefined') {
