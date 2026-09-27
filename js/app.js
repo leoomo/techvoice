@@ -243,6 +243,81 @@
     } catch (e) {}
   }
 
+  // MediaSession API Integration (Lock Screen, Bluetooth Headset, Automotive)
+  function updateMediaSession(meta) {
+    if (typeof navigator === 'undefined' || !('mediaSession' in navigator) || !navigator.mediaSession) return;
+    if (!meta) return;
+
+    try {
+      const isZh = isZhLang();
+      const chapterTitle = isZh ? `${meta.name}: ${meta.title_zh} (${meta.title_en})` : `${meta.name}: ${meta.title_en}`;
+      const MediaMetadataClass = (typeof window !== 'undefined' && window.MediaMetadata) || (typeof global !== 'undefined' && global.MediaMetadata) || function(data) { Object.assign(this, data); };
+      
+      navigator.mediaSession.metadata = new MediaMetadataClass({
+        title: chapterTitle,
+        artist: '李博杰 · Bojie Li',
+        album: '深入理解 AI Agent · AI Agents in Depth',
+        artwork: [
+          { src: 'assets/icon.svg', sizes: '512x512', type: 'image/svg+xml' }
+        ]
+      });
+
+      // Register standard action handlers
+      const actionMap = {
+        play: () => { if (audio.paused) audio.play(); },
+        pause: () => { if (!audio.paused) audio.pause(); },
+        seekbackward: (details) => {
+          const offset = (details && details.seekOffset) || 5;
+          audio.currentTime = Math.max(0, audio.currentTime - offset);
+        },
+        seekforward: (details) => {
+          const offset = (details && details.seekOffset) || 5;
+          audio.currentTime = Math.min(audio.duration || 99999, audio.currentTime + offset);
+        },
+        previoustrack: () => {
+          const idx = window.CHAPTERS_META.findIndex(c => c.key === state.currentChapterKey);
+          if (idx > 0) {
+            loadChapter(window.CHAPTERS_META[idx - 1].key, true);
+          }
+        },
+        nexttrack: () => {
+          const idx = window.CHAPTERS_META.findIndex(c => c.key === state.currentChapterKey);
+          if (idx < window.CHAPTERS_META.length - 1) {
+            loadChapter(window.CHAPTERS_META[idx + 1].key, true);
+          }
+        },
+        seekto: (details) => {
+          if (details && details.seekTime != null) {
+            audio.currentTime = Math.min(Math.max(0, details.seekTime), audio.duration || 99999);
+          }
+        }
+      };
+
+      for (const [action, handler] of Object.entries(actionMap)) {
+        try {
+          navigator.mediaSession.setActionHandler(action, handler);
+        } catch (e) {}
+      }
+    } catch (err) {
+      console.warn('MediaSession metadata update error:', err);
+    }
+  }
+
+  function syncMediaPositionState(pos, duration, rate) {
+    if (typeof navigator === 'undefined' || !('mediaSession' in navigator) || !navigator.mediaSession) return;
+    if (typeof navigator.mediaSession.setPositionState !== 'function') return;
+    if (!duration || duration <= 0 || isNaN(duration) || isNaN(pos) || pos < 0) return;
+
+    try {
+      navigator.mediaSession.setPositionState({
+        duration: duration,
+        playbackRate: rate || state.playbackRate || 1.0,
+        position: Math.min(pos, duration)
+      });
+    } catch (e) {}
+  }
+
+
 
   // Initialize Preferences from LocalStorage
   function loadPreferences() {
@@ -475,6 +550,9 @@
     } else {
       audio.addEventListener('loadedmetadata', applyResume, { once: true });
     }
+
+    // Setup Lock Screen & Earphone Media Controls
+    updateMediaSession(meta);
 
     if (state.cues.length > 0) {
       highlightCue(state.cues[0].id, false);
@@ -941,6 +1019,7 @@
     state.isPlaying = true;
     setPlayIcon(true);
     playBtn.title = isZhLang() ? '暂停 (Space)' : 'Pause (Space)';
+    syncMediaPositionState(audio.currentTime, audio.duration, audio.playbackRate);
   });
 
   audio.addEventListener('pause', () => {
@@ -948,11 +1027,13 @@
     setPlayIcon(false);
     playBtn.title = isZhLang() ? '播放 (Space)' : 'Play (Space)';
     savePosition(state.currentChapterKey, audio.currentTime, true);
+    syncMediaPositionState(audio.currentTime, audio.duration, audio.playbackRate);
   });
 
   audio.addEventListener('loadedmetadata', () => {
     totalTimeEl.textContent = formatTime(audio.duration);
     seekBar.max = audio.duration;
+    syncMediaPositionState(audio.currentTime, audio.duration, audio.playbackRate);
   });
 
   audio.addEventListener('timeupdate', () => {
@@ -962,6 +1043,7 @@
 
     // Periodically save playback position
     savePosition(state.currentChapterKey, curTime, false);
+    syncMediaPositionState(curTime, audio.duration, audio.playbackRate);
 
     // Smooth Lookahead: Preload next chapter when near end (within 60s)
     if (audio.duration > 0 && (audio.duration - curTime <= 60)) {
@@ -1260,7 +1342,9 @@
     showToast,
     savePosition,
     checkAndResumePosition,
-    resetChapterPosition
+    resetChapterPosition,
+    updateMediaSession,
+    syncMediaPositionState
   };
 
   if (typeof window !== 'undefined') {

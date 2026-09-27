@@ -182,16 +182,23 @@ if (typeof global !== 'undefined') {
     }
   };
 
-  global.navigator = {
-    clipboard: {
-      writeText: (t) => Promise.resolve(t)
-    },
-    mediaSession: {
-      metadata: null,
-      setActionHandler: () => {},
-      setPositionState: () => {}
-    }
+  const actionHandlers = {};
+  const mockMediaSession = {
+    metadata: null,
+    _actions: actionHandlers,
+    setActionHandler: (act, fn) => { actionHandlers[act] = fn; },
+    setPositionState: () => {}
   };
+
+  try {
+    Object.defineProperty(global.navigator, 'mediaSession', {
+      value: mockMediaSession,
+      writable: true,
+      configurable: true
+    });
+  } catch (e) {
+    global.navigator.mediaSession = mockMediaSession;
+  }
 }
 
 module.exports = {
