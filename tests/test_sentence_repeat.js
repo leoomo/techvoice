@@ -80,3 +80,52 @@ assert.strictEqual(app.state.activeCueId, 2, 'With repeat OFF, crossing boundary
 assert.strictEqual(audio.currentTime, 5.1, 'Audio position should not be rewound when repeat is OFF');
 
 console.log('✅ test_sentence_repeat.js passed all 5 assertions!');
+
+// Test Case 6: getCueCutoff Precision & Lead-in Anti-Leakage Buffer
+assert(typeof app.getCueCutoff === 'function', 'getCueCutoff must be exported');
+
+// Contiguous cues
+const contigCutoff = app.getCueCutoff(cue1);
+assert(contigCutoff <= 5.0 - 0.08, `Contiguous cutoff must precede next cue start by at least 80ms, got: ${contigCutoff}`);
+
+// Real-world Overlapping cues (e.g. Cue 1 ends at 1.825s, but Cue 2 starts at 1.775s!)
+app.state.cues = [
+  { id: 101, start: 0.1, end: 1.825, en: 'Introduction .', zh: '引言。' },
+  { id: 102, start: 1.775, end: 12.287, en: 'From August to October...', zh: '2025年8月至10月...' }
+];
+const overlapCutoff = app.getCueCutoff(app.state.cues[0]);
+// Cutoff MUST be calculated relative to nextCue.start (1.775s), not cue1.end (1.825s)!
+assert(
+  overlapCutoff <= 1.775 - 0.08,
+  `Overlapping cutoff must precede next cue start (1.775s) by at least 80ms, got: ${overlapCutoff}`
+);
+
+// Test Case 7: Overlapping Cue Loop Rewinds Before Next Cue First Sound
+app.state.activeCueId = 101;
+app.state.repeatCurrent = true;
+
+// Before cutoff (e.g. 1.5s): remains inside cue 101
+audio.currentTime = 1.5;
+audio.dispatchEvent({ type: 'timeupdate' });
+assert.strictEqual(app.state.activeCueId, 101);
+assert.strictEqual(audio.currentTime, 1.5);
+
+// Reaching cutoff (e.g. 1.70s, which is < 1.775s next cue start):
+// Audio MUST rewind BEFORE touching 1.775s!
+audio.currentTime = overlapCutoff + 0.01;
+audio.dispatchEvent({ type: 'timeupdate' });
+assert(
+  audio.currentTime >= 0.1 && audio.currentTime <= 0.15,
+  `Audio must rewind to cue 101 start (0.12s) before touching next cue start (1.775s), got: ${audio.currentTime}`
+);
+assert.strictEqual(app.state.activeCueId, 101, 'Active cue must stay 101');
+
+// Test Case 8: Boundary monitor lifecycle & sync
+assert(typeof app.startBoundaryMonitor === 'function');
+assert(typeof app.stopBoundaryMonitor === 'function');
+assert(typeof app.syncBoundaryMonitor === 'function');
+
+app.startBoundaryMonitor();
+app.stopBoundaryMonitor();
+
+console.log('✅ test_sentence_repeat.js passed all 8 assertions including anti-leakage protection!');

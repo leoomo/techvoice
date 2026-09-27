@@ -848,6 +848,26 @@
     }
   };
 
+  // Calculate precise end boundary for a cue with anti-leakage protection
+  function getCueCutoff(cue) {
+    if (!cue || typeof cue.end !== 'number') return 0;
+    let cutoff = cue.end;
+    const curIdx = state.cues.findIndex(c => String(c.id) === String(cue.id));
+    if (curIdx >= 0 && curIdx < state.cues.length - 1) {
+      const nextCue = state.cues[curIdx + 1];
+      if (nextCue && typeof nextCue.start === 'number') {
+        // If next cue start is contiguous or overlapping, clamp to next cue start
+        cutoff = Math.min(cutoff, nextCue.start);
+      }
+    }
+    // Dynamic lead buffer: 80ms base, scaled slightly with playback rate
+    const rate = (audio && typeof audio.playbackRate === 'number' && audio.playbackRate > 0) ? audio.playbackRate : 1.0;
+    const leadBuffer = Math.max(0.08, 0.06 * rate);
+    const minDur = Math.min(0.25, (cue.end - cue.start) * 0.8);
+    const safeMin = (typeof cue.start === 'number') ? (cue.start + minDur) : 0;
+    return Math.max(safeMin, cutoff - leadBuffer);
+  }
+
   // Echo Method (Prof. Karen Chung's 3-step loop) Controller
   const EchoController = {
     mode: false,
@@ -885,6 +905,7 @@
         if (targetCue) {
           this.startContinuous(targetCue);
         }
+        syncBoundaryMonitor();
       } else {
         this.cancelEcho(true);
         if (echoModeBtn) echoModeBtn.classList.remove('active');
@@ -916,17 +937,19 @@
       }
       this.updateVisuals(cue);
       highlightCue(cue.id, true);
+      syncBoundaryMonitor();
     },
 
     onTimeUpdate(curTime, currentCue) {
       const targetCue = this.activeCue || currentCue;
       if (!targetCue) return;
+      const cutoff = getCueCutoff(targetCue);
       if (this.step === 'LISTEN') {
-        if (curTime >= targetCue.end) {
+        if (curTime >= cutoff) {
           this.enterEchoStep(targetCue);
         }
       } else if (this.step === 'SHADOW') {
-        if (curTime >= targetCue.end) {
+        if (curTime >= cutoff) {
           this.finishShadowStep(targetCue);
         }
       }
@@ -936,7 +959,7 @@
       this.step = 'ECHO';
       this.savedVolume = (audio.volume > 0 ? audio.volume : (this.savedVolume || 1.0));
       audio.volume = 0; // Silent pause - keep session active so browser never blocks resumption
-      audio.currentTime = cue.start;
+      audio.currentTime = cue.start + 0.02;
       this.updateVisuals(cue);
       const dur = this.calcEchoDuration(cue);
       if (this.timerId) clearTimeout(this.timerId);
@@ -961,6 +984,7 @@
       if (audio.paused) {
         audio.play().catch(err => console.log('Shadow play failed:', err));
       }
+      syncBoundaryMonitor();
     },
 
     finishShadowStep(cue) {
@@ -985,11 +1009,13 @@
             this.step = 'IDLE';
             this.activeCue = null;
             audio.pause();
+            syncBoundaryMonitor();
           }
         }
       } else {
         this.step = 'IDLE';
         this.activeCue = null;
+        syncBoundaryMonitor();
       }
     },
 
@@ -1007,6 +1033,7 @@
           audio.volume = this.savedVolume;
         }
       }
+      syncBoundaryMonitor();
     },
 
     updateVisuals(cue) {
@@ -1051,6 +1078,103 @@
     }
   };
 
+  // High-Frequency Boundary Monitor & Precision Loop Controller
+  let boundaryTimerId = null;
+  let boundaryRafId = null;
+
+  function checkCueBoundaries(curTime) {
+    if (state.repeatCurrent && state.cues && state.cues.length > 0) {
+      let repeatCue = state.cues.find(c => c.id === state.activeCueId);
+      if (!repeatCue) {
+        repeatCue = state.cues.find(c => curTime >= c.start && curTime <= c.end) || state.cues[0];
+        if (repeatCue) state.activeCueId = repeatCue.id;
+      }
+      if (repeatCue) {
+        const cutoff = getCueCutoff(repeatCue);
+        // Loop boundary: reached or passed cutoff (within 0.8s window of cue end)
+        if (curTime >= cutoff && curTime < repeatCue.end + 0.8) {
+          audio.currentTime = repeatCue.start + 0.02;
+          highlightCue(repeatCue.id);
+          return true;
+        }
+        // Deliberate jump/seek outside repeatCue
+        if (curTime < repeatCue.start - 0.2 || curTime >= repeatCue.end + 0.8) {
+          const seekedCue = state.cues.find(c => curTime >= c.start && curTime <= c.end);
+          if (seekedCue) {
+            state.activeCueId = seekedCue.id;
+            highlightCue(seekedCue.id);
+            return true;
+          }
+        } else {
+          highlightCue(repeatCue.id);
+          return true;
+        }
+      }
+    }
+
+    if (typeof EchoController !== 'undefined' && EchoController.isActive()) {
+      if (EchoController.mode && EchoController.step === 'IDLE' && !EchoController.activeCue) {
+        let currentCue = state.cues.find(c => curTime >= c.start && curTime <= c.end) || state.cues[0];
+        if (currentCue) EchoController.startContinuous(currentCue);
+      }
+      EchoController.onTimeUpdate(curTime);
+      if (EchoController.activeCue) {
+        highlightCue(EchoController.activeCue.id);
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  function startBoundaryMonitor() {
+    if (boundaryTimerId || boundaryRafId) return;
+
+    function monitorTick() {
+      if (audio.paused || (!state.repeatCurrent && (!EchoController || !EchoController.isActive()))) {
+        stopBoundaryMonitor();
+        return;
+      }
+      checkCueBoundaries(audio.currentTime);
+      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+        boundaryRafId = window.requestAnimationFrame(monitorTick);
+      }
+    }
+
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+      boundaryRafId = window.requestAnimationFrame(monitorTick);
+    }
+    if (typeof setInterval === 'function') {
+      boundaryTimerId = setInterval(() => {
+        if (audio.paused || (!state.repeatCurrent && (!EchoController || !EchoController.isActive()))) {
+          stopBoundaryMonitor();
+          return;
+        }
+        checkCueBoundaries(audio.currentTime);
+      }, 25);
+    }
+  }
+
+  function stopBoundaryMonitor() {
+    if (boundaryRafId && typeof window !== 'undefined' && typeof window.cancelAnimationFrame === 'function') {
+      window.cancelAnimationFrame(boundaryRafId);
+      boundaryRafId = null;
+    }
+    if (boundaryTimerId) {
+      clearInterval(boundaryTimerId);
+      boundaryTimerId = null;
+    }
+  }
+
+  function syncBoundaryMonitor() {
+    const isNeeded = !audio.paused && (state.repeatCurrent || (typeof EchoController !== 'undefined' && EchoController.isActive()));
+    if (isNeeded) {
+      startBoundaryMonitor();
+    } else {
+      stopBoundaryMonitor();
+    }
+  }
+
   let currentLoadToken = 0;
 
   // Load and Switch Chapter
@@ -1061,6 +1185,7 @@
     if (typeof EchoController !== 'undefined') {
       EchoController.cancelEcho();
     }
+    syncBoundaryMonitor();
 
     const loadToken = ++currentLoadToken;
     state.currentChapterKey = key;
@@ -1544,6 +1669,7 @@
             showToast(isZh ? '已自动关闭睡眠定时' : 'Sleep timer turned off');
           }
           seekToCue(cue);
+          syncBoundaryMonitor();
         });
       }
 
@@ -1565,12 +1691,12 @@
 
   // Seek and Play Cue
   function seekToCue(cue) {
-    audio.currentTime = cue.start + 0.05;
+    audio.currentTime = cue.start + 0.02;
     if (audio.paused) {
       audio.play();
     }
     highlightCue(cue.id, true);
-    updateActiveSection(cue.start + 0.05);
+    updateActiveSection(cue.start + 0.02);
   }
 
   // Highlight Cue
@@ -1656,6 +1782,7 @@
     setPlayIcon(true);
     playBtn.title = isZhLang() ? '暂停 (Space)' : 'Pause (Space)';
     syncMediaPositionState(audio.currentTime, audio.duration, audio.playbackRate);
+    syncBoundaryMonitor();
   });
 
   audio.addEventListener('pause', () => {
@@ -1664,6 +1791,7 @@
     playBtn.title = isZhLang() ? '播放 (Space)' : 'Play (Space)';
     savePosition(state.currentChapterKey, audio.currentTime, true);
     syncMediaPositionState(audio.currentTime, audio.duration, audio.playbackRate);
+    syncBoundaryMonitor();
   });
 
   audio.addEventListener('loadedmetadata', () => {
@@ -1693,36 +1821,12 @@
     // Active sub-chapter / section tracking
     updateActiveSection(curTime);
 
-    // Single-sentence repeat (A-B loop) handling with boundary protection
-    if (state.repeatCurrent && state.cues.length > 0) {
-      let repeatCue = state.cues.find(c => c.id === state.activeCueId);
-      if (!repeatCue) {
-        repeatCue = state.cues.find(c => curTime >= c.start && curTime <= c.end) || state.cues[0];
-        if (repeatCue) state.activeCueId = repeatCue.id;
-      }
-      if (repeatCue) {
-        // If within natural playback loop boundary (overshoot <= 1.5s)
-        if (curTime >= repeatCue.end && curTime < repeatCue.end + 1.5) {
-          audio.currentTime = repeatCue.start + 0.05;
-          highlightCue(repeatCue.id);
-          return;
-        }
-        // If outside repeatCue because of a deliberate seek/jump (> 1.5s overshoot or before cue start)
-        if (curTime < repeatCue.start - 0.2 || curTime >= repeatCue.end + 1.5) {
-          const seekedCue = state.cues.find(c => curTime >= c.start && curTime <= c.end);
-          if (seekedCue) {
-            state.activeCueId = seekedCue.id;
-            highlightCue(seekedCue.id);
-            return;
-          }
-        } else {
-          highlightCue(repeatCue.id);
-          return;
-        }
-      }
+    // High-precision boundary check for repeat & echo
+    if (checkCueBoundaries(curTime)) {
+      return;
     }
 
-    // Find active cue
+    // Find active cue for normal playback
     let currentCue = state.cues.find(c => curTime >= c.start && curTime <= c.end) ||
                      state.cues.find(c => curTime >= c.start && curTime <= c.start + 12);
     if (!currentCue && state.cues.length > 0 && curTime < state.cues[0].start + 1) {
@@ -1730,12 +1834,6 @@
     }
 
     if (currentCue) {
-      if (typeof EchoController !== 'undefined' && EchoController.isActive()) {
-        if (EchoController.mode && EchoController.step === 'IDLE' && !EchoController.activeCue) {
-          EchoController.startContinuous(currentCue);
-        }
-        EchoController.onTimeUpdate(curTime, currentCue);
-      }
       highlightCue(currentCue.id);
     }
   });
@@ -1744,7 +1842,7 @@
     if (state.repeatCurrent && state.activeCueId) {
       const cue = state.cues.find(c => c.id === state.activeCueId);
       if (cue) {
-        audio.currentTime = cue.start + 0.05;
+        audio.currentTime = cue.start + 0.02;
         audio.play().catch(err => console.log('Repeat replay error:', err));
         return;
       }
@@ -1845,6 +1943,7 @@
         showToast(isZh ? '已自动关闭睡眠定时' : 'Sleep timer turned off');
       }
     }
+    syncBoundaryMonitor();
     const isZh = isZhLang();
     repeatBtn.title = state.repeatCurrent 
       ? (isZh ? '取消单句循环 (R)' : 'Disable sentence loop (R)') 
@@ -2329,7 +2428,12 @@
     handleKeyboardShortcut,
     setPlaybackRate,
     toggleMute,
-    handleAudioError
+    handleAudioError,
+    getCueCutoff,
+    checkCueBoundaries,
+    startBoundaryMonitor,
+    stopBoundaryMonitor,
+    syncBoundaryMonitor
   };
 
   if (typeof window !== 'undefined') {
