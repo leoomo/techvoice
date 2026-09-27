@@ -40,6 +40,7 @@
   const curTimeEl = document.getElementById('time-current');
   const totalTimeEl = document.getElementById('time-total');
   const speedSelect = document.getElementById('speed-select');
+  const timerSelect = document.getElementById('timer-select');
   const autoScrollBtn = document.getElementById('btn-autoscroll');
   const autoScrollIcon = document.getElementById('autoscroll-icon');
   const autoScrollText = document.getElementById('autoscroll-text');
@@ -735,6 +736,110 @@
     }
   };
 
+  // Sleep Timer Controller with Volume Fade-out and A-B Loop Guard
+  const SleepTimer = {
+    mode: null,
+    remainingSeconds: null,
+    intervalId: null,
+    originalVolume: 1.0,
+
+    start(mode) {
+      if (!mode || mode === 'off') {
+        this.stop(true);
+        const isZh = isZhLang();
+        showToast(isZh ? '睡眠定时已关闭' : 'Sleep timer turned off');
+        return;
+      }
+
+      // Mutual exclusivity guard: disable A-B Loop if active
+      if (state.repeatCurrent) {
+        state.repeatCurrent = false;
+        if (repeatBtn) repeatBtn.classList.remove('active');
+        const isZh = isZhLang();
+        showToast(isZh ? '已自动解除单句复读以启用睡眠定时' : 'A-B Loop disabled for sleep timer');
+      }
+
+      this.stop(false);
+      this.mode = mode;
+      this.originalVolume = (audio && typeof audio.volume === 'number') ? audio.volume : 1.0;
+
+      if (mode === '15m') this.remainingSeconds = 15 * 60;
+      else if (mode === '30m') this.remainingSeconds = 30 * 60;
+      else if (mode === '45m') this.remainingSeconds = 45 * 60;
+      else if (mode === 'end_of_chapter') {
+        const duration = (audio && audio.duration) || 0;
+        const current = (audio && audio.currentTime) || 0;
+        this.remainingSeconds = Math.max(1, Math.round(duration - current));
+      }
+
+      this.updateUI();
+
+      if (typeof window !== 'undefined') {
+        this.intervalId = setInterval(() => this.tick(), 1000);
+      }
+
+      const isZh = isZhLang();
+      const modeNames = {
+        '15m': isZh ? '15 分钟' : '15 min',
+        '30m': isZh ? '30 分钟' : '30 min',
+        '45m': isZh ? '45 分钟' : '45 min',
+        'end_of_chapter': isZh ? '播完本章' : 'End of Chapter'
+      };
+      showToast(`${isZh ? '睡眠定时已设为: ' : 'Sleep timer set to: '}${modeNames[mode] || mode}`);
+    },
+
+    tick() {
+      if (this.remainingSeconds == null) return;
+      this.remainingSeconds--;
+
+      // Linear volume fade-out in final 10 seconds
+      if (this.remainingSeconds <= 10 && this.remainingSeconds > 0) {
+        if (audio) {
+          audio.volume = Math.max(0, this.originalVolume * (this.remainingSeconds / 10));
+        }
+      }
+
+      if (this.remainingSeconds <= 0) {
+        if (audio) {
+          audio.pause();
+          audio.volume = this.originalVolume;
+        }
+        const isZh = isZhLang();
+        showToast(isZh ? '睡眠定时结束，已暂停播放' : 'Sleep timer completed, playback paused');
+        this.stop(false);
+        return;
+      }
+
+      this.updateUI();
+    },
+
+    stop(restoreVolume = true) {
+      if (this.intervalId) {
+        clearInterval(this.intervalId);
+        this.intervalId = null;
+      }
+      this.mode = null;
+      this.remainingSeconds = null;
+      if (restoreVolume && audio) {
+        audio.volume = this.originalVolume;
+      }
+      this.updateUI();
+    },
+
+    updateUI() {
+      const select = document.getElementById('timer-select');
+      if (select) {
+        if (!this.mode) {
+          select.value = 'off';
+          select.classList.remove('active');
+        } else {
+          select.value = this.mode;
+          select.classList.add('active');
+        }
+      }
+    }
+  };
+
   let currentLoadToken = 0;
 
   // Load and Switch Chapter
@@ -1210,6 +1315,11 @@
           e.stopPropagation();
           state.repeatCurrent = true;
           repeatBtn.classList.add('active');
+          if (SleepTimer.mode) {
+            SleepTimer.stop(true);
+            const isZh = isZhLang();
+            showToast(isZh ? '已自动关闭睡眠定时' : 'Sleep timer turned off');
+          }
           seekToCue(cue);
         });
       }
@@ -1387,6 +1497,12 @@
   audio.addEventListener('ended', () => {
     state.isPlaying = false;
     setPlayIcon(false);
+    if (SleepTimer.mode === 'end_of_chapter') {
+      SleepTimer.stop(false);
+      const isZh = isZhLang();
+      showToast(isZh ? '本章播放完毕，睡眠定时已暂停' : 'Chapter ended, sleep timer paused playback');
+      return;
+    }
     // Autoplay next chapter if available
     const idx = window.CHAPTERS_META.findIndex(c => c.key === state.currentChapterKey);
     if (idx < window.CHAPTERS_META.length - 1) {
@@ -1434,6 +1550,11 @@
   repeatBtn.addEventListener('click', () => {
     state.repeatCurrent = !state.repeatCurrent;
     repeatBtn.classList.toggle('active', state.repeatCurrent);
+    if (state.repeatCurrent && SleepTimer.mode) {
+      SleepTimer.stop(true);
+      const isZh = isZhLang();
+      showToast(isZh ? '已自动关闭睡眠定时' : 'Sleep timer turned off');
+    }
     const isZh = isZhLang();
     repeatBtn.title = state.repeatCurrent 
       ? (isZh ? '取消单句循环 (R)' : 'Disable sentence loop (R)') 
@@ -1451,6 +1572,12 @@
       localStorage.setItem('ai_agent_rate', speedSelect.value);
     } catch (e) {}
   });
+
+  if (timerSelect) {
+    timerSelect.addEventListener('change', (e) => {
+      SleepTimer.start(e.target.value);
+    });
+  }
 
   autoScrollBtn.addEventListener('click', () => {
     state.autoScroll = !state.autoScroll;
@@ -1833,7 +1960,8 @@
     DynamicDataLoader,
     escapeHtml,
     highlightMatches,
-    SearchEngine
+    SearchEngine,
+    SleepTimer
   };
 
   if (typeof window !== 'undefined') {

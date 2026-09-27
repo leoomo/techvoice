@@ -898,6 +898,12 @@ kbd {
   color: var(--text-primary);
 }
 
+.timer-select.active {
+  border-color: var(--text-accent);
+  color: var(--text-accent);
+  font-weight: 600;
+}
+
 .btn-toggle-tool {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
