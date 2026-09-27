@@ -1979,3 +1979,140 @@ kbd {
   }
 }
 
+/* Full-Text Search Modal */
+.modal-search-card {
+  max-width: 640px;
+  width: 92%;
+  height: 520px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+
+.modal-search-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+}
+
+.search-input-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 15px;
+  color: var(--text-primary);
+  font-family: inherit;
+}
+
+.search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.modal-search-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.search-empty-state, .search-no-results {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.search-results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.search-result-item {
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.search-result-item:hover, .search-result-item.selected {
+  background: var(--bg-hover);
+  border-color: var(--text-accent);
+  transform: translateX(2px);
+}
+
+.search-result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.search-result-chapter {
+  color: var(--text-accent);
+  font-weight: 600;
+}
+
+.search-result-time {
+  font-family: var(--font-mono);
+}
+
+.search-result-text-en {
+  font-size: 13.5px;
+  color: var(--text-primary);
+  line-height: 1.45;
+}
+
+.search-result-text-zh {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+mark.search-highlight {
+  background: rgba(234, 179, 8, 0.28);
+  color: var(--text-primary);
+  padding: 1px 3px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+.modal-search-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--bg-surface);
+}
+
+.search-footer-hint {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.search-footer-hint kbd {
+  font-size: 10.5px;
+  padding: 2px 5px;
+}
+

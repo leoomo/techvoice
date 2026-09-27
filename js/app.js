@@ -81,6 +81,13 @@
   const sponsorModal = document.getElementById('modal-sponsor');
   const aboutModal = document.getElementById('modal-about');
   const shortcutsModal = document.getElementById('modal-shortcuts');
+  const searchModal = document.getElementById('modal-search');
+  const searchInputEl = document.getElementById('search-input');
+  const searchResultsListEl = document.getElementById('search-results-list');
+  const searchResultsCountEl = document.getElementById('search-results-count');
+  const searchEmptyStateEl = document.getElementById('search-empty-state');
+  const btnSearchOpen = document.getElementById('btn-search');
+  const btnSearchClose = document.getElementById('btn-search-close');
 
   function isZhLang() {
     return window.TechVoiceI18N ? window.TechVoiceI18N.getLang() === 'zh' : true;
@@ -639,6 +646,92 @@
           return [];
         }))
       );
+    }
+  };
+
+  // HTML escaping helper for safe markup rendering
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  // Safe keyword highlighting: escapes non-matching and matching segments, protects entities & prevents XSS
+  function highlightMatches(text, keyword) {
+    if (!text) return '';
+    if (!keyword || !keyword.trim()) return escapeHtml(text);
+
+    const q = keyword.trim().toLowerCase();
+    const lower = text.toLowerCase();
+    let result = '';
+    let lastIndex = 0;
+    let matchIndex = lower.indexOf(q, lastIndex);
+
+    if (matchIndex === -1) {
+      return escapeHtml(text);
+    }
+
+    while (matchIndex !== -1) {
+      result += escapeHtml(text.slice(lastIndex, matchIndex));
+      const matchText = text.slice(matchIndex, matchIndex + q.length);
+      result += `<mark class="search-highlight">${escapeHtml(matchText)}</mark>`;
+      lastIndex = matchIndex + q.length;
+      matchIndex = lower.indexOf(q, lastIndex);
+    }
+    result += escapeHtml(text.slice(lastIndex));
+    return result;
+  }
+
+  const MAX_SEARCH_RESULTS = 50;
+
+  const SearchEngine = {
+    isPreheated: false,
+
+    preheat() {
+      if (this.isPreheated) return Promise.resolve();
+      this.isPreheated = true;
+      return DynamicDataLoader.loadAll();
+    },
+
+    search(query) {
+      if (!query || typeof query !== 'string') return [];
+      const q = query.trim().toLowerCase();
+      if (!q) return [];
+
+      const results = [];
+      const chapters = (typeof window !== 'undefined' && window.CHAPTERS_META) || [];
+
+      for (const ch of chapters) {
+        const dataVar = `CHAPTER_DATA_${ch.key}`;
+        const cues = (typeof window !== 'undefined' && window[dataVar]) || [];
+        for (const cue of cues) {
+          const enMatch = cue.en && cue.en.toLowerCase().includes(q);
+          const zhMatch = cue.zh && cue.zh.toLowerCase().includes(q);
+          if (enMatch || zhMatch) {
+            results.push({
+              chapterKey: ch.key,
+              chapterName: ch.name,
+              chapterTitleEn: ch.title_en,
+              chapterTitleZh: ch.title_zh,
+              cueId: cue.id,
+              start: cue.start,
+              end: cue.end,
+              en: cue.en,
+              zh: cue.zh,
+              enHighlighted: highlightMatches(cue.en || '', q),
+              zhHighlighted: highlightMatches(cue.zh || '', q)
+            });
+            if (results.length >= MAX_SEARCH_RESULTS) {
+              return results;
+            }
+          }
+        }
+      }
+      return results;
     }
   };
 
@@ -1454,6 +1547,155 @@
   const btnShortcuts = document.getElementById('btn-shortcuts');
   if (btnShortcuts) btnShortcuts.addEventListener('click', () => openModal(shortcutsModal));
 
+  // Search Modal Controller
+  let searchDebounceTimer = null;
+  let searchSelectedIndex = -1;
+
+  function openSearchModal() {
+    if (!searchModal) return;
+    openModal(searchModal);
+    if (searchInputEl) {
+      setTimeout(() => {
+        searchInputEl.focus();
+        if (typeof searchInputEl.select === 'function') searchInputEl.select();
+      }, 50);
+    }
+    SearchEngine.preheat();
+  }
+
+  function closeSearchModal() {
+    if (!searchModal) return;
+    closeModal(searchModal);
+  }
+
+  function handleSearchInput() {
+    if (!searchInputEl || !searchResultsListEl) return;
+    const query = searchInputEl.value;
+    searchSelectedIndex = -1;
+
+    if (!query || !query.trim()) {
+      if (searchEmptyStateEl) searchEmptyStateEl.style.display = 'block';
+      searchResultsListEl.innerHTML = '';
+      if (searchResultsCountEl) searchResultsCountEl.textContent = '';
+      return;
+    }
+
+    if (searchEmptyStateEl) searchEmptyStateEl.style.display = 'none';
+    const results = SearchEngine.search(query);
+    const isZh = isZhLang();
+
+    if (searchResultsCountEl) {
+      const countMsg = isZh ? `找到 ${results.length} 条结果` : `${results.length} results found`;
+      searchResultsCountEl.textContent = countMsg;
+    }
+
+    if (results.length === 0) {
+      const noResMsg = isZh ? '未找到匹配的字幕或概念' : 'No matching subtitles found';
+      searchResultsListEl.innerHTML = `<div class="search-no-results">${noResMsg}</div>`;
+      return;
+    }
+
+    searchResultsListEl.innerHTML = results.map((item, idx) => `
+      <div class="search-result-item" data-index="${idx}" data-chapter="${item.chapterKey}" data-time="${item.start}" data-cue="${item.cueId}">
+        <div class="search-result-header">
+          <span class="search-result-chapter">${isZh ? item.chapterTitleZh : item.chapterTitleEn}</span>
+          <span class="search-result-time">${formatTime(item.start)}</span>
+        </div>
+        <div class="search-result-text-en">${item.enHighlighted}</div>
+        <div class="search-result-text-zh">${item.zhHighlighted}</div>
+      </div>
+    `).join('');
+
+    searchResultsListEl.querySelectorAll('.search-result-item').forEach(el => {
+      el.addEventListener('click', () => {
+        const chKey = el.getAttribute('data-chapter');
+        const startSec = parseFloat(el.getAttribute('data-time')) || 0;
+        const cueId = el.getAttribute('data-cue');
+        selectSearchResult(chKey, startSec, cueId);
+      });
+    });
+  }
+
+  function selectSearchResult(chKey, startSec, cueId) {
+    closeSearchModal();
+    if (state.currentChapterKey !== chKey) {
+      state.pendingDeepLinkTime = startSec;
+      loadChapter(chKey, true);
+    } else {
+      audio.currentTime = startSec;
+      curTimeEl.textContent = formatTime(startSec);
+      seekBar.value = startSec;
+      audio.play().catch(e => console.log('Play prevented:', e));
+      if (cueId) highlightCue(cueId, true);
+    }
+  }
+
+  function updateSearchSelection(items) {
+    items.forEach((item, idx) => {
+      if (idx === searchSelectedIndex) {
+        item.classList.add('selected');
+        if (typeof item.scrollIntoView === 'function') {
+          item.scrollIntoView({ block: 'nearest' });
+        }
+      } else {
+        item.classList.remove('selected');
+      }
+    });
+  }
+
+  if (btnSearchOpen) btnSearchOpen.addEventListener('click', openSearchModal);
+  if (btnSearchClose) btnSearchClose.addEventListener('click', closeSearchModal);
+
+  if (searchInputEl) {
+    searchInputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        closeSearchModal();
+        return;
+      }
+      const items = searchResultsListEl ? searchResultsListEl.querySelectorAll('.search-result-item') : [];
+      if (!items || items.length === 0) return;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        searchSelectedIndex = Math.min(searchSelectedIndex + 1, items.length - 1);
+        updateSearchSelection(items);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        searchSelectedIndex = Math.max(searchSelectedIndex - 1, 0);
+        updateSearchSelection(items);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (searchSelectedIndex >= 0 && searchSelectedIndex < items.length) {
+          items[searchSelectedIndex].click();
+        } else if (items.length > 0) {
+          items[0].click();
+        }
+      }
+    });
+
+    searchInputEl.addEventListener('input', () => {
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(handleSearchInput, 100);
+    });
+  }
+
+  // Idle Preload Search Data
+  if (typeof window !== 'undefined') {
+    const schedulePreheat = () => {
+      if (typeof window.requestIdleCallback === 'function') {
+        window.requestIdleCallback(() => SearchEngine.preheat());
+      } else {
+        setTimeout(() => SearchEngine.preheat(), 3000);
+      }
+    };
+    if (document.readyState === 'complete') {
+      schedulePreheat();
+    } else {
+      window.addEventListener('load', schedulePreheat, { once: true });
+    }
+  }
+
   // Cache Chapter Button Trigger
   if (cacheBtn) {
     cacheBtn.addEventListener('click', handleCacheChapterClick);
@@ -1498,7 +1740,25 @@
       document.querySelectorAll('.modal-overlay.active').forEach(closeModal);
       return;
     }
+
+    // Global Cmd+K / Ctrl+K shortcut for search
+    if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+      e.preventDefault();
+      if (searchModal && searchModal.classList.contains('active')) {
+        closeSearchModal();
+      } else {
+        openSearchModal();
+      }
+      return;
+    }
+
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+    if (e.key === '/') {
+      e.preventDefault();
+      openSearchModal();
+      return;
+    }
 
     switch (e.code) {
       case 'Space':
@@ -1570,7 +1830,10 @@
     parseLocationHash,
     generateDeepLink,
     copyTextToClipboard,
-    DynamicDataLoader
+    DynamicDataLoader,
+    escapeHtml,
+    highlightMatches,
+    SearchEngine
   };
 
   if (typeof window !== 'undefined') {

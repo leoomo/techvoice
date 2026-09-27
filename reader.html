@@ -113,6 +113,15 @@
               </svg>
             </a>
 
+            <!-- Global Search (Cmd+K) -->
+            <button class="btn-icon btn-tool-sm btn-tool-search" id="btn-search" data-i18n-title="reader_search_tip" title="搜索全书字幕与术语 (Cmd+K / /)">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <span class="search-key-badge" style="font-size: 10px; opacity: 0.75; margin-left: 2px; font-family: var(--font-mono); font-weight: 600;">⌘K</span>
+            </button>
+
             <!-- Shortcuts Button -->
             <button class="btn-icon btn-tool-sm btn-tool-shortcuts" id="btn-shortcuts" data-i18n-title="reader_shortcuts_tip" title="快捷键 (Shortcuts)">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -408,10 +417,42 @@
             <kbd>L</kbd>
           </div>
           <div class="shortcut-item">
+            <span data-i18n="reader_modal_sc_search">搜索全书字幕与概念</span>
+            <span><kbd>⌘K</kbd> / <kbd>/</kbd></span>
+          </div>
+          <div class="shortcut-item">
             <span data-i18n="reader_modal_sc_close">关闭当前弹窗</span>
             <kbd>Esc</kbd>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Global Search (Cmd+K) -->
+  <div class="modal-overlay" id="modal-search">
+    <div class="modal-card modal-search-card">
+      <div class="modal-search-header">
+        <svg class="search-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input type="text" id="search-input" class="search-input" placeholder="搜索全书字幕、段落与专业术语 (Esc 退出)..." data-i18n-placeholder="reader_search_placeholder" autocomplete="off" spellcheck="false" />
+        <button class="modal-close-btn" id="btn-search-close" aria-label="关闭">&times;</button>
+      </div>
+      <div class="modal-search-body" id="search-results-container">
+        <div class="search-empty-state" id="search-empty-state">
+          <p data-i18n="reader_search_empty_hint">输入关键词检索全书 12 章节字幕内容...</p>
+        </div>
+        <div class="search-results-list" id="search-results-list"></div>
+      </div>
+      <div class="modal-search-footer">
+        <div class="search-footer-hint">
+          <span><kbd>↑</kbd> <kbd>↓</kbd> 浏览</span>
+          <span><kbd>Enter</kbd> 跳转</span>
+          <span><kbd>Esc</kbd> 关闭</span>
+        </div>
+        <div class="search-results-count" id="search-results-count"></div>
       </div>
     </div>
   </div>
