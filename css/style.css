@@ -501,6 +501,7 @@ kbd {
   flex-direction: column;
   overflow: hidden;
   background: var(--bg-app);
+  position: relative;
 }
 
 /* Top App Bar */
@@ -1543,6 +1544,61 @@ body.hide-en .en-text {
 }
 
 /* ==========================================================================
+   Floating Resume Active Cue Pill
+   ========================================================================== */
+.btn-resume-cue {
+  position: absolute;
+  bottom: 24px;
+  right: 28px;
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 20px;
+  color: var(--text-accent);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: resumePillIn 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-theme="light"] .btn-resume-cue {
+  background: #ffffff;
+  border-color: #bae6fd;
+  color: #0284c7;
+  box-shadow: 0 4px 16px -2px rgba(2, 132, 199, 0.18);
+}
+
+.btn-resume-cue:hover {
+  transform: translateY(-2px) scale(1.02);
+  border-color: var(--text-accent);
+  box-shadow: 0 6px 20px -2px rgba(56, 189, 248, 0.3);
+}
+
+[data-theme="light"] .btn-resume-cue:hover {
+  border-color: #0284c7;
+  box-shadow: 0 6px 20px -2px rgba(2, 132, 199, 0.28);
+}
+
+@keyframes resumePillIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ==========================================================================
    Modals
    ========================================================================== */
 .modal-overlay {
@@ -2005,6 +2061,13 @@ kbd {
     line-height: 1.55;
     word-break: break-word;
     overflow-wrap: break-word;
+  }
+
+  .btn-resume-cue {
+    bottom: 20px;
+    right: 16px;
+    padding: 7px 12px;
+    font-size: 12px;
   }
 
   .chapter-end-nav {

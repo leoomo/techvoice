@@ -14,6 +14,7 @@
     isPlaying: false,
     repeatCurrent: false,
     autoScroll: true,
+    isUserDetached: false,
     viewMode: 'en', // 'en' | 'bilingual' | 'zh'
     playbackRate: 1.0,
     theme: 'dark',
@@ -45,6 +46,7 @@
   const autoScrollBtn = document.getElementById('btn-autoscroll');
   const autoScrollIcon = document.getElementById('autoscroll-icon');
   const autoScrollText = document.getElementById('autoscroll-text');
+  const resumeCueBtn = document.getElementById('btn-resume-cue');
   const cacheBtn = document.getElementById('btn-cache-chapter');
   const cacheIcon = document.getElementById('cache-icon');
   const cacheText = document.getElementById('cache-text');
@@ -53,6 +55,9 @@
   const sidebarToggleBtn = document.getElementById('btn-sidebar-toggle');
   const sidebarCloseBtn = document.getElementById('btn-sidebar-close');
   const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+
+  let isProgrammaticScrolling = false;
+  let programmaticScrollTimer = null;
 
   function openSidebar() {
     if (!sidebarEl) return;
@@ -133,6 +138,76 @@
     playIcon.innerHTML = playing ? SVGS.pause : SVGS.play;
   }
 
+  function updateResumeCueUI() {
+    if (!resumeCueBtn) return;
+    if (state.autoScroll && state.isUserDetached) {
+      resumeCueBtn.style.display = 'inline-flex';
+    } else {
+      resumeCueBtn.style.display = 'none';
+    }
+  }
+
+  function triggerProgrammaticScroll(targetEl) {
+    if (!targetEl) return;
+    isProgrammaticScrolling = true;
+    if (programmaticScrollTimer) clearTimeout(programmaticScrollTimer);
+    if (typeof targetEl.scrollIntoView === 'function') {
+      targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    programmaticScrollTimer = setTimeout(() => {
+      isProgrammaticScrolling = false;
+    }, 650);
+  }
+
+  function isCueInContainerView(cueEl, containerEl) {
+    if (!cueEl || !containerEl) return false;
+    if (typeof cueEl.getBoundingClientRect !== 'function' || typeof containerEl.getBoundingClientRect !== 'function') {
+      return true;
+    }
+    const cueRect = cueEl.getBoundingClientRect();
+    const containerRect = containerEl.getBoundingClientRect();
+    const buffer = 16;
+    return (cueRect.bottom >= containerRect.top + buffer) &&
+           (cueRect.top <= containerRect.bottom - buffer);
+  }
+
+  function handleTranscriptScroll() {
+    if (isProgrammaticScrolling) return;
+    if (!state.autoScroll || !state.activeCueId) {
+      if (state.isUserDetached) {
+        state.isUserDetached = false;
+        updateResumeCueUI();
+      }
+      return;
+    }
+    const curCueEl = document.getElementById(`cue-${state.activeCueId}`);
+    if (!curCueEl) return;
+
+    const inView = isCueInContainerView(curCueEl, transcriptEl);
+    if (!inView) {
+      if (!state.isUserDetached) {
+        state.isUserDetached = true;
+        updateResumeCueUI();
+      }
+    } else {
+      if (state.isUserDetached) {
+        state.isUserDetached = false;
+        updateResumeCueUI();
+      }
+    }
+  }
+
+  function resumeActiveCueTracking() {
+    state.isUserDetached = false;
+    updateResumeCueUI();
+    if (state.activeCueId) {
+      const cur = document.getElementById(`cue-${state.activeCueId}`);
+      if (cur) {
+        triggerProgrammaticScroll(cur);
+      }
+    }
+  }
+
   function updateAutoScrollUI() {
     if (!autoScrollBtn) return;
     const isZh = isZhLang();
@@ -151,6 +226,7 @@
     autoScrollBtn.title = isZh
       ? (state.autoScroll ? '字幕自动平滑滚动已开启（点击可关闭）' : '字幕自动平滑滚动已关闭（点击可开启）')
       : (state.autoScroll ? 'Auto-scroll is ON (Click to disable)' : 'Auto-scroll is OFF (Click to enable)');
+    updateResumeCueUI();
   }
 
   // Format seconds to mm:ss or hh:mm:ss
@@ -1183,6 +1259,8 @@
     state.activeCueId = null;
     state.activeSectionCueId = null;
     state.preloadedNextChapterKey = null;
+    state.isUserDetached = false;
+    updateResumeCueUI();
     window.location.hash = key;
     try {
       localStorage.setItem('ai_agent_current_chapter', key);
@@ -1686,6 +1764,8 @@
     if (audio.paused) {
       audio.play();
     }
+    state.isUserDetached = false;
+    updateResumeCueUI();
     highlightCue(cue.id, true);
     updateActiveSection(cue.start + 0.02);
   }
@@ -1703,8 +1783,8 @@
     const cur = document.getElementById(`cue-${cueId}`);
     if (cur) {
       cur.classList.add('active');
-      if (shouldScroll && state.autoScroll) {
-        cur.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (shouldScroll && state.autoScroll && !state.isUserDetached) {
+        triggerProgrammaticScroll(cur);
       }
     }
   }
@@ -1966,11 +2046,25 @@
     try {
       localStorage.setItem('ai_agent_autoscroll', state.autoScroll ? '1' : '0');
     } catch (e) {}
+    state.isUserDetached = false;
     updateAutoScrollUI();
     if (state.autoScroll && state.activeCueId) {
-      highlightCue(state.activeCueId, true);
+      const cur = document.getElementById(`cue-${state.activeCueId}`);
+      if (cur) triggerProgrammaticScroll(cur);
     }
   });
+
+  if (transcriptEl) {
+    transcriptEl.addEventListener('scroll', handleTranscriptScroll, { passive: true });
+  }
+
+  if (resumeCueBtn) {
+    resumeCueBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      resumeActiveCueTracking();
+    });
+  }
 
   themeToggleBtn.addEventListener('click', toggleTheme);
 
@@ -2424,7 +2518,14 @@
     checkCueBoundaries,
     startBoundaryMonitor,
     stopBoundaryMonitor,
-    syncBoundaryMonitor
+    syncBoundaryMonitor,
+    resumeActiveCueTracking,
+    isCueInContainerView,
+    handleTranscriptScroll,
+    updateResumeCueUI,
+    triggerProgrammaticScroll,
+    setIsProgrammaticScrolling: (val) => { isProgrammaticScrolling = val; },
+    getIsProgrammaticScrolling: () => isProgrammaticScrolling
   };
 
   if (typeof window !== 'undefined') {

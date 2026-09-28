@@ -98,6 +98,9 @@ class DOMElementMock {
     this._textContent = '';
     this.children = [];
     this.listeners = {};
+    this.scrollTop = 0;
+    this.scrollHeight = 1000;
+    this.clientHeight = 500;
   }
   get textContent() {
     if (this._textContent) return this._textContent;
@@ -133,6 +136,10 @@ class DOMElementMock {
     return [this.querySelector(sel)];
   }
   scrollIntoView() {}
+  getBoundingClientRect() {
+    if (this._rect) return this._rect;
+    return { top: 0, bottom: 50, left: 0, right: 100, width: 100, height: 50 };
+  }
 }
 
 // Setup Global Environment if in Node.js
