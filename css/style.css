@@ -1480,6 +1480,14 @@ kbd {
   color: var(--text-secondary);
 }
 
+:root:not([data-theme="light"]) .zh-text {
+  line-height: 1.68;
+}
+
+:root:not([data-theme="light"]) .cue-card.active .zh-text {
+  color: #e2e8f0;
+}
+
 /* Visibility states for view modes */
 body.hide-zh .zh-text {
   display: none !important;
