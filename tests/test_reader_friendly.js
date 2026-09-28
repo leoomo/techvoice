@@ -3,6 +3,8 @@
  */
 
 const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
 require('./test_helpers');
 const app = require('../js/app');
 
@@ -174,5 +176,31 @@ app.state.cues = [{ id: 1, start: 0, end: 5 }, { id: 2, start: 5, end: 10 }];
 app.loadChapter('introduction', false);
 assert.strictEqual(app.state.isUserDetached, false, 'Loading chapter should reset isUserDetached');
 assert.strictEqual(resumeBtn.style.display, 'none', 'Resume button should be hidden after loading chapter');
+
+// Test Case 7: Dark mode reading enhancements static style assertions
+console.log('Test 7: Dark mode reading enhancements style assertions');
+const styleCss = fs.readFileSync(path.join(__dirname, '../css/style.css'), 'utf-8');
+
+// Assert soft text contrast in dark mode (non-active .en-text)
+assert(styleCss.includes(':root:not([data-theme="light"]) .cue-card:not(.active) .en-text'), 'Must scope soft en-text to dark mode');
+assert(styleCss.includes('#cbd5e1'), 'Must use soft slate-300 #cbd5e1 for dark inactive en text');
+
+// Assert active en-text highlight and glow
+assert(styleCss.includes(':root:not([data-theme="light"]) .cue-card.active .en-text'), 'Must scope active en-text highlight to dark mode');
+assert(styleCss.includes('#ffffff'), 'Must use pure white #ffffff for active en text');
+assert(styleCss.includes('rgba(56, 189, 248, 0.11)'), 'Must use deep ocean glow for dark active cue');
+
+// Assert dark active zh-text highlight and 1.68 line-height
+assert(styleCss.includes(':root:not([data-theme="light"]) .cue-card.active .zh-text'), 'Must scope active zh-text to dark mode');
+assert(styleCss.includes('#e2e8f0'), 'Must use bright slate-200 #e2e8f0 for active zh text');
+assert(styleCss.includes('line-height: 1.68;'), 'Must set dark zh line-height to 1.68');
+
+// Assert zero CLS 3.5px border
+assert(styleCss.includes('border-left: 3.5px solid transparent;'), 'Base cue-card must reserve 3.5px transparent border');
+assert(styleCss.includes('.cue-card.echo-step-listening {\n  border-left: 3.5px solid #38bdf8 !important;'), 'Echo listening step must use 3.5px solid');
+
+// Assert no naked ID selector for resume pill
+assert(!styleCss.includes('#btn-resume-cue {'), 'Must never use naked ID selector for resume cue pill');
+assert(styleCss.includes('rgba(13, 18, 29, 0.85)'), 'Must use dark glassmorphism background for resume pill');
 
 console.log('✅ test_reader_friendly.js passed all assertions!');
