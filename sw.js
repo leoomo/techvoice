@@ -3,7 +3,7 @@
  * High-performance offline caching engine with HTTP 206 Range slicing support.
  */
 
-const CACHE_SHELL_NAME = 'ai-agent-shell-v4';
+const CACHE_SHELL_NAME = 'ai-agent-shell-v5';
 const CACHE_AUDIO_NAME = 'ai-agent-audio-v1';
 
 // App shell files for 100% offline access
