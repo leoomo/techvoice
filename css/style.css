@@ -14,14 +14,19 @@
   --bg-card-hover: #172133;
   --bg-active-cue: rgba(56, 189, 248, 0.06);
   --bg-player: rgba(13, 18, 29, 0.94);
+  --bg-surface: #0d121d;
+  --bg-hover: #172133;
   
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-hover: rgba(255, 255, 255, 0.16);
   --border-strong: #38bdf8;
+  --accent: #38bdf8;
   
   --text-primary: #f8fafc;
+  --text-main: #f8fafc;
   --text-secondary: #94a3b8;
   --text-muted: #64748b;
+  --text-faint: #64748b;
   --text-accent: #38bdf8;
   
   --brand-green: #10b981;
@@ -35,27 +40,36 @@
   --sidebar-w: 290px;
 }
 
-/* Light Theme */
+/* Light Theme - Editorial Warm Paper & Rich Ink Palette */
 [data-theme="light"] {
-  --bg-app: #f8fafc;
+  --bg-app: #fbfbfa; /* Warm Paper Ivory - soothing reading background */
   --bg-sidebar: #ffffff;
   --bg-card: #ffffff;
-  --bg-card-hover: #f1f5f9;
-  --bg-active-cue: rgba(2, 132, 199, 0.06);
-  --bg-player: rgba(255, 255, 255, 0.94);
+  --bg-card-hover: #f5f5f4;
+  --bg-active-cue: #f0f9ff;
+  --bg-player: rgba(255, 255, 255, 0.96);
+  --bg-surface: #f8fafc;
+  --bg-hover: #f1f5f9;
   
-  --border-subtle: #e2e8f0;
-  --border-hover: #cbd5e1;
+  --border-subtle: #e7e5e4;
+  --border-hover: #d6d3d1;
   --border-strong: #0284c7;
+  --accent: #0284c7;
   
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #94a3b8;
+  --text-primary: #1e293b; /* Rich Ink Slate-800, WCAG AAA 12.6:1, anti-halation */
+  --text-main: #1e293b;
+  --text-secondary: #334155; /* Refined Slate-700, 8.2:1 contrast */
+  --text-muted: #64748b;
+  --text-faint: #94a3b8;
   --text-accent: #0284c7;
   
-  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 12px 32px -4px rgba(0, 0, 0, 0.12);
+  --brand-green: #15803d;
+  --brand-amber: #b45309;
+  --brand-rose: #be123c;
+  
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 16px -2px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 12px 32px -4px rgba(0, 0, 0, 0.08);
 }
 
 * {
@@ -75,6 +89,15 @@ body {
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: rgba(2, 132, 199, 0.18);
+  color: inherit;
+}
+:root:not([data-theme="light"]) ::selection {
+  background: rgba(56, 189, 248, 0.28);
+  color: #f8fafc;
 }
 
 /* Tabular numbers for all timer and stats to prevent jitter */
@@ -709,6 +732,10 @@ kbd {
   color: #ffffff;
 }
 
+[data-theme="light"] .btn-control.btn-play:hover {
+  background: #0369a1;
+}
+
 .btn-control.btn-play:hover {
   transform: scale(1.04);
   background: #7dd3fc;
@@ -811,6 +838,10 @@ kbd {
   pointer-events: auto;
   cursor: pointer;
   transition: all 0.15s ease;
+}
+
+[data-theme="light"] .seek-marker {
+  background: rgba(15, 23, 42, 0.22);
 }
 
 .seek-marker.active {

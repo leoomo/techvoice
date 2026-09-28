@@ -13,13 +13,17 @@
   --bg-card: #121927;
   --bg-card-hover: #172133;
   --bg-pill: rgba(56, 189, 248, 0.08);
+  --bg-app: #080c14;
   
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-card: rgba(255, 255, 255, 0.08);
   --border-hover: rgba(255, 255, 255, 0.18);
   --border-accent: #38bdf8;
+  --accent: #38bdf8;
   
   --text-main: #f8fafc;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
   --text-muted: #94a3b8;
   --text-faint: #64748b;
   --text-accent: #38bdf8;
@@ -32,25 +36,34 @@
   --shadow-subtle: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
 }
 
+/* Light Theme - Editorial Warm Paper & Rich Ink Palette */
 [data-theme="light"] {
-  --bg-page: #f8fafc;
+  --bg-page: #fbfbfa; /* Warm Paper Ivory - soothing reading background */
   --bg-surface: #ffffff;
   --bg-card: #ffffff;
-  --bg-card-hover: #f1f5f9;
+  --bg-card-hover: #f5f5f4;
   --bg-pill: rgba(2, 132, 199, 0.06);
+  --bg-app: #fbfbfa;
   
-  --border-subtle: #e2e8f0;
-  --border-card: #e2e8f0;
-  --border-hover: #cbd5e1;
+  --border-subtle: #e7e5e4;
+  --border-card: #e7e5e4;
+  --border-hover: #d6d3d1;
   --border-accent: #0284c7;
+  --accent: #0284c7;
   
-  --text-main: #0f172a;
-  --text-muted: #475569;
+  --text-main: #1e293b; /* Rich Ink Slate-800, WCAG AAA 12.6:1, anti-halation */
+  --text-primary: #1e293b;
+  --text-secondary: #334155; /* Refined Slate-700, 8.2:1 contrast */
+  --text-muted: #64748b;
   --text-faint: #94a3b8;
   --text-accent: #0284c7;
   
-  --shadow-card: 0 4px 16px -2px rgba(0, 0, 0, 0.06);
-  --shadow-subtle: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+  --color-amber: #b45309;
+  --color-green: #15803d;
+  --color-rose: #be123c;
+  
+  --shadow-card: 0 4px 16px -2px rgba(0, 0, 0, 0.05);
+  --shadow-subtle: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
 }
 
 * {
@@ -69,6 +82,15 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+}
+
+::selection {
+  background: rgba(2, 132, 199, 0.18);
+  color: inherit;
+}
+:root:not([data-theme="light"]) ::selection {
+  background: rgba(56, 189, 248, 0.28);
+  color: #f8fafc;
 }
 
 .tabular-nums,
@@ -584,6 +606,12 @@ body {
   overflow: hidden;
 }
 
+[data-theme="light"] .book-mock-cover {
+  background: #ffffff;
+  border-color: #e7e5e4;
+  box-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.08);
+}
+
 .mock-cover-tag {
   font-size: 9.5px;
   font-family: var(--font-mono);
@@ -595,7 +623,7 @@ body {
 .mock-cover-title {
   font-size: 18px;
   font-weight: 750;
-  color: #ffffff;
+  color: var(--text-main);
   line-height: 1.25;
   text-align: left;
   letter-spacing: -0.02em;
@@ -604,7 +632,7 @@ body {
 
 .mock-cover-sub {
   font-size: 10.5px;
-  color: #94a3b8;
+  color: var(--text-muted);
   text-align: left;
 }
 
@@ -617,7 +645,7 @@ body {
 .mock-cover-author {
   font-size: 12px;
   font-weight: 600;
-  color: #f8fafc;
+  color: var(--text-main);
 }
 
 .book-quick-stats {
