@@ -1239,7 +1239,7 @@ kbd {
   padding: 14px 18px;
   border-radius: 8px;
   border: 1px solid transparent;
-  border-left: 3px solid transparent;
+  border-left: 3.5px solid transparent;
   background: transparent;
   display: flex;
   gap: 16px;
@@ -1257,6 +1257,18 @@ kbd {
   background: var(--bg-active-cue);
   border-color: var(--border-subtle);
   border-left-color: var(--text-accent);
+}
+
+:root:not([data-theme="light"]) .cue-card.active {
+  background: rgba(56, 189, 248, 0.11);
+  border-color: rgba(56, 189, 248, 0.28);
+  border-left: 3.5px solid #38bdf8;
+  box-shadow: 0 4px 20px -2px rgba(56, 189, 248, 0.14);
+}
+
+:root:not([data-theme="light"]) .cue-card.active .en-text {
+  color: #ffffff;
+  font-weight: 550;
 }
 
 [data-theme="light"] .cue-card.active {
@@ -1451,6 +1463,10 @@ kbd {
   line-height: 1.65;
   color: var(--text-primary);
   letter-spacing: -0.01em;
+}
+
+:root:not([data-theme="light"]) .cue-card:not(.active) .en-text {
+  color: #cbd5e1;
 }
 
 .cue-card.active .en-text {
