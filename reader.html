@@ -524,6 +524,38 @@
     </div>
   </div>
 
+  <!-- Modal: Figure Fullscreen Lightbox -->
+  <div class="modal-overlay modal-figure-lightbox" id="modal-figure-lightbox" role="dialog" aria-modal="true" aria-label="图表全屏查看">
+    <div class="modal-card modal-figure-lightbox-card">
+      <div class="lightbox-header">
+        <div class="lightbox-title-area">
+          <span class="lightbox-badge" id="lightbox-fig-badge">Figure</span>
+          <h3 class="lightbox-title" id="lightbox-fig-title"></h3>
+        </div>
+        <div class="lightbox-actions">
+          <button type="button" class="btn-lightbox-lang-toggle" id="btn-lightbox-lang-toggle" title="切换图表中英文版本">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="2" y1="12" x2="22" y2="12"/>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+            <span id="lightbox-lang-label">EN / 中文</span>
+          </button>
+          <button type="button" class="modal-close-btn lightbox-close-btn" id="btn-lightbox-close" aria-label="关闭">&times;</button>
+        </div>
+      </div>
+      <div class="lightbox-body">
+        <div class="lightbox-stage">
+          <img id="lightbox-figure-img" class="lightbox-figure-img" src="" alt="Figure preview" />
+        </div>
+      </div>
+      <div class="lightbox-footer">
+        <span class="lightbox-hint" id="lightbox-footer-hint">支持 ESC 键或点击外部退出</span>
+        <span class="lightbox-chapter-info" id="lightbox-chapter-info"></span>
+      </div>
+    </div>
+  </div>
+
   <!-- i18n Engine -->
   <script src="js/i18n.js"></script>
 

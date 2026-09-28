@@ -84,4 +84,49 @@ targetCueCard.dispatchEvent(mockEvent);
 assert.strictEqual(seekCalled, false, 'Clicking on figure card must NOT trigger audio seek');
 app.seekToCue = origSeek;
 
-console.log('✅ test_figures.js (Phase 1) passed all assertions!');
+// Test 6: Lightbox Open, Content Rendering, and Body Scroll Lock
+console.log('Test 6: Lightbox open, content render, and scroll lock');
+const lightboxModal = document.getElementById('modal-figure-lightbox');
+assert(lightboxModal, 'modal-figure-lightbox element must exist');
+
+app.openFigureLightbox(targetFig);
+assert(lightboxModal.classList.contains('active'), 'Lightbox modal must have active class when opened');
+assert(document.body.classList.contains('lightbox-open'), 'Body must have lightbox-open class when lightbox is active');
+
+const lightboxImg = document.getElementById('lightbox-figure-img');
+const lightboxBadge = document.getElementById('lightbox-fig-badge');
+const lightboxTitle = document.getElementById('lightbox-fig-title');
+assert(lightboxImg && lightboxImg.src.includes(`assets/figures/zh/${targetFig.file}`), 'Initial lightbox img src should match current language (zh)');
+assert(lightboxBadge && lightboxBadge.textContent.includes(targetFig.num), 'Lightbox badge should display figure number');
+assert(lightboxTitle && lightboxTitle.textContent === targetFig.title_zh, 'Lightbox title should display title_zh');
+
+// Test 7: Independent Bilingual Toggle inside Lightbox
+console.log('Test 7: Independent bilingual toggle inside Lightbox');
+const langToggleBtn = document.getElementById('btn-lightbox-lang-toggle');
+assert(langToggleBtn, 'btn-lightbox-lang-toggle element must exist');
+
+// Trigger toggle click
+langToggleBtn.dispatchEvent({ type: 'click', stopPropagation: () => {} });
+
+// Check that image switched to English
+assert(lightboxImg.src.includes(`assets/figures/en/${targetFig.file}`), 'Lightbox img src should switch to en asset');
+assert(lightboxTitle.textContent === targetFig.title_en, 'Lightbox title should switch to title_en');
+// Global language should NOT be corrupted
+assert.strictEqual(window.TechVoiceI18N.getLang(), 'zh', 'Global i18n language must remain intact and isolated');
+
+// Test 8: Lightbox Close & ESC Key Binding
+console.log('Test 8: Lightbox close and ESC key binding');
+app.closeFigureLightbox();
+assert(!lightboxModal.classList.contains('active'), 'Lightbox modal must not have active class after close');
+assert(!document.body.classList.contains('lightbox-open'), 'Body must not have lightbox-open class after close');
+
+// Open again and close via ESC key shortcut
+app.openFigureLightbox(targetFig);
+assert(lightboxModal.classList.contains('active'), 'Re-opened lightbox modal');
+assert(document.body.classList.contains('lightbox-open'), 'Re-added lightbox-open class');
+
+app.handleKeyboardShortcut({ key: 'Escape', preventDefault: () => {} });
+assert(!lightboxModal.classList.contains('active'), 'Lightbox modal closed via ESC key');
+assert(!document.body.classList.contains('lightbox-open'), 'Body lightbox-open removed via ESC key');
+
+console.log('✅ test_figures.js (All Phases) passed all assertions!');

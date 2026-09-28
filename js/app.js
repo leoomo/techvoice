@@ -2166,7 +2166,15 @@
   }
 
   function closeModal(modal) {
-    if (modal) modal.classList.remove('active');
+    if (modal) {
+      modal.classList.remove('active');
+      if (modal.id === 'modal-figure-lightbox') {
+        activeFigure = null;
+        if (document.body && document.body.classList) {
+          document.body.classList.remove('lightbox-open');
+        }
+      }
+    }
   }
 
   document.querySelectorAll('.modal-close-btn').forEach(btn => {
@@ -2204,9 +2212,48 @@
   let activeFigure = null;
   let lightboxLang = 'zh';
 
+  const lightboxModal = document.getElementById('modal-figure-lightbox');
+  const lightboxFigBadge = document.getElementById('lightbox-fig-badge');
+  const lightboxFigTitle = document.getElementById('lightbox-fig-title');
+  const lightboxFigureImg = document.getElementById('lightbox-figure-img');
+  const btnLightboxLangToggle = document.getElementById('btn-lightbox-lang-toggle');
+  const lightboxLangLabel = document.getElementById('lightbox-lang-label');
+  const btnLightboxClose = document.getElementById('btn-lightbox-close');
+  const lightboxChapterInfo = document.getElementById('lightbox-chapter-info');
+
+  function renderLightboxContent() {
+    if (!activeFigure) return;
+    const isZh = (lightboxLang === 'zh');
+    const badgeText = isZh ? `图 ${activeFigure.num}` : `Figure ${activeFigure.num}`;
+    const titleText = isZh ? activeFigure.title_zh : activeFigure.title_en;
+    const imgSrc = `assets/figures/${lightboxLang}/${activeFigure.file}`;
+
+    if (lightboxFigBadge) lightboxFigBadge.textContent = badgeText;
+    if (lightboxFigTitle) lightboxFigTitle.textContent = titleText;
+    if (lightboxFigureImg) {
+      lightboxFigureImg.src = imgSrc;
+      lightboxFigureImg.alt = escapeHtml(activeFigure.title_en);
+    }
+    if (lightboxLangLabel) {
+      lightboxLangLabel.textContent = isZh ? '查看英文原图 (EN)' : '查看中文译图 (ZH)';
+    }
+    if (lightboxChapterInfo) {
+      const curMeta = window.CHAPTERS_META ? window.CHAPTERS_META.find(c => c.key === state.currentChapterKey) : null;
+      if (curMeta) {
+        const chName = isZh ? `${curMeta.name} · ${curMeta.title_zh}` : `${curMeta.name} · ${curMeta.title_en}`;
+        lightboxChapterInfo.textContent = chName;
+      } else {
+        lightboxChapterInfo.textContent = '';
+      }
+    }
+  }
+
   function openFigureLightbox(fig) {
+    if (!fig) return;
     activeFigure = fig;
-    const lightboxModal = document.getElementById('modal-figure-lightbox');
+    lightboxLang = isZhLang() ? 'zh' : 'en';
+    renderLightboxContent();
+
     if (lightboxModal) {
       openModal(lightboxModal);
       if (document.body && document.body.classList) {
@@ -2216,14 +2263,29 @@
   }
 
   function closeFigureLightbox() {
-    activeFigure = null;
-    const lightboxModal = document.getElementById('modal-figure-lightbox');
     if (lightboxModal) {
       closeModal(lightboxModal);
+    } else {
+      activeFigure = null;
       if (document.body && document.body.classList) {
         document.body.classList.remove('lightbox-open');
       }
     }
+  }
+
+  if (btnLightboxLangToggle) {
+    btnLightboxLangToggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      lightboxLang = (lightboxLang === 'zh') ? 'en' : 'zh';
+      renderLightboxContent();
+    });
+  }
+
+  if (btnLightboxClose) {
+    btnLightboxClose.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeFigureLightbox();
+    });
   }
 
   // Search Modal Controller
@@ -2603,7 +2665,10 @@
     setIsProgrammaticScrolling: (val) => { isProgrammaticScrolling = val; },
     getIsProgrammaticScrolling: () => isProgrammaticScrolling,
     renderTranscript,
-    openFigureLightbox
+    openFigureLightbox,
+    closeFigureLightbox,
+    getLightboxState: () => ({ activeFigure, lightboxLang }),
+    seekToCue
   };
 
   if (typeof window !== 'undefined') {
