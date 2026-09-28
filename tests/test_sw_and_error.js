@@ -10,14 +10,15 @@ const app = require('../js/app');
 
 console.log('--- Running test_sw_and_error.js ---');
 
-// Test Case 1: sw.js CACHE_SHELL_NAME bump to v7
+// Test Case 1: sw.js CACHE_SHELL_NAME bump to v8
 const swContent = fs.readFileSync(path.join(__dirname, '../sw.js'), 'utf-8');
 const cacheNameMatch = swContent.match(/const\s+CACHE_SHELL_NAME\s*=\s*['"]([^'"]+)['"]/);
 assert(cacheNameMatch, 'sw.js should define CACHE_SHELL_NAME');
-assert.strictEqual(cacheNameMatch[1], 'ai-agent-shell-v7', 'CACHE_SHELL_NAME must be ai-agent-shell-v7');
+assert.strictEqual(cacheNameMatch[1], 'ai-agent-shell-v8', 'CACHE_SHELL_NAME must be ai-agent-shell-v8');
 
-// Test Case 2: STATIC_ASSETS excludes lazy chapter scripts
+// Test Case 2: STATIC_ASSETS includes chapters_meta and figures_meta, excludes lazy chapter scripts
 assert(swContent.includes("'data/chapters_meta.js'"), 'STATIC_ASSETS should keep chapters_meta.js');
+assert(swContent.includes("'data/figures_meta.js'"), 'STATIC_ASSETS should keep figures_meta.js');
 assert(swContent.includes("'data/introduction.js'"), 'STATIC_ASSETS should keep introduction.js');
 assert(!swContent.includes("'data/chapter1.js'"), 'STATIC_ASSETS must remove lazy loaded chapter1.js');
 assert(!swContent.includes("'data/chapter10.js'"), 'STATIC_ASSETS must remove lazy loaded chapter10.js');
