@@ -3,6 +3,9 @@
  * Provides a lightweight, headless browser environment mock for Node.js test execution.
  */
 
+// Global element registry for mock DOM
+const elementsMap = new Map();
+
 // 1. Mock LocalStorage
 class LocalStorageMock {
   constructor() {
@@ -70,9 +73,13 @@ class AudioMock {
 // 3. Mock DOM Element
 class DOMElementMock {
   constructor(id, tagName = 'div') {
-    this.id = id;
+    this._id = id;
     this.tagName = tagName.toUpperCase();
     this.className = '';
+    this.dataset = {};
+    if (id && typeof elementsMap !== 'undefined') {
+      elementsMap.set(id, this);
+    }
     this.classList = {
       classes: new Set(),
       add: (c) => this.classList.classes.add(c),
@@ -94,13 +101,47 @@ class DOMElementMock {
     };
     this.style = {};
     this.value = '';
-    this.innerHTML = '';
+    this._innerHTML = '';
     this._textContent = '';
     this.children = [];
     this.listeners = {};
     this.scrollTop = 0;
     this.scrollHeight = 1000;
     this.clientHeight = 500;
+  }
+  get id() {
+    return this._id;
+  }
+  set id(val) {
+    this._id = val;
+    if (val && typeof elementsMap !== 'undefined') {
+      elementsMap.set(val, this);
+    }
+  }
+  get innerHTML() {
+    return this._innerHTML || '';
+  }
+  set innerHTML(html) {
+    this._innerHTML = html;
+    this.children = [];
+    if (typeof html === 'string') {
+      const subTagRegex = /<([a-z0-9]+)([^>]*)>/gi;
+      const classRegex = /class=["']([^"']+)["']/i;
+      const idRegex = /id=["']([^"']+)["']/i;
+      let match;
+      while ((match = subTagRegex.exec(html)) !== null) {
+        const tagName = match[1];
+        const attrs = match[2];
+        const cMatch = attrs.match(classRegex);
+        const iMatch = attrs.match(idRegex);
+        if (cMatch || iMatch) {
+          const child = new DOMElementMock(iMatch ? iMatch[1] : `mock-${Math.random()}`, tagName);
+          if (cMatch) child.className = cMatch[1];
+          child.parentElement = this;
+          this.children.push(child);
+        }
+      }
+    }
   }
   get textContent() {
     if (this._textContent) return this._textContent;
@@ -112,9 +153,19 @@ class DOMElementMock {
   set textContent(v) {
     this._textContent = String(v);
   }
-  setAttribute(k, v) { this[k] = v; }
+  setAttribute(k, v) {
+    this[k] = v;
+    if (k && k.startsWith('data-')) {
+      const prop = k.slice(5).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+      this.dataset[prop] = String(v);
+    }
+  }
   getAttribute(k) { return this[k] || null; }
-  appendChild(child) { this.children.push(child); return child; }
+  appendChild(child) {
+    if (child) child.parentElement = this;
+    this.children.push(child);
+    return child;
+  }
   removeChild(child) { this.children = this.children.filter(c => c !== child); }
   addEventListener(event, fn) {
     if (!this.listeners[event]) this.listeners[event] = [];
@@ -126,7 +177,45 @@ class DOMElementMock {
   }
   querySelector(sel) {
     if (this._qsMap && this._qsMap[sel]) return this._qsMap[sel];
-    // Return a dummy element if selector matches a common class or tag
+    // Search children recursively
+    const match = (el) => {
+      if (!el) return false;
+      if (sel.startsWith('.')) {
+        const cls = sel.slice(1);
+        if (el.className && el.className.split(/\s+/).includes(cls)) return true;
+        if (el.classList && el.classList.contains && el.classList.contains(cls)) return true;
+      } else if (sel.startsWith('#')) {
+        if (el.id === sel.slice(1)) return true;
+      } else if (sel.startsWith('[') && sel.endsWith(']')) {
+        const parts = sel.slice(1, -1).split('=');
+        const k = parts[0].trim();
+        const v = parts[1] ? parts[1].replace(/["']/g, '').trim() : null;
+        if (v === null) return el[k] !== undefined || (el.dataset && el.dataset[k] !== undefined);
+        if (k.startsWith('data-')) {
+          const dk = k.slice(5).replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+          return el.dataset && el.dataset[dk] === v;
+        }
+        return el[k] === v || (typeof el.getAttribute === 'function' && el.getAttribute(k) === v);
+      } else if (el.tagName && el.tagName.toLowerCase() === sel.toLowerCase()) {
+        return true;
+      }
+      return false;
+    };
+
+    const traverse = (parent) => {
+      if (!parent.children) return null;
+      for (const child of parent.children) {
+        if (match(child)) return child;
+        const res = traverse(child);
+        if (res) return res;
+      }
+      return null;
+    };
+
+    const found = traverse(this);
+    if (found) return found;
+
+    // Return dummy element fallback if selector matches a common class or tag
     const el = new DOMElementMock(`mock-qs-${sel}`);
     if (!this._qsMap) this._qsMap = {};
     this._qsMap[sel] = el;
@@ -134,6 +223,18 @@ class DOMElementMock {
   }
   querySelectorAll(sel) {
     return [this.querySelector(sel)];
+  }
+  closest(sel) {
+    if (this._closestMap && this._closestMap[sel]) return this._closestMap[sel];
+    if (sel.startsWith('.')) {
+      const cls = sel.slice(1);
+      if (this.className && this.className.includes(cls)) return this;
+      if (this.classList && this.classList.contains && this.classList.contains(cls)) return this;
+    }
+    if (this.parentElement && typeof this.parentElement.closest === 'function') {
+      return this.parentElement.closest(sel);
+    }
+    return null;
   }
   scrollIntoView() {}
   getBoundingClientRect() {
@@ -147,7 +248,6 @@ if (typeof global !== 'undefined') {
   global.localStorage = new LocalStorageMock();
   global.Audio = AudioMock;
 
-  const elementsMap = new Map();
   const mockAudio = new AudioMock();
   elementsMap.set('audio-element', mockAudio);
 

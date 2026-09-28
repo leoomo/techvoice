@@ -1650,7 +1650,9 @@
     }
 
     // 2. Render Cues and Section Dividers
-    const sectionByCueId = meta.sections ? new Map(meta.sections.map(s => [s.cue_id, s])) : new Map();
+    const sectionByCueId = meta && meta.sections ? new Map(meta.sections.map(s => [s.cue_id, s])) : new Map();
+    const chapterFigs = (typeof window !== 'undefined' && window.FIGURES_META && meta && meta.key && window.FIGURES_META[meta.key]) || [];
+    const figuresByCueId = new Map(chapterFigs.map(f => [f.cue_id, f]));
 
     state.cues.forEach(cue => {
       // If this cue starts a section, insert Section Divider Card
@@ -1712,9 +1714,57 @@
         </div>
       `;
 
+      // Render inline figure card if attached to this cue
+      if (figuresByCueId.has(cue.id)) {
+        const fig = figuresByCueId.get(cue.id);
+        const figCard = document.createElement('div');
+        figCard.className = 'cue-figure-card';
+        figCard.setAttribute('data-fig-id', fig.fig_id);
+        if (figCard.dataset) figCard.dataset.figId = fig.fig_id;
+        const figTitle = isZh ? fig.title_zh : fig.title_en;
+        const figNumLabel = isZh ? `图 ${fig.num}` : `Figure ${fig.num}`;
+        const figSrc = `assets/figures/${isZh ? 'zh' : 'en'}/${fig.file}`;
+
+        figCard.innerHTML = `
+          <div class="figure-badge-bar">
+            <span class="figure-badge">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+              <span class="figure-badge-num">${figNumLabel}</span>
+            </span>
+            <span class="figure-badge-title">${escapeHtml(figTitle)}</span>
+            <button class="btn-figure-zoom" type="button" title="${isZh ? '点击全屏放大查看' : 'Click to zoom'}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 3 21 3 21 9"/>
+                <polyline points="9 21 3 21 3 15"/>
+                <line x1="21" y1="3" x2="14" y2="10"/>
+                <line x1="3" y1="21" x2="10" y2="14"/>
+              </svg>
+              <span>${isZh ? '全屏查看' : 'Zoom'}</span>
+            </button>
+          </div>
+          <div class="figure-img-wrap">
+            <img class="cue-figure-img" src="${figSrc}" alt="${escapeHtml(fig.title_en)}" loading="lazy" />
+          </div>
+        `;
+
+        figCard.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openFigureLightbox(fig);
+        });
+
+        const cueTextCol = card.querySelector('.cue-text-col');
+        if (cueTextCol) {
+          cueTextCol.appendChild(figCard);
+        }
+      }
+
       // Click card to jump audio
       card.addEventListener('click', (e) => {
-        if (e.target.closest('.cue-btn-repeat') || e.target.closest('.cue-btn-echo')) return;
+        if (e.target.closest('.cue-btn-repeat') || e.target.closest('.cue-btn-echo') || e.target.closest('.cue-figure-card')) return;
         if (typeof EchoController !== 'undefined' && EchoController.mode) {
           EchoController.startContinuous(cue);
           return;
@@ -2150,6 +2200,32 @@
   const btnShortcuts = document.getElementById('btn-shortcuts');
   if (btnShortcuts) btnShortcuts.addEventListener('click', () => openModal(shortcutsModal));
 
+  // Figure Lightbox Controller
+  let activeFigure = null;
+  let lightboxLang = 'zh';
+
+  function openFigureLightbox(fig) {
+    activeFigure = fig;
+    const lightboxModal = document.getElementById('modal-figure-lightbox');
+    if (lightboxModal) {
+      openModal(lightboxModal);
+      if (document.body && document.body.classList) {
+        document.body.classList.add('lightbox-open');
+      }
+    }
+  }
+
+  function closeFigureLightbox() {
+    activeFigure = null;
+    const lightboxModal = document.getElementById('modal-figure-lightbox');
+    if (lightboxModal) {
+      closeModal(lightboxModal);
+      if (document.body && document.body.classList) {
+        document.body.classList.remove('lightbox-open');
+      }
+    }
+  }
+
   // Search Modal Controller
   let searchDebounceTimer = null;
   let searchSelectedIndex = -1;
@@ -2525,7 +2601,9 @@
     updateResumeCueUI,
     triggerProgrammaticScroll,
     setIsProgrammaticScrolling: (val) => { isProgrammaticScrolling = val; },
-    getIsProgrammaticScrolling: () => isProgrammaticScrolling
+    getIsProgrammaticScrolling: () => isProgrammaticScrolling,
+    renderTranscript,
+    openFigureLightbox
   };
 
   if (typeof window !== 'undefined') {

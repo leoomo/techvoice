@@ -1497,6 +1497,156 @@ body.hide-en .en-text {
   display: none !important;
 }
 
+/* ==========================================================================
+   Article Figure Inline Cards & Visual Presentation
+   ========================================================================== */
+.cue-figure-card {
+  margin-top: 14px;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 12px;
+  padding: 12px 14px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  cursor: pointer;
+  transition: all 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.3);
+}
+
+.cue-figure-card:hover {
+  border-color: rgba(56, 189, 248, 0.45);
+  box-shadow: 0 6px 24px -2px rgba(0, 0, 0, 0.45), 0 0 16px rgba(56, 189, 248, 0.15);
+  transform: translateY(-1.5px);
+}
+
+.figure-badge-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.figure-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+}
+
+.figure-badge-title {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 550;
+  color: var(--text-primary);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-figure-zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 4px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.btn-figure-zoom:hover {
+  color: #ffffff;
+  background: rgba(56, 189, 248, 0.18);
+  border-color: rgba(56, 189, 248, 0.4);
+}
+
+.figure-img-wrap {
+  width: 100%;
+  min-height: 140px;
+  max-height: 320px;
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+
+.cue-figure-img {
+  max-width: 100%;
+  max-height: 296px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
+  transition: transform 0.2s ease;
+}
+
+.cue-figure-card:hover .cue-figure-img {
+  transform: scale(1.015);
+}
+
+/* Light Mode Overrides for Figure Cards */
+[data-theme="light"] .cue-figure-card {
+  background: #fdfdfd;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 3px 12px -2px rgba(15, 23, 42, 0.06);
+}
+
+[data-theme="light"] .cue-figure-card:hover {
+  border-color: #0284c7;
+  box-shadow: 0 6px 20px -2px rgba(2, 132, 199, 0.14);
+}
+
+[data-theme="light"] .figure-badge {
+  color: #0284c7;
+  background: #f0f9ff;
+  border-color: #bae6fd;
+}
+
+[data-theme="light"] .figure-badge-title {
+  color: #1e293b;
+}
+
+[data-theme="light"] .btn-figure-zoom {
+  color: #475569;
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+}
+
+[data-theme="light"] .btn-figure-zoom:hover {
+  color: #0284c7;
+  background: #e0f2fe;
+  border-color: #7dd3fc;
+}
+
+[data-theme="light"] .figure-img-wrap {
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px #e2e8f0;
+}
+
+body.lightbox-open {
+  overflow: hidden !important;
+}
+
 /* Chapter End Navigation */
 .chapter-end-nav {
   margin-top: 36px;
