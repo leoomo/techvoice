@@ -10,11 +10,11 @@ const app = require('../js/app');
 
 console.log('--- Running test_sw_and_error.js ---');
 
-// Test Case 1: sw.js CACHE_SHELL_NAME bump to v3
+// Test Case 1: sw.js CACHE_SHELL_NAME bump to v4
 const swContent = fs.readFileSync(path.join(__dirname, '../sw.js'), 'utf-8');
 const cacheNameMatch = swContent.match(/const\s+CACHE_SHELL_NAME\s*=\s*['"]([^'"]+)['"]/);
 assert(cacheNameMatch, 'sw.js should define CACHE_SHELL_NAME');
-assert.strictEqual(cacheNameMatch[1], 'ai-agent-shell-v3', 'CACHE_SHELL_NAME must be ai-agent-shell-v3');
+assert.strictEqual(cacheNameMatch[1], 'ai-agent-shell-v4', 'CACHE_SHELL_NAME must be ai-agent-shell-v4');
 
 // Test Case 2: STATIC_ASSETS excludes lazy chapter scripts
 assert(swContent.includes("'data/chapters_meta.js'"), 'STATIC_ASSETS should keep chapters_meta.js');
